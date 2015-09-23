@@ -1,3 +1,21 @@
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 var extend = require("xtend");
 var IHandshake = require("./IHandshake");
 var CryptoLib = require("./ICrypto");
@@ -340,8 +358,8 @@ Handshake.prototype = extend(IHandshake.prototype, {
 
         //success
         //plaintext should be 52 bytes, else fail
-        if (plaintext.length != (Handshake.NONCE_BYTES + Handshake.ID_BYTES)) {
-            that.handshakeFail("plaintext was the wrong size: " + plaintext.length);
+        if (plaintext.length < (Handshake.NONCE_BYTES + Handshake.ID_BYTES)) {
+			that.handshakeFail("plaintext was too small: " + plaintext.length);
             return;
         }
 
@@ -350,6 +368,13 @@ Handshake.prototype = extend(IHandshake.prototype, {
 
         plaintext.copy(vNonce, 0, 0, 40);
         plaintext.copy(vCoreID, 0, 40, 52);
+
+		if (plaintext.length > (Handshake.NONCE_BYTES + Handshake.ID_BYTES)) {
+			var coreKey = new Buffer(plaintext.length - 52);
+			plaintext.copy(coreKey, 0, 52, plaintext.length);
+			//console.log("got key ", coreKey.toString('hex'));
+			this.coreProvidedPem = utilities.convertDERtoPEM(coreKey);
+		}
 
         //nonces should match
         if (!utilities.bufferCompare(vNonce, that.nonce)) {
@@ -369,10 +394,15 @@ Handshake.prototype = extend(IHandshake.prototype, {
     // * Remaining 12 bytes of message represent STM32 ID.  Server retrieves the Core's public RSA key.
     // * If the public key is not found, Server must close the connection.
     get_corekey: function () {
+		var that = this;
         utilities.get_core_key(this.coreID, function (public_key) {
             try {
                 if (!public_key) {
                     that.handshakeFail("couldn't find key for core: " + this.coreID);
+					if (that.coreProvidedPem) {
+						utilities.save_handshake_key(that.coreID, that.coreProvidedPem);
+					}
+
                     return;
                 }
 
@@ -512,6 +542,18 @@ Handshake.prototype = extend(IHandshake.prototype, {
             logger.log('error while parsing hello payload ', ex);
         }
 
+//        //remind ourselves later that this key worked.
+//        if (that.corePublicKeyWasUncertain) {
+//            process.nextTick(function () {
+//                try {
+//					//set preferred key for device
+//					//that.coreFullPublicKeyObject
+//                }
+//                catch (ex) {
+//                    logger.error("error marking key as valid " + ex);
+//                }
+//            });
+//        }
 
 
         this.stage++;
