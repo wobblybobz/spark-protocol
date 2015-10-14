@@ -70,10 +70,10 @@ EventPublisher.prototype = {
         if(!obj[key + "_handler"]) {
             eventName=this.getEventName(name,coreid);
 
-        var handler = (function (isPublic, name, userid, data, ttl, published_at, coreid) {
-            var emitName = (isPublic) ? "public" : "private";
-            this.emit(emitName, name, data, ttl, published_at, coreid);
-        }).bind(obj);
+            var handler = (function (isPublic, name, userid, data, ttl, published_at, coreid) {
+                var emitName = (isPublic) ? "public" : "private";
+                this.emit(emitName, name, data, ttl, published_at, coreid);
+            }).bind(obj);
 
             obj[key + "_handler"] = handler;
 
