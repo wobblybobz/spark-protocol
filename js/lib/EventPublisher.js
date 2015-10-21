@@ -61,7 +61,7 @@ EventPublisher.prototype = {
             this.emit("*all*", isPublic, name, userid, data, ttl, published_at, coreid);
         }).bind(this));
     },
-    subscribe: function (name,userid,coreid, obj) {
+    subscribe: function (name,userid,coreid, obj,objHandler) {
         var key=this.getEventKey(name,userid,coreid ),
           eventName;
         //coreid/name
@@ -69,12 +69,22 @@ EventPublisher.prototype = {
         //name
         if(!obj[key + "_handler"]) {
             eventName=this.getEventName(name,coreid);
-
-            var handler = (function (isPublic, name, userid, data, ttl, published_at, coreid) {
-                var emitName = (isPublic) ? "public" : "private";
-                this.emit(emitName, name, data, ttl, published_at, coreid);
-            }).bind(obj);
-
+            var handler;
+            if(objHandler){
+                handler = objHandler.bind(obj);
+            }else {
+                handler = (function ( isPublic,
+                                          name,
+                                          userid,
+                                          data,
+                                          ttl,
+                                          published_at,
+                                          coreid
+                ) {
+                    var emitName = (isPublic) ? "public" : "private";
+                    this.emit( emitName, name, data, ttl, published_at, coreid );
+                }).bind( obj );
+            }
             obj[key + "_handler"] = handler;
 
             this.on( eventName, handler );

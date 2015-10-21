@@ -1108,6 +1108,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
         //modify our filter on the appropriate socket (create the socket if we haven't yet) to let messages through
         //this.eventsSocket.subscribe(isPublic, name, userid);
+        global.publisher.subscribe( name, userid,deviceID,this,this.onCoreEvent);
     },
 
     onCorePubHeard: function (name, data, ttl, published_at, coreid) {
@@ -1115,6 +1116,10 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     },
     onCorePrivHeard: function (name, data, ttl, published_at, coreid) {
         this.sendCoreEvent(false, name, data, ttl, published_at, coreid);
+    },
+    // isPublic, name, userid, data, ttl, published_at, coreid);
+    onCoreEvent:function( isPublic, name, userid, data, ttl, published_at, coreid){
+        this.sendCoreEvent(isPublic, name, data, ttl, published_at, coreid);
     },
 
     /**
