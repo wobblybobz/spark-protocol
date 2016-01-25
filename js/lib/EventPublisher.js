@@ -55,10 +55,13 @@ EventPublisher.prototype = {
     publish: function (isPublic, name, userid, data, ttl, published_at, coreid) {
 
         process.nextTick((function () {
-            this.emit(name, isPublic, name, userid, data, ttl, published_at, coreid);
-            this.emit(coreid, isPublic, name, userid, data, ttl, published_at, coreid);
-            this.emit(coreid+'/'+name, isPublic, name, userid, data, ttl, published_at, coreid);
-            this.emit("*all*", isPublic, name, userid, data, ttl, published_at, coreid);
+            if (typeof(this.emit) == 'function')
+            {
+                this.emit( name, isPublic, name, userid, data, ttl, published_at, coreid );
+                this.emit( coreid, isPublic, name, userid, data, ttl, published_at, coreid );
+                this.emit( coreid + '/' + name, isPublic, name, userid, data, ttl, published_at, coreid );
+                this.emit( "*all*", isPublic, name, userid, data, ttl, published_at, coreid );
+            }
         }).bind(this));
     },
     subscribe: function (name,userid,coreid, obj,objHandler) {
@@ -82,7 +85,9 @@ EventPublisher.prototype = {
                                           coreid
                 ) {
                     var emitName = (isPublic) ? "public" : "private";
-                    this.emit( emitName, name, data, ttl, published_at, coreid );
+                    if (typeof(this.emit) == 'function') {
+                        this.emit( emitName, name, data, ttl, published_at, coreid );
+                    }
                 }).bind( obj );
             }
             obj[key + "_handler"] = handler;
