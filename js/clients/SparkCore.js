@@ -94,6 +94,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
     spark_product_id: null,
     product_firmware_version: null,
+    platform_id: null,
 
     /**
      * Used to track calls waiting on a description response
@@ -136,6 +137,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
             ip: this.getRemoteIPAddress(),
             product_id: this.spark_product_id,
             firmware_version: this.product_firmware_version,
+            platform_id: this.platform_id,
             cache_key: this._connection_key
         });
 
