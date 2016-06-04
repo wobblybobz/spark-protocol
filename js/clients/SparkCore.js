@@ -1054,7 +1054,12 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
                 //this core is over its limit, and that message was not sent.
                 //this.sendReply("EventSlowdown", msg.getId());
             }
-            this.sendReply("EventAck", msg.getId());
+            if(msg.isConfirmable()) {
+                console.log('Event confirmable');
+                this.sendReply( "EventAck", msg.getId() );
+            }else{
+                console.log('Event non confirmable');
+            }
         }
         catch (ex) {
             logger.error("onCoreSentEvent: failed writing to socket - " + ex);
