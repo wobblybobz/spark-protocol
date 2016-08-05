@@ -713,14 +713,17 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         flasher.startFlashBuffer(binary, this,
             function () {
                 logger.log("flash core finished! - sending api event", { coreID: that.getHexCoreID() });
+                global.publisher.publish(false,'spark/flash/status',null,'success',60,moment(new Date()).toISOString(),that.getHexCoreID());
                 that.sendApiResponse(sender, { cmd: "Event", name: "Update", message: "Update done" });
             },
             function (msg) {
                 logger.log("flash core failed! - sending api event", { coreID: that.getHexCoreID(), error: msg });
+                global.publisher.publish(false,'spark/flash/status',null,'failed',60,moment(new Date()).toISOString(),that.getHexCoreID());
                 that.sendApiResponse(sender, { cmd: "Event", name: "Update", message: "Update failed" });
             },
             function () {
                 logger.log("flash core started! - sending api event", { coreID: that.getHexCoreID() });
+                global.publisher.publish(false,'spark/flash/status',null,'started',60,moment(new Date()).toISOString(),that.getHexCoreID());
                 that.sendApiResponse(sender, { cmd: "Event", name: "Update", message: "Update started" });
             });
     },
