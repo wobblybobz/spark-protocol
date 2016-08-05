@@ -217,10 +217,10 @@ DeviceServer.prototype = {
                                 product_id: this.spark_product_id,
                                 firmware_version: this.product_firmware_version
                             };
-                            global.publisher.publish(false,'spark/status','online',null,60,moment(new Date()).toISOString(),coreid);
+                            global.publisher.publish(false,'spark/status',null,'online',null,60,moment(new Date()).toISOString(),coreid);
                         });
                         core.on('disconnect', function (msg) {
-                            global.publisher.publish(false,'spark/status','offline',null,60,moment(new Date()).toISOString(),core.coreID);
+                            global.publisher.publish(false,'spark/status',null,'offline',null,60,moment(new Date()).toISOString(),core.coreID);
                             logger.log("Session ended for " + core._connection_key);
                             delete _cores[key];
                         });
