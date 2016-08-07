@@ -1006,7 +1006,6 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
 
         //name: "/E/TestEvent", trim the "/e/" or "/E/" off the start of the uri path
-
         var obj = {
             name: msg.getUriPath().substr(3),
             is_public: isPublic,
@@ -1015,6 +1014,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
             published_by: this.getHexCoreID(),
             published_at: moment().toISOString()
         };
+        
 
         //snap obj.ttl to the right value.
         obj.ttl = (obj.ttl > 0) ? obj.ttl : 60;
@@ -1024,8 +1024,19 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
             obj.data = null;
         }
 
+		//logger.log(JSON.stringify(obj));
+		
         //if the event name starts with spark (upper or lower), then eat it.
         var lowername = obj.name.toLowerCase();
+        
+        if (lowername.indexOf("spark/device/claim/code") == 0) {
+        	
+        	global.server.setCoreAttribute(this.getHexCoreID(), "claimCode", msg.getPayload().toString());
+        	
+        	//TODO claim device
+        	
+        }
+        
         if (lowername.indexOf("spark") == 0) {
             //allow some kinds of message through.
             var eat_message = true;
