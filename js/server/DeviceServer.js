@@ -81,9 +81,10 @@ DeviceServer.prototype = {
                 id = utilities.filenameNoExt(utilities.filenameNoExt(filename));
 
             if (ext == ".pem") {
-                console.log("found " + id);
-                this._allIDs[id] = true;
-
+            	if (!this._allIDs[id]) {
+                	console.log("found " + id);
+                	this._allIDs[id] = true;
+				}
                 if (!attribsByID[id]) {
                     var core = {}
                     core.coreID = id;
@@ -94,11 +95,14 @@ DeviceServer.prototype = {
                 try {
                     var contents = fs.readFileSync(fullPath);
                     var core = JSON.parse(contents);
-                    core.coreID = core.coreID || id;
-                    attribsByID[core.coreID ] = core;
-
-                    console.log("found " + core.coreID);
-                    this._allIDs[core.coreID ] = true;
+                    if (!attribsByID[core.coreID]) {
+                    	core.coreID = core.coreID || id;
+                    	attribsByID[core.coreID ] = core;
+                    }
+					if (!this._allIDs[core.coreID]) {
+                    	console.log("found " + core.coreID);
+                    	this._allIDs[core.coreID ] = true;
+                    }
                 }
                 catch (ex) {
                     logger.error("Error loading core file " + filename);
