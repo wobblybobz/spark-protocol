@@ -1031,10 +1031,18 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         
         if (lowername.indexOf("spark/device/claim/code") == 0) {
         	
-        	global.server.setCoreAttribute(this.getHexCoreID(), "claimCode", msg.getPayload().toString());
+        	var claimCode = msg.getPayload().toString();
         	
-        	//TODO claim device
+        	var coreid = this.getHexCoreID();
+        	var core = global.server.getCoreAttributes(coreid);
         	
+        	if(core.claimCode != claimCode) {
+   	        	global.server.setCoreAttribute(coreid, "claimCode", claimCode)
+	        	//claim device
+	        	if (global.api) {
+	        		global.api.linkDevice(coreid, claimCode);
+	        	}
+	        }
         }
         
         if (lowername.indexOf("spark") == 0) {
