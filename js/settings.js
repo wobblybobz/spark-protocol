@@ -42,6 +42,10 @@ module.exports = {
      * How big can our tokens be in CoAP messages?
      */
     message_token_max: 255,
-
-    verboseProtocol: false
+    
+	keepaliveTimeout: 15000, //15 seconds
+	socketTimeout: 31000, //31 seconds
+	
+    verboseProtocol: false,
+    
 };

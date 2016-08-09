@@ -69,6 +69,8 @@ var SparkCore = function (options) {
 
 SparkCore.COUNTER_MAX = settings.message_counter_max;
 SparkCore.TOKEN_MAX = settings.message_token_max;
+SparkCore.KEEP_ALIVE_TIMEOUT = settings.keepaliveTimeout;
+SparkCore.SOCKET_TIMEOUT = settings.socketTimeout;
 
 SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     classname: "SparkCore",
@@ -107,7 +109,9 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     startupProtocol: function () {
         var that = this;
         this.socket.setNoDelay(true);
-        this.socket.setKeepAlive(true, 15 * 1000); //every 15 second(s)
+        this.socket.setKeepAlive(true, SparkCore.KEEP_ALIVE_TIMEOUT); //every 15 second(s)
+        this.socket.setTimeout(SparkCore.SOCKET_TIMEOUT);
+        
         this.socket.on('error', function (err) {
             that.disconnect("socket error " + err);
         });
@@ -1079,10 +1083,10 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
                 //this.sendReply("EventSlowdown", msg.getId());
             }
             if(msg.isConfirmable()) {
-                console.log('Event confirmable');
+                //console.log('Event confirmable');
                 this.sendReply( "EventAck", msg.getId() );
             }else{
-                console.log('Event non confirmable');
+                //console.log('Event non confirmable');
             }
         }
         catch (ex) {
