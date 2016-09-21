@@ -1041,10 +1041,10 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         	var core = global.server.getCoreAttributes(coreid);
         	
         	if(core.claimCode != claimCode) {
-   	        	global.server.setCoreAttribute(coreid, "claimCode", claimCode)
+   	        	global.server.setCoreAttribute(coreid, "claimCode", claimCode);
 	        	//claim device
 	        	if (global.api) {
-	        		global.api.linkDevice(coreid, claimCode);
+	        		global.api.linkDevice(coreid, claimCode, this.spark_product_id);
 	        	}
 	        }
         }
