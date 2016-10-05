@@ -224,7 +224,9 @@ DeviceServer.prototype = {
                             global.publisher.publish(false,'spark/status',null,'online',60,moment(new Date()).toISOString(),coreid);
                         });
                         core.on('disconnect', function (msg) {
-                            global.publisher.publish(false,'spark/status',null,'offline',60,moment(new Date()).toISOString(),core.coreID);
+                        	if(core.coreID in that._allCoresByID && that._allCoresByID[core.coreID]._connection_key == core._connection_key) {
+                                global.publisher.publish(false,'spark/status',null,'offline',60,moment(new Date()).toISOString(),core.coreID);
+                            }
                             logger.log("Session ended for " + core._connection_key);
                             delete _cores[key];
                         });
