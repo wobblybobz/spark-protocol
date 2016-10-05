@@ -82,7 +82,7 @@ DeviceServer.prototype = {
 
             if (ext == ".pem") {
             	if (!this._allIDs[id]) {
-                	console.log("found " + id);
+                	console.log("found pem " + id);
                 	this._allIDs[id] = true;
 				}
                 if (!attribsByID[id]) {
@@ -100,7 +100,7 @@ DeviceServer.prototype = {
                     	attribsByID[core.coreID ] = core;
                     }
 					if (!this._allIDs[core.coreID]) {
-                    	console.log("found " + core.coreID);
+                    	console.log("found json " + core.coreID);
                     	this._allIDs[core.coreID ] = true;
                     }
                 }
@@ -216,11 +216,12 @@ DeviceServer.prototype = {
                             that._allCoresByID[coreid] = core;
                             that._attribsByID[coreid] = that._attribsByID[coreid] || {
                                 coreID: coreid,
-                                name: null,
-                                ip: this.getRemoteIPAddress(),
-                                product_id: this.spark_product_id,
-                                firmware_version: this.product_firmware_version
+                                name: null
                             };
+                            that._attribsByID[coreid]['spark_product_id'] = this.spark_product_id;
+                            that._attribsByID[coreid]['product_firmware_version'] = this.product_firmware_version;
+                            that._attribsByID[coreid]['ip'] = this.getRemoteIPAddress();
+                            
                             global.publisher.publish(false,'spark/status',null,'online',60,moment(new Date()).toISOString(),coreid);
                         });
                         core.on('disconnect', function (msg) {
