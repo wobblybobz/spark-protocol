@@ -717,17 +717,17 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         flasher.startFlashBuffer(binary, this,
             function () {
                 logger.log("flash core finished! - sending api event", { coreID: that.getHexCoreID() });
-                global.publisher.publish(false,'spark/flash/status',null,'success',60,moment(new Date()).toISOString(),that.getHexCoreID());
+                global.server.publishSpecialEvents('spark/flash/status','success',that.getHexCoreID());
                 that.sendApiResponse(sender, { cmd: "Event", name: "Update", message: "Update done" });
             },
             function (msg) {
                 logger.log("flash core failed! - sending api event", { coreID: that.getHexCoreID(), error: msg });
-                global.publisher.publish(false,'spark/flash/status',null,'failed',60,moment(new Date()).toISOString(),that.getHexCoreID());
+                global.server.publishSpecialEvents('spark/flash/status','failed',that.getHexCoreID());
                 that.sendApiResponse(sender, { cmd: "Event", name: "Update", message: "Update failed" });
             },
             function () {
                 logger.log("flash core started! - sending api event", { coreID: that.getHexCoreID() });
-                global.publisher.publish(false,'spark/flash/status',null,'started',60,moment(new Date()).toISOString(),that.getHexCoreID());
+                global.server.publishSpecialEvents('spark/flash/status','started',that.getHexCoreID());
                 that.sendApiResponse(sender, { cmd: "Event", name: "Update", message: "Update started" });
             });
     },
@@ -1051,14 +1051,15 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         
         if (lowername.indexOf("spark/device/safemode") == 0) {
         	
-        	when(this.ensureWeHaveIntrospectionData()).then(
-        	    function () {
-        	    	global.server.publishSpecialEvents('spark/status/safe-mode', JSON.stringify(this.coreFnState), this.getHexCoreID());
-        	    },
-        	    function (msg) {
-        	        console.log("Error, no device state");
-        	    }
-        	);
+        	var coreid = this.getHexCoreID();
+        	
+        	var token = this.sendMessage("Describe");
+        	this.listenFor("DescribeReturn", null, token, function (sysmsg) {
+        		//console.log("device "+coreid+" is in safe mode: "+sysmsg.getPayload().toString());
+        		if (global.api) {
+        			global.api.safeMode(coreid, sysmsg.getPayload().toString());
+        		}
+        	}, true);
         }
         
         if (lowername.indexOf("spark") == 0) {
