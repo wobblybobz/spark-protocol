@@ -178,12 +178,15 @@ DeviceServer.prototype = {
         return this._allCoresByID;
     },
 
+	/* publish special events */
+	publishSpecialEvents: function (name, data, coreid) {
+		return global.publisher.publish(false,name,null,data,60,moment(new Date()).toISOString(),coreid);
+	}
 
 //id: core.coreID,
 //name: core.name || null,
 //last_app: core.last_flashed_app_name || null,
 //last_heard: null
-
 
     start: function () {
         global.settings = settings;
@@ -218,15 +221,16 @@ DeviceServer.prototype = {
                                 coreID: coreid,
                                 name: null
                             };
-                            that._attribsByID[coreid]['spark_product_id'] = this.spark_product_id;
-                            that._attribsByID[coreid]['product_firmware_version'] = this.product_firmware_version;
-                            that._attribsByID[coreid]['ip'] = this.getRemoteIPAddress();
+                            that._attribsByID[coreid].spark_product_id = this.spark_product_id;
+                            that._attribsByID[coreid].product_firmware_version = this.product_firmware_version;
+                            that._attribsByID[coreid].ip = this.getRemoteIPAddress();
+                            that.saveCoreData(coreid, that._attribsByID[coreid]);
                             
-                            global.publisher.publish(false,'spark/status',null,'online',60,moment(new Date()).toISOString(),coreid);
+                            that.publishSpecialEvents('spark/status', 'online', coreid);
                         });
                         core.on('disconnect', function (msg) {
                         	if(core.coreID in that._allCoresByID && that._allCoresByID[core.coreID]._connection_key == core._connection_key) {
-                                global.publisher.publish(false,'spark/status',null,'offline',60,moment(new Date()).toISOString(),core.coreID);
+                                that.publishSpecialEvents('spark/status', 'offline', coreid);
                             }
                             logger.log("Session ended for " + core._connection_key);
                             delete _cores[key];

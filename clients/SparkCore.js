@@ -1049,6 +1049,18 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 	        }
         }
         
+        if (lowername.indexOf("spark/device/safemode") == 0) {
+        	
+        	when(this.ensureWeHaveIntrospectionData()).then(
+        	    function () {
+        	    	global.server.publishSpecialEvents('spark/status/safe-mode', JSON.stringify(this.coreFnState), this.getHexCoreID());
+        	    },
+        	    function (msg) {
+        	        console.log("Error, no device state");
+        	    }
+        	);
+        }
+        
         if (lowername.indexOf("spark") == 0) {
             //allow some kinds of message through.
             var eat_message = true;
