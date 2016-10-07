@@ -181,7 +181,7 @@ DeviceServer.prototype = {
 	/* publish special events */
 	publishSpecialEvents: function (name, data, coreid) {
 		return global.publisher.publish(false,name,null,data,60,moment(new Date()).toISOString(),coreid);
-	}
+	},
 
 //id: core.coreID,
 //name: core.name || null,
