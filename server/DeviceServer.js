@@ -230,7 +230,7 @@ DeviceServer.prototype = {
                         });
                         core.on('disconnect', function (msg) {
                         	if(core.coreID in that._allCoresByID && that._allCoresByID[core.coreID]._connection_key == core._connection_key) {
-                                that.publishSpecialEvents('spark/status', 'offline', coreid);
+                                that.publishSpecialEvents('spark/status', 'offline', core.coreID);
                             }
                             logger.log("Session ended for " + core._connection_key);
                             delete _cores[key];
