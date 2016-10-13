@@ -1049,6 +1049,14 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 	        }
         }
         
+        if (lowername.indexOf("spark/device/system/version") == 0) {
+        	
+        	var system_version = msg.getPayload().toString();
+        	
+        	var coreid = this.getHexCoreID();
+        	global.server.setCoreAttribute(coreid, "spark_system_version", system_version);
+        }
+        
         if (lowername.indexOf("spark/device/safemode") == 0) {
         	
         	var coreid = this.getHexCoreID();
