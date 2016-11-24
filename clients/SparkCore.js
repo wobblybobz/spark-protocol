@@ -176,6 +176,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
      * Handles messages coming from the API over our message queue service
      */
     onApiMessage: function (sender, msg) {
+	    console.log(msg);
         if (!msg) {
             logger.log('onApiMessage - no message? got ' + JSON.stringify(arguments), { coreID: this.getHexCoreID() });
             return;
