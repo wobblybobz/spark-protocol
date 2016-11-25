@@ -15,7 +15,7 @@
   },
   "license": "LGPL-3.0",
   "scripts": {
-    "start": "nodemon --exec babel ./src --out-dir ./lib --watch src"
+    "start": "babel ./src --out-dir ./lib --watch"
   },
   "dependencies": {
     "buffer-crc32": "~0.2.3",
@@ -30,7 +30,6 @@
   "devDependencies": {
     "babel-cli": "^6.18.0",
     "babel-plugin-transform-flow-strip-types": "^6.18.0",
-    "babel-preset-latest": "^6.16.0",
-    "nodemon": "^1.11.0"
+    "babel-preset-latest": "^6.16.0"
   }
 }
