@@ -1,27 +1,35 @@
 {
-    "name": "spark-protocol",
-    "version": "0.1.6",
-    "main": "./index.js",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/spark/spark-protocol"
-    },
-    "homepage": "https://github.com/spark/spark-protocol",
-    "bugs": "https://github.com/spark/spark-protocol/issues",
-    "author": {
-        "name": "David Middlecamp",
-        "email": "david@spark.io",
-        "url": "https://www.spark.io/"
-    },
-    "license": "LGPL-3.0",
-    "dependencies": {
-        "buffer-crc32": "~0.2.3",
-        "h5.buffers": "~0.1.1",
-        "h5.coap": "git+https://github.com/morkai/h5.coap.git",
-        "hogan.js": "*",
-        "ursa": "*",
-        "when": "*",
-        "moment": "*",
-        "xtend": "*"
-    }
+  "name": "spark-protocol",
+  "version": "0.1.6",
+  "main": "./lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/spark/spark-protocol"
+  },
+  "homepage": "https://github.com/spark/spark-protocol",
+  "bugs": "https://github.com/spark/spark-protocol/issues",
+  "author": {
+    "name": "David Middlecamp",
+    "email": "david@spark.io",
+    "url": "https://www.spark.io/"
+  },
+  "license": "LGPL-3.0",
+  "scripts": {
+    "start": "babel ./src --out-dir ./lib --watch"
+  },
+  "dependencies": {
+    "buffer-crc32": "~0.2.3",
+    "h5.buffers": "~0.1.1",
+    "h5.coap": "git+https://github.com/morkai/h5.coap.git",
+    "hogan.js": "*",
+    "ursa": "*",
+    "when": "*",
+    "moment": "*",
+    "xtend": "*"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.18.0",
+    "babel-plugin-transform-flow-strip-types": "^6.18.0",
+    "babel-preset-latest": "^6.16.0"
+  }
 }
