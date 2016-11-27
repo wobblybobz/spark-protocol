@@ -30,6 +30,7 @@ import net from 'net';
 import SparkCore from '../clients/SparkCore';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
+import EventPublisher from '../lib/EventPublisher';
 import logger from '../lib/logger.js';
 
 type DeviceServerConfig = {|
@@ -39,14 +40,15 @@ type DeviceServerConfig = {|
   serverConfigRepository: ServerConfigRepository,
   // TODO: Remove the file paths and just use the repository.
   serverKeyFile: string,
-  serverKeyPassFile: string,
-  serverKeyPassEnvVar: string,
+  serverKeyPassFile: ?string,
+  serverKeyPassEnvVar: ?string,
 |};
 
 let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
   _devicesById: WeakMap<string, SparkCore> = new WeakMap();
+  _eventPublisher: EventPublisher;
 
   constructor(deviceServerConfig: DeviceServerConfig) {
     this._config = deviceServerConfig;
@@ -132,8 +134,16 @@ class DeviceServer {
     );
   }
 
-  _publishSpecialEvent(eventName: string, foo: string, coreId: string): void {
-
+  _publishSpecialEvent(eventName: string, data: string, coreId: string): void {
+    this._eventPublisher.publish(
+      /* isPublic */ false,
+      eventName,
+      /* userId */ null,
+      data,
+      /* ttl */ 60,
+      new Date(),
+      coreId,
+    );
   }
 
   _createCore(): void {

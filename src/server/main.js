@@ -13,7 +13,17 @@
 *
 *	You should have received a copy of the GNU Lesser General Public
 *	License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* @flow
+*
 */
+
+import DeviceFileRepository from '../repository/DeviceFileRepository'
+import DeviceServer from './DeviceServer_v2';
+import ServerConfigFileRepository from '../repository/ServerConfigFileRepository'
+import logger from '../lib/logger';
+import path from 'path';
+import settings from '../settings';
 
 //
 //  Not the best way to deal with errors I'm told, but should be fine on a home server
@@ -24,6 +34,17 @@ process.on('uncaughtException', function (ex) {
 });
 
 
-var DeviceServer = require('./DeviceServer.js');
-var server = new DeviceServer();
+const server = new DeviceServer({
+  deviceAttributeRepository: new DeviceFileRepository(
+    path.join(__dirname, 'device_keys'),
+  ),
+  host: settings.HOST,
+  port: settings.PORT,
+  serverConfigRepository: new ServerConfigFileRepository(
+    settings.serverKeyFile,
+  ),
+  serverKeyFile: settings.serverKeyFile,
+  serverKeyPassFile: settings.serverKeyPassFile,
+  serverKeyPassEnvVar: settings.serverKeyPassEnvVar,
+});
 server.start();

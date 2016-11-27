@@ -21,92 +21,111 @@ var extend = require('xtend');
 var settings = require("../settings");
 var logger = require('./logger.js');
 var utilities = require("./utilities.js");
-var EventEmitter = require('events').EventEmitter;
+import {EventEmitter} from 'events';
 
+class EventPublisher extends EventEmitter {
+  _eventMap: Map<string, boolean> = new Map();
+
+  getEventKey(name: ?string, userId: string, coreId: ?string): string {
+    let eventKey = userId;
+    if (coreId) {
+        eventKey+= '_'+coreid;
+    }
+    if (name) {
+        eventKey += '_'+name;
+    }
+    return eventKey;
+  }
+
+  getEventName(name: ?string, coreId: ?string){
+    let eventName = '';
+    if (coreId) {
+        eventName = coreId;
+        if (name) {
+          eventName += '/' + name;
+        }
+    } else if (name){
+        eventName = name;
+    }
+
+    if (!eventName) {
+        return "*all*";
+    }
+
+    return eventName;
+  }
+
+  publish = (
+    isPublic: boolean,
+    name: string,
+    userId: string,
+    data: string,
+    ttl: number,
+    publishedAt: Date,
+    coreId: string,
+  ): void => {
+    const params = [isPublic, name, userId, data, ttl, publishedAt, coreId];
+    process.nextTick(() => {
+      this.emit(name, ...params);
+      this.emit(coreid, ...params);
+      this.emit(coreid + '/' + name, ...params);
+      this.emit("*all*", ...params);
+    });
+  };
+
+  subscribe = (
+    name: string,
+    userid: string,
+    coreId: string,
+    obj: Object,
+    eventHandler?: () => void,
+  ): void => {
+    const eventKey = this.getEventKey(name, userId, coreId);
+    if(!this._eventMap.has(eventKey)) {
+      const eventName = this.getEventName(name, coreId);
+      const handler = eventHandler
+        ? eventHandler
+        : ((
+          isPublic: boolean,
+          name: string,
+          userId: string,
+          data: Object,
+          ttl: number,
+          publishedAt: Date,
+          coreId: string
+        ): void => {
+          const emitName = isPublic ? "public" : "private";
+          if (typeof(this.emit) == 'function') {
+            this.emit(emitName, name, data, ttl, publishedAt, coreId);
+          }
+        }).bind(obj);
+
+      this._eventMap.set(eventKey, true);
+      this.on(eventName, handler);
+    }
+  }
+
+  unsubscribe = (name: string, userId: string, coreId: string, obj: Object): void => {
+    const eventKey = this.getEventKey(name, userId, coreId);
+    if(key) {
+      var handler = obj[key + "_handler"];
+      if ( handler ) {
+          var eventName = this.getEventName(name,coreid);
+          delete obj[eventName + "_handler"];
+          this.removeListener( eventName, handler );
+      }
+    }
+  }
+}
+/*
 var EventPublisher = function () {
     EventEmitter.call(this);
 };
 EventPublisher.prototype = {
-    getEventKey: function(name,userid,coreid){
-        var ret = userid;
-        if(coreid){
-            ret+='_'+coreid;
-        }
-        if(name){
-            ret +='_'+name;
-        }
-        return ret;
-    },
-    getEventName:function(name,coreid){
-        var eventName="";
-        if(coreid){
-            eventName=coreid;
-            if(name && (name!="")){
-                eventName+='/'+name;
-            }
-        }else if(name && (name!="")){
-            eventName=name;
-        }
-        if (!eventName || (eventName == "")) {
-            return "*all*";
-        }
-        return eventName;
-    },
-    publish: function (isPublic, name, userid, data, ttl, published_at, coreid) {
 
-        process.nextTick((function () {
-            if (typeof(this.emit) == 'function')
-            {
-                this.emit( name, isPublic, name, userid, data, ttl, published_at, coreid );
-                this.emit( coreid, isPublic, name, userid, data, ttl, published_at, coreid );
-                this.emit( coreid + '/' + name, isPublic, name, userid, data, ttl, published_at, coreid );
-                this.emit( "*all*", isPublic, name, userid, data, ttl, published_at, coreid );
-            }
-        }).bind(this));
-    },
-    subscribe: function (name,userid,coreid, obj,objHandler) {
-        var key=this.getEventKey(name,userid,coreid ),
-          eventName;
-        //coreid/name
-        //coreid
-        //name
-        if(!obj[key + "_handler"]) {
-            eventName=this.getEventName(name,coreid);
-            var handler;
-            if(objHandler){
-                handler = objHandler.bind(obj);
-            }else {
-                handler = (function ( isPublic,
-                                          name,
-                                          userid,
-                                          data,
-                                          ttl,
-                                          published_at,
-                                          coreid
-                ) {
-                    var emitName = (isPublic) ? "public" : "private";
-                    if (typeof(this.emit) == 'function') {
-                        this.emit( emitName, name, data, ttl, published_at, coreid );
-                    }
-                }).bind( obj );
-            }
-            obj[key + "_handler"] = handler;
+    ,
 
-            this.on( eventName, handler );
-        }
-    },
-
-    unsubscribe: function (name,userid,coreid, obj) {
-        var key = this.getEventKey(name,userid,coreid);
-        if(key) {
-            var handler = obj[key + "_handler"];
-            if ( handler ) {
-                var eventName = this.getEventName(name,coreid);
-                delete obj[eventName + "_handler"];
-                this.removeListener( eventName, handler );
-            }
-        }
-    },
+    ,
 
 
     close: function () {
@@ -119,5 +138,5 @@ EventPublisher.prototype = {
     }
 };
 EventPublisher.prototype = extend(EventPublisher.prototype, EventEmitter.prototype);
-module.exports = EventPublisher;
-
+*/
+export default EventPublisher;

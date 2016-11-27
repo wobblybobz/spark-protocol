@@ -15,5 +15,12 @@
 *	License along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-exports.DeviceServer = require("./server/DeviceServer.js");
-exports.SparkCore = require("./clients/SparkCore.js");
+import DeviceServer from './server/DeviceServer_v2';
+import FileManager from './repository/FileManager';
+import SparkCore from './clients/SparkCore';
+
+export {
+  DeviceServer,
+  FileManager,
+  SparkCore,
+};

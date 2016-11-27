@@ -1,10 +1,12 @@
+// @flow
+
 import fs from 'fs';
 import path from 'path';
 
 class FileManager {
   _path: string;
 
-  constructor(path) {
+  constructor(path: string) {
     this._path = path;
     if (!fs.existsSync(path)) {
       fs.mkdirSync(path);
@@ -30,13 +32,16 @@ class FileManager {
 
   getAllData<TModel>(): Array<TModel> {
     return fs.readdirSync(this._path).map(
-      fileName => JSON.parse(fs.readFileSync(path.join(this._path, fileName))),
+      fileName => JSON.parse(fs.readFileSync(
+        path.join(this._path, fileName),
+        'utf8',
+      )),
     );
   }
 
-  getFile<TModel>(fileName): TModel {
+  getFile<TModel>(fileName: string): TModel {
     const filePath = path.join(this._path, fileName);
-    return JSON.parse(fs.readFileSync(filePath));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   }
 
   writeFile<TModel>(fileName: string, data: TModel): void {
