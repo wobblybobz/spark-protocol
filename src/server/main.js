@@ -27,4 +27,3 @@ process.on('uncaughtException', function (ex) {
 var DeviceServer = require('./DeviceServer.js');
 var server = new DeviceServer();
 server.start();
-

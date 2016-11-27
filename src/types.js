@@ -8,9 +8,13 @@ export type DeviceAttributes = {
 };
 
 export type Repository<TModel> = {
-  create(id: string, model: TModel) => TModel,
-  delete(id: string) => void,
-  getAll() => Array<TModel>,
-  getById(id: string) => TModel,
-  update(id: string, model: TModel) => TModel,
+  create: (id: string, model: TModel) => TModel,
+  delete: (id: string) => void,
+  getAll: () => Array<TModel>,
+  getById: (id: string) => TModel,
+  update: (id: string, model: TModel) => TModel,
+};
+
+export type ServerConfigRepository = {
+  setupKeys(): () => void,
 };
