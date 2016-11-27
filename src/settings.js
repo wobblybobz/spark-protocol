@@ -29,6 +29,7 @@ module.exports = {
     /**
      * Your server crypto keys!
      */
+    cryptoSalt: 'aes-128-cbc',
     serverKeyFile: "default_key.pem",
     serverKeyPassFile: null,
     serverKeyPassEnvVar: null,
