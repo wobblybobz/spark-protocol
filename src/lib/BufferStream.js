@@ -13,36 +13,47 @@
 *
 *   You should have received a copy of the GNU Lesser General Public
 *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* @flow
+*
 */
 
+class BufferStream {
+  _buffer: ?Buffer;
+  _index: number = 0;
 
-var BufferStream = function (buffer) { this.buf = buffer; };
-BufferStream.prototype = {
-    idx: 0,
-    buf: null,
-    seek: function(idx) {
-        this.idx = idx;
-    },
-    read: function (size) {
-        if (!this.buf) { return null; }
+  constructor(buffer: Buffer) {
+    this._buffer = buffer;
+  }
 
-        var idx = this.idx,
-            endIdx = idx + size;
+  seek = (index: number): void => {
+    this._index = index;
+  }
 
-        if (endIdx >= this.buf.length) {
-            endIdx = this.buf.length;
-        }
-
-        var result = null;
-        if ((endIdx - idx) > 0) {
-            result = this.buf.slice(idx, endIdx);
-            this.idx = endIdx;
-        }
-        return result;
-    },
-    end: function() {
-        this.buf = null;
+  read = (size: number): ?Buffer => {
+    if (!this._buffer) {
+      return null;
     }
 
-};
-module.exports = BufferStream;
+    const index = this._index;
+    let endIndex = index + size;
+
+    if (endIndex >= this._buffer.length) {
+      endIndex = this._buffer.length;
+    }
+
+    let result = null;
+    if ((endIndex - index) > 0) {
+      result = this._buffer.slice(index, endIndex);
+      this._index = endIndex;
+    }
+
+    return result;
+  }
+
+  end = (): void => {
+    this._buffer = null;
+  }
+}
+
+export default BufferStream;

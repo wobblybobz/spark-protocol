@@ -52,6 +52,7 @@ class DeviceServer {
 
   constructor(deviceServerConfig: DeviceServerConfig) {
     this._config = deviceServerConfig;
+    this._eventPublisher = new EventPublisher();
   }
 
   start(): void {

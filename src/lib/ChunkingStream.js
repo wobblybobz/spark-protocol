@@ -13,11 +13,13 @@
 *
 *   You should have received a copy of the GNU Lesser General Public
 *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* @flow
+*
 */
 
-
-var Transform = require('stream').Transform;
-var logger = require('../lib/logger.js');
+import {Transform} from 'stream';
+import logger from '../lib/logger';
 
 /**
 
@@ -25,121 +27,120 @@ var logger = require('../lib/logger.js');
  as we send them out, and parse them back into those size chunks as we read them in.
 
  **/
+const MSG_LENGTH_BYTES = 2;
+const messageLengthBytes = (message: Buffer | string): ?Buffer => {
+  //assuming a maximum encrypted message length of 65K, lets write an
+  // unsigned short int before every message, so we know how much to read out.
+  if (!message) {
+    return null;
+  }
 
-var ChunkingUtils = {
-    MSG_LENGTH_BYTES: 2,
-    msgLengthBytes: function (msg) {
-        //that.push(ciphertext.length);
-        //assuming a maximum encrypted message length of 65K, lets write an unsigned short int before every message,
-        //so we know how much to read out.
+  const length = message.length;
+  const lengthBuffer = new Buffer(MSG_LENGTH_BYTES);
 
-        if (!msg) {
-            //logger.log('msgLengthBytes - message was empty');
-            return null;
-        }
+  lengthBuffer[0] = length >>> 8;
+  lengthBuffer[1] = length & 255;
 
-        var len = msg.length,
-            lenBuf = new Buffer(ChunkingUtils.MSG_LENGTH_BYTES);
-
-        lenBuf[0] = len >>> 8;
-        lenBuf[1] = len & 255;
-
-        //logger.log("outgoing message length was " + len);
-        return lenBuf;
-    }
+  return lengthBuffer;
 };
 
-
-var ChunkingStream = function (options) {
-    Transform.call(this, options);
-    this.outgoing = !!options.outgoing;
-    this.incomingBuffer = null;
-    this.incomingIdx = -1;
+type ChunkingStreamOptions = {
+  outgoing?: boolean,
 };
-ChunkingStream.INCOMING_BUFFER_SIZE = 1024;
 
-ChunkingStream.prototype = Object.create(Transform.prototype, { constructor: { value: ChunkingStream }});
-ChunkingStream.prototype._transform = function (chunk, encoding, callback) {
+class ChunkingStream extends Transform {
+  INCOMING_BUFFER_SIZE: number = 1024;
+  _expectedLength: number;
+  _incomingBuffer: ?Buffer = null;
+  _incomingIndex: number = -1;
+  _outgoing: boolean;
 
-    if (this.outgoing) {
-        //we should be passed whole messages here.
-        //write our length first, then message, then bail.
+  constructor(options: ChunkingStreamOptions) {
+    super(options);
 
-        this.push( Buffer.concat([ ChunkingUtils.msgLengthBytes(chunk), chunk ]));
-        process.nextTick(callback);
-    }
-    else {
-        //collect chunks until we hit an expected size, and then trigger a readable
-        try {
-            this.process(chunk, callback);
-        }
-        catch(ex) {
-            logger.error("ChunkingStream error!: " + ex);
-        }
+    this._outgoing = !!options.outgoing;
+  }
 
-    }
-};
-ChunkingStream.prototype.process = function(chunk, callback) {
+  process = (chunk: ?Buffer, callback: Function): void => {
     if (!chunk) {
-        //process.nextTick(callback);
-        return;
+      return;
     }
-    //logger.log("chunk received ", chunk.length, chunk.toString('hex'));
 
-    var isNewMessage = (this.incomingIdx == -1);
-    var startIdx = 0;
+    const isNewMessage = this._incomingIndex === -1;
+    let startIndex = 0;
     if (isNewMessage) {
-        this.expectedLength = ((chunk[0] << 8) + chunk[1]);
+      this._expectedLength = (chunk[0] << 8) + chunk[1];
 
-        //if we don't have a buffer, make one as big as we will need.
-        this.incomingBuffer = new Buffer(this.expectedLength);
-        this.incomingIdx = 0;
-        startIdx = 2;   //skip the first two.
-        //logger.log('hoping for message of length ' + this.expectedLength);
+      //if we don't have a buffer, make one as big as we will need.
+      this._incomingBuffer = new Buffer(this._expectedLength);
+      this._incomingIndex = 0;
+      startIndex = 2;   //skip the first two.
     }
 
-    var remainder = null;
-    var bytesLeft = this.expectedLength - this.incomingIdx;
-    var endIdx = startIdx + bytesLeft;
-    if (endIdx > chunk.length) {
-        endIdx = chunk.length;
-    }
-    //startIdx + Math.min(chunk.length - startIdx, bytesLeft);
-
-    if (startIdx < endIdx) {
-        //logger.log('copying to incoming, starting at ', this.incomingIdx, startIdx, endIdx);
-        if (this.incomingIdx >= this.incomingBuffer.length) {
-            logger.log("hmm, shouldn't end up here.");
-        }
-        chunk.copy(this.incomingBuffer, this.incomingIdx, startIdx, endIdx);
-    }
-    this.incomingIdx += endIdx - startIdx;
-
-
-    if (endIdx < chunk.length) {
-        remainder = new Buffer(chunk.length -  endIdx);
-        chunk.copy(remainder, 0, endIdx, chunk.length);
+    const bytesLeft = this._expectedLength - this._incomingIndex;
+    let endIndex = startIndex + bytesLeft;
+    if (endIndex > chunk.length) {
+      endIndex = chunk.length;
     }
 
-    if (this.incomingIdx == this.expectedLength) {
-        //logger.log("received msg of length" + this.incomingBuffer.length, this.incomingBuffer.toString('hex'));
-        this.push(this.incomingBuffer);
-        this.incomingBuffer = null;
-        this.incomingIdx = -1;
-        this.expectedLength = -1;
-        this.process(remainder, callback);
+    if (startIndex < endIndex && this._incomingBuffer) {
+      if (this._incomingIndex >= this._incomingBuffer.length) {
+        logger.log('hmm, shouldn\'t end up here.');
+      }
+
+      chunk.copy(
+        this._incomingBuffer,
+        this._incomingIndex,
+        startIndex,
+        endIndex,
+      );
     }
-    else {
-        //logger.log('fell through ', this.incomingIdx, ' and ', this.expectedLength, ' remainder ', (remainder) ? remainder.length : 0);
-        process.nextTick(callback);
-        callback = null;    //yeah, don't call that twice.
+
+    this._incomingIndex += endIndex - startIndex;
+
+    let remainder = null;
+    if (endIndex < chunk.length) {
+      remainder = new Buffer(chunk.length -  endIndex);
+      chunk.copy(remainder, 0, endIndex, chunk.length);
+    }
+
+    if (this._incomingIndex == this._expectedLength && this._incomingBuffer) {
+      this.push(this._incomingBuffer);
+      this._incomingBuffer = null;
+      this._incomingIndex = -1;
+      this._expectedLength = -1;
+      this.process(remainder, callback);
+    } else {
+      process.nextTick(callback);
     }
 
     if (!remainder && callback) {
-        process.nextTick(callback);
-        callback = null;    //yeah, don't call that twice.
+      process.nextTick(callback);
     }
-};
+  }
 
+  _transform = (
+    chunk: Buffer | string,
+    encoding: string,
+    callback: Function,
+  ): void => {
+    const buffer = Buffer.from(chunk);
+    if (this._outgoing) {
+      //we should be passed whole messages here.
+      //write our length first, then message, then bail.
+      const lengthChunk = messageLengthBytes(chunk);
+      this.push(Buffer.concat(lengthChunk ? [lengthChunk, buffer] : [buffer]));
+      process.nextTick(callback);
+    } else {
+      // Collect chunks until we hit an expected size, and then trigger a
+      // readable
+      try {
+        this.process(buffer, callback);
+      } catch (exception) {
+        logger.error("ChunkingStream error!: " + exception);
+      }
+    }
+  }
+}
 
-module.exports = ChunkingStream;
+export default ChunkingStream;

@@ -13,27 +13,28 @@
 *
 *   You should have received a copy of the GNU Lesser General Public
 *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* @flow
+*
 */
 
 
-var when = require('when');
-var extend = require('xtend');
-var settings = require("../settings");
-var logger = require('./logger.js');
-var utilities = require("./utilities.js");
-import {EventEmitter} from 'events';
+import EventEmitter from 'events';
+import logger from './logger';
+import nullthrows from 'nullthrows';
 
 class EventPublisher extends EventEmitter {
-  _eventMap: Map<string, boolean> = new Map();
+  _eventHandlerByKey: Map<string, Function> = new Map();
 
   getEventKey(name: ?string, userId: string, coreId: ?string): string {
     let eventKey = userId;
     if (coreId) {
-        eventKey+= '_'+coreid;
+        eventKey += '_' + coreId;
     }
     if (name) {
-        eventKey += '_'+name;
+        eventKey += '_' + name;
     }
+
     return eventKey;
   }
 
@@ -58,7 +59,7 @@ class EventPublisher extends EventEmitter {
   publish = (
     isPublic: boolean,
     name: string,
-    userId: string,
+    userId: ?string,
     data: string,
     ttl: number,
     publishedAt: Date,
@@ -67,76 +68,69 @@ class EventPublisher extends EventEmitter {
     const params = [isPublic, name, userId, data, ttl, publishedAt, coreId];
     process.nextTick(() => {
       this.emit(name, ...params);
-      this.emit(coreid, ...params);
-      this.emit(coreid + '/' + name, ...params);
+      this.emit(coreId, ...params);
+      this.emit(coreId + '/' + name, ...params);
       this.emit("*all*", ...params);
     });
   };
 
   subscribe = (
     name: string,
-    userid: string,
+    userId: string,
     coreId: string,
     obj: Object,
     eventHandler?: () => void,
   ): void => {
     const eventKey = this.getEventKey(name, userId, coreId);
-    if(!this._eventMap.has(eventKey)) {
-      const eventName = this.getEventName(name, coreId);
-      const handler = eventHandler
-        ? eventHandler
-        : ((
-          isPublic: boolean,
-          name: string,
-          userId: string,
-          data: Object,
-          ttl: number,
-          publishedAt: Date,
-          coreId: string
-        ): void => {
-          const emitName = isPublic ? "public" : "private";
-          if (typeof(this.emit) == 'function') {
-            this.emit(emitName, name, data, ttl, publishedAt, coreId);
-          }
-        }).bind(obj);
-
-      this._eventMap.set(eventKey, true);
-      this.on(eventName, handler);
+    if (this._eventHandlerByKey.has(eventKey)) {
+      return;
     }
+
+    const eventName = this.getEventName(name, coreId);
+    const handler = eventHandler
+      ? eventHandler
+      : ((
+        isPublic: boolean,
+        name: string,
+        userId: string,
+        data: Object,
+        ttl: number,
+        publishedAt: Date,
+        coreId: string
+      ): void => {
+        const emitName = isPublic ? "public" : "private";
+        if (typeof(this.emit) == 'function') {
+          this.emit(emitName, name, data, ttl, publishedAt, coreId);
+        }
+      }).bind(obj);
+
+    this._eventHandlerByKey.set(eventKey, handler);
+    this.on(eventName, handler);
   }
 
   unsubscribe = (name: string, userId: string, coreId: string, obj: Object): void => {
     const eventKey = this.getEventKey(name, userId, coreId);
-    if(key) {
-      var handler = obj[key + "_handler"];
-      if ( handler ) {
-          var eventName = this.getEventName(name,coreid);
-          delete obj[eventName + "_handler"];
-          this.removeListener( eventName, handler );
-      }
+    if(!eventKey) {
+      return;
+    }
+
+    if (!this._eventHandlerByKey.has(eventKey)) {
+      return;
+    }
+
+    const handler = nullthrows(this._eventHandlerByKey.get(eventKey));
+    this.removeListener(eventKey, handler);
+    this._eventHandlerByKey.delete(eventKey);
+  }
+
+  close = (): void => {
+    try {
+      this.removeAllListeners();
+    }
+    catch (exception) {
+      logger.error("EventPublisher: error thrown during close " + exception);
     }
   }
 }
-/*
-var EventPublisher = function () {
-    EventEmitter.call(this);
-};
-EventPublisher.prototype = {
 
-    ,
-
-    ,
-
-
-    close: function () {
-        try {
-            this.removeAllListeners();
-        }
-        catch (ex) {
-            logger.error("EventPublisher: error thrown during close " + ex);
-        }
-    }
-};
-EventPublisher.prototype = extend(EventPublisher.prototype, EventEmitter.prototype);
-*/
 export default EventPublisher;
