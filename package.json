@@ -23,9 +23,10 @@
     "h5.buffers": "~0.1.1",
     "h5.coap": "git+https://github.com/morkai/h5.coap.git",
     "hogan.js": "*",
+    "moment": "*",
+    "nullthrows": "^1.0.0",
     "ursa": "*",
     "when": "*",
-    "moment": "*",
     "xtend": "*"
   },
   "devDependencies": {
