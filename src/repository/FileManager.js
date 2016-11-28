@@ -39,8 +39,12 @@ class FileManager {
     );
   }
 
-  getFile<TModel>(fileName: string): TModel {
+  getFile<TModel>(fileName: string): ?TModel {
     const filePath = path.join(this._path, fileName);
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   }
 
