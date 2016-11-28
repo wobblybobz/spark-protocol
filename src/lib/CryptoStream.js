@@ -59,11 +59,7 @@ class CryptoStream extends Transform {
     let cipherText = null;
 
     cipher.on('readable', (): void => {
-      if (!cipher) {
-        return;
-      }
-
-      const chunk = cipher.read();
+      const chunk: ?Buffer = (((cipher && cipher.read()): any): Buffer);
 
       /*
        The crypto stream error was coming from the additional null packet
@@ -82,27 +78,30 @@ class CryptoStream extends Transform {
        issues
 
        */
-      if(!chunk) {
-        return;
-      }
-
-      if (!cipherText) {
-        cipherText = Buffer.from(chunk);
-      } else {
-        cipherText = Buffer.concat(
-          [Buffer.from(cipherText), Buffer.from(chunk)],
-          cipherText.length + chunk.length,
-        );
+      if(chunk) {
+        if (!cipherText) {
+          cipherText = chunk;
+        } else {
+          cipherText = Buffer.concat(
+            [cipherText, chunk],
+            cipherText.length + chunk.length
+          );
+        }
       }
     });
-    cipher.on('end', function () {
+    cipher.on('end', (): void => {
       this.push(cipherText);
 
       if (this._encrypt && cipherText) {
-        this._iv = new Buffer(16);
-        cipherText.copy(this._iv, 0, 0, 16);
+          //logger.log("ENCRYPTING WITH ", that.iv.toString('hex'));
+          //get new iv for next time.
+          this._iv = new Buffer(16);
+          cipherText.copy(this._iv, 0, 0, 16);
+
+          //logger.log("ENCRYPTING WITH ", that.iv.toString('hex'));
       }
       cipherText = null;
+
       callback();
     });
 
@@ -125,9 +124,9 @@ class CryptoStream extends Transform {
       //THEN:
       //  update the initialization vector to the first 16 bytes of the
       //  encrypted message we just got
-      if (!this.encrypt) {
+      if (!this._encrypt && Buffer.isBuffer(chunk)) {
         this._iv = new Buffer(16);
-        ((chunk: any): Buffer).copy(this._iv, 0, 0, 16);
+        ((chunk:any): Buffer).copy(this._iv, 0, 0, 16);
       }
     } catch (exception) {
       logger.error("CryptoStream transform error " + exception);
@@ -135,4 +134,4 @@ class CryptoStream extends Transform {
   }
 }
 
-module.exports = CryptoStream;
+export default CryptoStream;

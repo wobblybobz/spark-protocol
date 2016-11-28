@@ -15,15 +15,15 @@
 *	License along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
-import DeviceFileRepository from './repository/DeviceFileRepository';
-import DeviceServer from './server/DeviceServer_v2';
+import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
+import DeviceServer from './server/DeviceServer';
 import FileManager from './repository/FileManager';
 import ServerConfigFileRepository from './repository/ServerConfigFileRepository';
 import SparkCore from './clients/SparkCore';
 import uuid from './lib/uuid';
 
 export {
-  DeviceFileRepository,
+  DeviceAttributeFileRepository,
   DeviceServer,
   FileManager,
   ServerConfigFileRepository,

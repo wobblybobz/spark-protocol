@@ -18,7 +18,7 @@
 *
 */
 
-import DeviceFileRepository from '../repository/DeviceFileRepository'
+import DeviceAttributeFileRepository from '../repository/DeviceAttributeFileRepository'
 import DeviceServer from './DeviceServer_v2';
 import ServerConfigFileRepository from '../repository/ServerConfigFileRepository'
 import logger from '../lib/logger';
@@ -35,7 +35,7 @@ process.on('uncaughtException', function (ex) {
 
 
 const server = new DeviceServer({
-  deviceAttributeRepository: new DeviceFileRepository(
+  deviceAttributeRepository: new DeviceAttributeFileRepository(
     path.join(__dirname, 'device_keys'),
   ),
   host: settings.HOST,

@@ -18,7 +18,7 @@
 var settings = require('../settings.js');
 var CryptoLib = require('../lib/ICrypto.js');
 var SparkCore = require('../clients/SparkCore.js');
-var EventPublisher = require('../lib/EventPublisher.js');
+var EventPublisher = require('../lib/EventPublisher.js').default;
 var utilities = require('../lib/utilities.js');
 var logger = require('../lib/logger.js');
 var crypto = require('crypto');
@@ -225,7 +225,7 @@ DeviceServer.prototype = {
                             that._attribsByID[coreid].product_firmware_version = this.product_firmware_version;
                             that._attribsByID[coreid].ip = this.getRemoteIPAddress();
                             that.saveCoreData(coreid, that._attribsByID[coreid]);
-                            
+
                             that.publishSpecialEvents('spark/status', 'online', coreid);
                         });
                         core.on('disconnect', function (msg) {

@@ -31,9 +31,11 @@ import SparkCore from '../clients/SparkCore';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
 import EventPublisher from '../lib/EventPublisher';
-import logger from '../lib/logger.js';
+import logger from '../lib/logger';
+import settings from '../settings';
 
 type DeviceServerConfig = {|
+  coreKeysDir?: string,
   deviceAttributeRepository: Repository<DeviceAttributes>,
   host: string,
   port: number,
@@ -52,7 +54,10 @@ class DeviceServer {
 
   constructor(deviceServerConfig: DeviceServerConfig) {
     this._config = deviceServerConfig;
-    this._eventPublisher = new EventPublisher();
+    // TODO: Remove this once the event system has been reworked
+    global.publisher = this._eventPublisher = new EventPublisher();
+    settings.coreKeysDir =
+      deviceServerConfig.coreKeysDir || settings.coreKeysDir;
   }
 
   start(): void {
@@ -64,7 +69,7 @@ class DeviceServer {
             `Connection from: ${socket.remoteAddress} - ` +
               `Connection ID: ${connectionIdCounter}`,
           );
-
+          
           // TODO: This is really shitty. Refactor `SparkCore` and clean this up
           var core = new SparkCore();
           core.socket = socket;
@@ -123,15 +128,13 @@ class DeviceServer {
     //
     //  Wait for the keys to be ready, then start accepting connections
     //
+    const serverConfig = {
+      host: this._config.host,
+      port: this._config.port,
+    };
     server.listen(
-      {
-        host: this._config.host,
-        port: this._config.port,
-      },
-      () => logger.log(
-        "Server started",
-        { host: this._config.host, port: this._config.port },
-      ),
+      serverConfig,
+      () => logger.log('Server started', serverConfig),
     );
   }
 

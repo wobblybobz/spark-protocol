@@ -30,7 +30,7 @@ var CryptoLib = require("../lib/ICrypto");
 var messages = require("../lib/Messages");
 var Handshake = require("../lib/Handshake");
 var utilities = require("../lib/utilities.js");
-var Flasher = require('../lib/Flasher');
+var Flasher = require('../lib/Flasher').default;
 var logger = require('../lib/logger.js');
 
 
@@ -111,7 +111,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         this.socket.setNoDelay(true);
         this.socket.setKeepAlive(true, SparkCore.KEEP_ALIVE_TIMEOUT); //every 15 second(s)
         this.socket.setTimeout(SparkCore.SOCKET_TIMEOUT);
-        
+
         this.socket.on('error', function (err) {
             that.disconnect("socket error " + err);
         });
@@ -1019,7 +1019,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
             published_by: this.getHexCoreID(),
             published_at: moment().toISOString()
         };
-        
+
 
         //snap obj.ttl to the right value.
         obj.ttl = (obj.ttl > 0) ? obj.ttl : 60;
@@ -1030,17 +1030,17 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         }
 
 		//logger.log(JSON.stringify(obj));
-		
+
         //if the event name starts with spark (upper or lower), then eat it.
         var lowername = obj.name.toLowerCase();
-        
+
         if (lowername.indexOf("spark/device/claim/code") == 0) {
-        	
+
         	var claimCode = msg.getPayload().toString();
-        	
+
         	var coreid = this.getHexCoreID();
         	var core = global.server.getCoreAttributes(coreid);
-        	
+
         	if(core.claimCode != claimCode) {
    	        	global.server.setCoreAttribute(coreid, "claimCode", claimCode);
 	        	//claim device
@@ -1049,19 +1049,19 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 	        	}
 	        }
         }
-        
+
         if (lowername.indexOf("spark/device/system/version") == 0) {
-        	
+
         	var system_version = msg.getPayload().toString();
-        	
+
         	var coreid = this.getHexCoreID();
         	global.server.setCoreAttribute(coreid, "spark_system_version", system_version);
         }
-        
+
         if (lowername.indexOf("spark/device/safemode") == 0) {
-        	
+
         	var coreid = this.getHexCoreID();
-        	
+
         	var token = this.sendMessage("Describe");
         	this.listenFor("DescribeReturn", null, token, function (sysmsg) {
         		//console.log("device "+coreid+" is in safe mode: "+sysmsg.getPayload().toString());
@@ -1070,7 +1070,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         		}
         	}, true);
         }
-        
+
         if (lowername.indexOf("spark") == 0) {
             //allow some kinds of message through.
             var eat_message = true;

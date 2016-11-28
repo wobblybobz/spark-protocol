@@ -5,7 +5,7 @@ import type {DeviceAttributes} from '../types';
 import FileManager from './FileManager';
 import uuid from '../lib/uuid';
 
-class DeviceFileRepository {
+class DeviceAttributeFileRepository {
   _fileManager: FileManager;
 
   constructor(path: string) {
@@ -45,4 +45,4 @@ class DeviceFileRepository {
   }
 }
 
-export default DeviceFileRepository;
+export default DeviceAttributeFileRepository;
