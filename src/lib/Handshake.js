@@ -66,16 +66,24 @@ var ursa = require('ursa');
      * Core reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Server must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
      */
 
-//this._client.write(msg + '\n');
+type HandshakeStage =
+  'done' |
+  'get-core-key' |
+  'get-hello' |
+  'read-core-id' |
+  'send-hello' |
+  'send-nonce' |
+  'send-session-key';
 
 
-/**
- * Interface for the Spark Core module
- * @constructor
- */
-var Handshake = function () {
+class Handshake {
+  _socket: Socket;
+  _handshakeStage: HandshakeStage = 'send-nonce';
 
-};
+  constructor(socket) {
+    this._socket = socket;
+  }
+}
 
 //statics
 Handshake.stages = { SEND_NONCE: 0, READ_COREID: 1, GET_COREKEY: 2, SEND_SESSIONKEY: 3, GET_HELLO: 4, SEND_HELLO: 5, DONE: 6 };
@@ -98,106 +106,104 @@ Handshake.prototype = extend(IHandshake.prototype, {
     _async: true,
     nonce: null,
     sessionKey: null,
-    coreID: null,
+    coreId: null,
 
-    //The public RSA key for the given COREID from the datastore
+    //The public RSA key for the given coreId from the datastore
     corePublicKey: null,
 
     useChunkingStream: true,
 
 
-    handshake: function (client, onSuccess, onFail) {
+    handshake: async function (client, onSuccess, onFail) {
         this.client = client;
         this.socket = client.socket;
         this.onSuccess = onSuccess;
         this.onFail = onFail;
 
-        this.socket.on('readable', utilities.proxy(this.onSocketData, this));
-
-        this.nextStep();
-
-        this.startGlobalTimeout();
+        this.send_nonce();
+        const data = await this.onSocketDataAvailable();
+        this.nextStep(data);
+        
+        this.startGlobalTimeout()
+          .catch(() => this.handshakeFail(
+            "Handshake did not complete in " + Handshake.GLOBAL_TIMEOUT +
+              " seconds"
+          ));
 
         //grab and cache this before we disconnect
         this._ipAddress = this.getRemoteIPAddress();
     },
 
     startGlobalTimeout: function() {
-        if (Handshake.GLOBAL_TIMEOUT <= 0) {
-            return;
-        }
-
-        this._globalFailTimer = setTimeout(
-            function() { this.handshakeFail("Handshake did not complete in " + Handshake.GLOBAL_TIMEOUT + " seconds"); }.bind(this),
-            Handshake.GLOBAL_TIMEOUT * 1000
-        );
+        return new Promise((resolve, reject) => {
+          // TODO - Don't set this as a variable. We should be using
+          // Promise.race instead
+          this._globalFailResolve = resolve;
+          setTimeout(reject, Handshake.GLOBAL_TIMEOUT * 1000);
+        });
     },
 
     clearGlobalTimeout: function() {
-        if (this._globalFailTimer) {
-            clearTimeout(this._globalFailTimer);
-        }
-        this._globalFailTimer = null;
+      if (!this._globalFailResolve) {
+        return;
+      }
+
+      this._globalFailResolve();
+      this._globalFailResolve = null;
     },
 
     getRemoteIPAddress: function () {
-        return (this.socket && this.socket.remoteAddress) ? this.socket.remoteAddress.toString() : "unknown";
+        return this.socket && this.socket.remoteAddress
+          ? this.socket.remoteAddress.toString()
+          : "unknown";
     },
 
-    handshakeFail: function (msg) {
+    handshakeFail: function (message) {
         //aww
-        if (this.onFail) {
-            this.onFail(msg);
-        }
+        this.onFail && this.onFail(message);
 
-        var logInfo = { };
-        try {
-            logInfo['ip'] = this._ipAddress;
-            logInfo['cache_key'] = this.client._connection_key;
-            logInfo['coreID'] = (this.coreID) ? this.coreID.toString('hex') : null;
-        }
-        catch (ex) { }
+        var logInfo = {
+          cache_key: this.client && this.client._connection_key,
+          ip: this._ipAddress,
+          coreId: this.coreId ? this.coreId.toString('hex') : null,
+        };
 
-        logger.error("Handshake failed: ", msg, logInfo);
+        logger.error("Handshake failed: ", message, logInfo);
         this.clearGlobalTimeout();
     },
 
     routeToClient: function(data) {
-        var that = this;
-        process.nextTick(function() { that.client.routeMessage(data); });
+      if (!data) {
+        return;
+      }
+      process.nextTick(() => this.client.routeMessage(data));
     },
 
     nextStep: function (data) {
-        if (this._async) {
-            var that = this;
-            process.nextTick(function () { that._nextStep(data); });
-        }
-        else {
-            this._nextStep(data);
-        }
+      process.nextTick(async (): void => await this._nextStep(data));
     },
 
-    _nextStep: function (data) {
+    _nextStep: async function (data) {
         switch (this.stage) {
             case Handshake.stages.SEND_NONCE:
                 //send initial nonce unencrypted
-                this.send_nonce();
+                await this.send_nonce();
                 break;
 
             case Handshake.stages.READ_COREID:
-                //reads back our encrypted nonce and the coreid
-                this.read_coreid(data);
-                this.client.coreID = this.coreID;
+                //reads back our encrypted nonce and the coreId
+                this.read_coreId(data);
+                this.client.coreId = this.coreId;
                 break;
 
             case Handshake.stages.GET_COREKEY:
-                //looks up the public rsa key for the given coreID from the datastore
+                //looks up the public rsa key for the given coreId from the datastore
                 this.get_corekey();
                 break;
 
             case Handshake.stages.SEND_SESSIONKEY:
                 //creates a session key, encrypts it using the core's public key, and sends it back
-                this.send_sessionkey();
+                await this.send_sessionkey();
                 break;
 
             case Handshake.stages.GET_HELLO:
@@ -212,13 +218,11 @@ Handshake.prototype = extend(IHandshake.prototype, {
 
             case Handshake.stages.DONE:
                 this.client.sessionKey = this.sessionKey;
-
-                if (this.onSuccess) {
-                    this.onSuccess(this.secureIn, this.secureOut);
-                }
+                this.onSuccess && this.onSuccess();
 
                 this.clearGlobalTimeout();
                 this.flushEarlyData();
+                console.log('_nextStep DONE ' + this.stage);
                 this.stage++;
                 break;
             default:
@@ -229,8 +233,10 @@ Handshake.prototype = extend(IHandshake.prototype, {
 
     _pending: null,
     queueEarlyData: function(name, data) {
-        if (!data) { return; }
-        if (!this._pending) { this._pending = []; }
+        if (!data) {
+          return;
+        }
+        this._pending = this._pending || [];
         this._pending.push(data);
         logger.error("recovering from early data! ", {
             step: name,
@@ -239,44 +245,38 @@ Handshake.prototype = extend(IHandshake.prototype, {
         });
     },
     flushEarlyData: function() {
-        if (this._pending) {
-            for(var i=0;i<this._pending.length;i++) {
-                this.routeToClient(this._pending[i]);
-            }
-            this._pending = null;
-        }
+      if (!this._pending) {
+        return;
+      }
+
+      this._pending.map(data => this.routeToClient(data));
+      this._pending = null;
     },
 
-    onSocketData: function (data) {
-        data = this.socket.read();
-        try {
-
+    onSocketDataAvailable: function(): Promise {
+      return new Promise((resolve, reject): void => {
+        this.socket.on('readable', (): void => {
+          const data = this.socket.read();
+          try {
             if (!data) {
-                logger.log("onSocketData called, but no data sent.");
-                return;
+              logger.log("onSocketData called, but no data sent.");
+              reject();
             }
 
-            //logger.log("onSocketData: ", data.toString('hex'));
+            if (this.useChunkingStream && this.chunkingIn) {
+              this.chunkingIn.write(data);
+            } else if (this.secureIn) {
+              this.secureIn.write(data);
+            }
 
-            if (!this.secureIn) {
-                //logger.log('!secureIn');
-                this.nextStep(data);
-            }
-            else {
-                if (this.useChunkingStream && this.chunkingIn) {
-                    //logger.log('chunkingIn');
-                    this.chunkingIn.write(data);
-                }
-                else {
-                    //logger.log('secureIn');
-                    this.secureIn.write(data);
-                }
-            }
-        }
-        catch (ex) {
+            resolve(data);
+          }  catch (ex) {
             logger.log("Handshake: Exception thrown while processing data");
             logger.error(ex);
-        }
+            reject();
+          }
+        });
+      });
     },
 
 
@@ -288,24 +288,23 @@ Handshake.prototype = extend(IHandshake.prototype, {
 //
 
 
-    send_nonce: function () {
-        this.stage++;
+    send_nonce: async function () {
 
-        var that = this;
+        this.stage = Handshake.stages.READ_COREID;
+        console.log('send_nonce ' + this.stage);
+
         //logger.log('send_nonce called');
 
-        CryptoLib.getRandomBytes(Handshake.NONCE_BYTES, function (ex, buf) {
-
-            that.nonce = buf;
-            that.socket.write(buf);
+        const buf = await CryptoLib.getRandomBytes(Handshake.NONCE_BYTES);
+        this.nonce = buf;
+        this.socket.write(buf);
 
 //            if (buf) {
 //                logger.log("sent nonce ", buf.toString('hex'));
 //            }
 
-            //a good start
-            that.nextStep();
-        });
+        //a good start
+        this.nextStep();
 
     },
 
@@ -320,7 +319,7 @@ Handshake.prototype = extend(IHandshake.prototype, {
 // * If the public key is not found, Server must close the connection.
 //
 
-    read_coreid: function (data) {
+    read_coreId: function (data) {
         //we're expecting this to be run twice at least
         //once with data, and once without
 
@@ -332,7 +331,7 @@ Handshake.prototype = extend(IHandshake.prototype, {
 
             //waiting on data.
             this._socketTimeout = setTimeout(function () {
-                that.handshakeFail("read_coreid timed out");
+                that.handshakeFail("read_coreId timed out");
             }, 30 * 1000);
 
             return;
@@ -354,7 +353,7 @@ Handshake.prototype = extend(IHandshake.prototype, {
             return;
         }
 
-        //logger.log("read_coreid decrypted to ", plaintext.toString('hex'));
+        //logger.log("read_coreId decrypted to ", plaintext.toString('hex'));
 
         //success
         //plaintext should be 52 bytes, else fail
@@ -364,10 +363,10 @@ Handshake.prototype = extend(IHandshake.prototype, {
         }
 
         var vNonce = new Buffer(40);
-        var vCoreID = new Buffer(12);
+        var vcoreId = new Buffer(12);
 
         plaintext.copy(vNonce, 0, 0, 40);
-        plaintext.copy(vCoreID, 0, 40, 52);
+        plaintext.copy(vcoreId, 0, 40, 52);
 
 		if (plaintext.length > (Handshake.NONCE_BYTES + Handshake.ID_BYTES)) {
 			var coreKey = new Buffer(plaintext.length - 52);
@@ -383,10 +382,11 @@ Handshake.prototype = extend(IHandshake.prototype, {
         }
 
         //sweet!
-        that.coreID = vCoreID.toString('hex');
-        //logger.log("core reported coreID: " + that.coreID);
+        that.coreId = vcoreId.toString('hex');
+        //logger.log("core reported coreId: " + that.coreId);
 
-        that.stage++;
+        this.stage = Handshake.stages.GET_COREKEY;
+        console.log('read_coreId ' + this.stage);
         that.nextStep();
     },
 
@@ -395,12 +395,12 @@ Handshake.prototype = extend(IHandshake.prototype, {
     // * If the public key is not found, Server must close the connection.
     get_corekey: function () {
 		var that = this;
-        utilities.get_core_key(this.coreID, function (public_key) {
+        utilities.get_core_key(this.coreId, function (public_key) {
             try {
                 if (!public_key) {
-                    that.handshakeFail("couldn't find key for core: " + this.coreID);
+                    that.handshakeFail("couldn't find key for core: " + this.coreId);
 					if (that.coreProvidedPem) {
-						utilities.save_handshake_key(that.coreID, that.coreProvidedPem);
+						utilities.save_handshake_key(that.coreId, that.coreProvidedPem);
 					}
 
                     return;
@@ -409,12 +409,13 @@ Handshake.prototype = extend(IHandshake.prototype, {
                 this.corePublicKey = public_key;
 
                 //cool!
-                this.stage++;
+                this.stage = Handshake.stages.SEND_SESSIONKEY;
+                console.log('get_corekey ' + this.stage);
                 this.nextStep();
             }
             catch (ex) {
                 logger.error("Error handling get_corekey ", ex);
-                this.handshakeFail("Failed handling find key for core: " + this.coreID);
+                this.handshakeFail("Failed handling find key for core: " + this.coreId);
             }
         }.bind(this));
     },
@@ -429,11 +430,10 @@ Handshake.prototype = extend(IHandshake.prototype, {
 //  * Server sends 384 bytes to Core: the ciphertext then the signature.
 
     //creates a session key, encrypts it using the core's public key, and sends it back
-    send_sessionkey: function () {
+    send_sessionkey: async function () {
         var that = this;
 
-
-        CryptoLib.getRandomBytes(Handshake.SESSION_BYTES, function (ex, buf) {
+        const buf = await CryptoLib.getRandomBytes(Handshake.SESSION_BYTES);
             that.sessionKey = buf;
 
 
@@ -490,9 +490,9 @@ Handshake.prototype = extend(IHandshake.prototype, {
             });
 
             //a good start
-            that.stage++;
+            that.stage = Handshake.stages.GET_HELLO;
+            console.log('send_sessionkey ' + that.stage);
             that.nextStep();
-        });
     },
 
     /**
@@ -556,7 +556,8 @@ Handshake.prototype = extend(IHandshake.prototype, {
 //        }
 
 
-        this.stage++;
+        this.stage = Handshake.stages.SEND_HELLO;
+        console.log('get_hello ' + this.stage);
         this.nextStep();
     },
 
@@ -570,7 +571,8 @@ Handshake.prototype = extend(IHandshake.prototype, {
         this.client.sendCounter = CryptoLib.getRandomUINT16();
         this.client.sendMessage("Hello", {}, null, null);
 
-        this.stage++;
+        this.stage = Handshake.stages.DONE;
+        console.log('send_hello ' + this.stage);
         this.nextStep();
     }
 

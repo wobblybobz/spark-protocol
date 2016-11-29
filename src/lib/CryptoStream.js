@@ -18,6 +18,7 @@
 *
 */
 
+import type {Duplex} from 'stream';
 
 import {Transform} from 'stream';
 import {CryptoLib} from './ICrypto';
@@ -44,7 +45,7 @@ class CryptoStream extends Transform {
     this._encrypt = !!options.encrypt;
   }
 
-  _getCipher = (callback: Function): stream$Duplex => {
+  _getCipher = (callback: Function): Duplex => {
     let cipher = null;
     if (this._encrypt) {
       cipher = crypto.createCipheriv(settings.cryptoSalt, this._key, this._iv);

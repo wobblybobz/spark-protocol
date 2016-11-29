@@ -51,9 +51,17 @@ module.exports = {
     },
 
 
-    getRandomBytes: function (size, callback) {
-        crypto.randomBytes(size, callback);
-        //crypto.randomBytes(256, function(ex, buf) { if (ex) throw ex; logger.log('Have %d bytes of random data: %s', buf.length, buf); });
+    getRandomBytes: function (size) {
+      return new Promise((resolve, reject) => {
+        crypto.randomBytes(size, (error, buffer) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve(buffer);
+        });
+      });
     },
 
 //    getRandomUINT32: function () {
