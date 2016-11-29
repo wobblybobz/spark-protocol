@@ -1,0 +1,12 @@
+docs
+flow-typed
+
+# Don't check auto-generated stuff
+coverage
+lib
+node_modules
+
+# Cruft
+.DS_Store
+npm-debug.log
+.idea
