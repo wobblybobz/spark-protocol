@@ -28,7 +28,7 @@ var settings = require("../settings");
 var ISparkCore = require("./ISparkCore");
 var CryptoLib = require("../lib/ICrypto");
 var messages = require("../lib/Messages");
-var Handshake = require("../lib/Handshake");
+var Handshake = require("../lib/Handshake").default;
 var utilities = require("../lib/utilities.js");
 var Flasher = require('../lib/Flasher').default;
 var logger = require('../lib/logger.js');
@@ -481,7 +481,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     },
 
 
-    parseMessage: function (data) {
+    parseMessage: function (data): Message {
         //we're assuming data is a serialized CoAP message
         return messages.unwrap(data);
     },

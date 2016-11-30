@@ -22,12 +22,11 @@ import type SparkCore from '../clients/SparkCore';
 import type {Socket} from 'net';
 import type {Duplex} from 'stream';
 
-var CryptoLib = require('./ICrypto');
-var utilities = require('../lib/utilities.js');
-var ChunkingStream = require('./ChunkingStream').default;
-var logger = require('../lib/logger.js');
-var buffers = require('h5.buffers');
-var ursa = require('ursa');
+import CryptoLib from './ICrypto';
+import utilities from '../lib/utilities.js';
+import ChunkingStream from './ChunkingStream';
+import logger from '../lib/logger.js';
+import buffers from 'h5.buffers';
 
 /*
  Handshake protocol v1
@@ -83,7 +82,7 @@ type HandshakeStage =
 const NONCE_BYTES = 40;
 const ID_BYTES = 12;
 const SESSION_BYTES = 40;
-const GLOBAL_TIMEOUT = 120;
+const GLOBAL_TIMEOUT = 10;
 
 class Handshake {
   _client: SparkCore;
@@ -104,6 +103,26 @@ class Handshake {
   }
 
   start = async (): Promise<*> => {
+    return Promise.race([
+      this._runHandshake(),
+      this._startGlobalTimeout(),
+      new Promise((resolve, reject) => this._reject = reject),
+    ]).catch((message) => {
+      this._onFail && this._onFail(message);
+
+      var logInfo = {
+        cache_key: this._client && this._client._connection_key,
+        ip: this._socket && this._socket.remoteAddress
+          ? this._socket.remoteAddress.toString()
+          : 'unknown',
+        coreId: this._coreId ? this._coreId.toString('hex') : null,
+      };
+
+      logger.error('Handshake failed: ', message, logInfo);
+    });
+  };
+
+  _runHandshake = async (): Promise<*> => {
     try {
       const dataAwaitable = this._onSocketDataAvailable();
       const nonce = await this._sendNonce();
@@ -128,13 +147,17 @@ class Handshake {
     } catch (exception) {
       logger.error(exception);
     }
-
   };
 
-  //
-  // 1.) Start listening to the socket.  This will be the response from the core
-  // containing the coreId.
-  //
+  _startGlobalTimeout = (): Promise<*> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(
+        () => reject(`Handshake did not complete in ${GLOBAL_TIMEOUT} seconds`),
+        GLOBAL_TIMEOUT * 1000,
+      );
+    });
+  };
+
   _onSocketDataAvailable = (): Promise<Buffer> => {
     return new Promise((resolve, reject): void => {
       const onReadable = (): void => {
@@ -158,12 +181,6 @@ class Handshake {
     });
   };
 
-  //
-  // 2.) Server responds with 40 bytes of random data as a nonce.
-  // * Core should read exactly 40 bytes from the socket.
-  // Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket and
-  // retry the connection.
-  //
   _sendNonce = async (): Promise<Buffer> => {
     this._handshakeStage = 'send-nonce';
 
@@ -173,21 +190,6 @@ class Handshake {
     return nonce;
   };
 
-  //
-  // 3.) Server should read exactly 256 bytes from the socket.
-  // Timeout waiting for the encrypted message is 30 seconds.  If the timeout is
-  // reached, Server must close the connection.
-  //
-  // * Server RSA decrypts the message with its private key.  If the decryption
-  //   fails, Server must close the connection.
-  // * Decrypted message should be 52 bytes, otherwise Server must close the
-  //   connection.
-  // * The first 40 bytes of the message must match the previously sent nonce,
-  //   otherwise Server must close the connection.
-  // * Remaining 12 bytes of message represent STM32 ID.  Server looks up STM32
-  //   ID, retrieving the Core's public RSA key.
-  // * If the public key is not found, Server must close the connection.
-  //
   _readCoreId = (nonce: Buffer, data: Buffer): string => {
     //server should read 256 bytes
     //decrypt msg using server private key
@@ -242,6 +244,7 @@ class Handshake {
         if (coreProvidedPem) {
           utilities.save_handshake_key(this._coreId, coreProvidedPem);
         }
+        this._handshakeFail(`Failed finding key for core: ${this._coreId}`);
         return '';
       }
     } catch (exception) {
@@ -253,22 +256,6 @@ class Handshake {
     return publicKey;
   };
 
-  //  4.) Server creates secure session key
-  //  * Server generates 40 bytes of secure random data to serve as components
-  //      of a session key for AES-128-CBC encryption.
-  //      The first 16 bytes (MSB first) will be the key, the next 16 bytes
-  //      (MSB first) will be the initialization vector (IV), and the final 8
-  //      bytes (MSB first) will be the salt.
-  //      Server RSA encrypts this 40-byte message using the Core's public key
-  //      to create a 128-byte ciphertext.
-  //  * Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
-  //    bytes generated in the previous step as the HMAC key.
-  //  * Server signs the HMAC with its RSA private key generating a 256-byte
-  //    signature.
-  //  * Server sends 384 bytes to Core: the ciphertext then the signature.
-
-  // creates a session key, encrypts it using the core's public key, and sends
-  // it back
   _sendSessionKey = async (
     corePublicKey: Object,
   ): Object => {
@@ -360,38 +347,32 @@ class Handshake {
     );
   }
 
-  /**
-   * receive a hello from the client, taking note of the counter
-   */
-  _getHello = (data: Buffer): void => {
-    var env = this._client.parseMessage(data);
-    var msg = (env && env.hello) ? env.hello : env;
-    if (!msg) {
+  _getHello = (chunk: Buffer): void => {
+    var message = this._client.parseMessage(chunk);
+    if (!message) {
         this._handshakeFail('failed to parse hello');
         return;
     }
-    this._client.recvCounter = msg.getId();
+
+    this._client.recvCounter = message.getId();
     try {
-      if (msg.getPayload) {
-        var payload = msg.getPayload();
+      if (message.getPayload) {
+        var payload = message.getPayload();
         if (payload.length > 0) {
-          var r = new buffers.BufferReader(payload);
-          this._client.spark_product_id = r.shiftUInt16();
-          this._client.product_firmware_version = r.shiftUInt16();
-          this._client.platform_id = r.shiftUInt16();
+          var payloadBuffer = new buffers.BufferReader(payload);
+          // TODO: This shouldn't be set here :/
+          this._client.spark_product_id = payloadBuffer.shiftUInt16();
+          this._client.product_firmware_version = payloadBuffer.shiftUInt16();
+          this._client.platform_id = payloadBuffer.shiftUInt16();
         }
       } else {
         logger.log('msg object had no getPayload fn');
       }
-    }
-    catch (ex) {
-      logger.log('error while parsing hello payload ', ex);
+    } catch (exception) {
+      logger.log('error while parsing hello payload ', exception);
     }
   }
 
-  /**
-   * send a hello to the client, with our new random counter
-   */
   _sendHello = (cipherStream: Duplex): void => {
       this._handshakeStage = 'send-hello';
       //client will set the counter property on the message
@@ -425,68 +406,8 @@ class Handshake {
   }
 
   _handshakeFail = (message: string): void => {
-    const {_onFail, _reject} = this;
-    _onFail && _onFail(message);
-
-    var logInfo = {
-      cache_key: this._client && this._client._connection_key,
-      ip: this._socket && this._socket.remoteAddress
-        ? this._socket.remoteAddress.toString()
-        : 'unknown',
-      coreId: this._coreId ? this._coreId.toString('hex') : null,
-    };
-
-    logger.error('Handshake failed: ', message, logInfo);
-    _reject && _reject();
+    this._reject && this._reject(message);
   }
 }
 
-/*
-Handshake.prototype = extend(IHandshake.prototype, {
-    classname: 'Handshake',
-    socket: null,
-    stage: Handshake.stages.SEND_NONCE,
-
-    _async: true,
-    nonce: null,
-    sessionKey: null,
-    coreId: null,
-
-    //The public RSA key for the given coreId from the datastore
-    corePublicKey: null,
-
-    _useChunkingStream: true,
-
-
-    handshake: async function (client, onSuccess, onFail) {
-        this._client = client;
-        this._socket = client.socket;
-        this.onSuccess = onSuccess;
-        this.onFail = onFail;
-
-
-
-        this.startGlobalTimeout()
-          .catch(() => this._handshakeFail(
-            'Handshake did not complete in ' + Handshake.GLOBAL_TIMEOUT +
-              ' seconds'
-          ));
-
-        //grab and cache this before we disconnect
-        this._ipAddress = this.getRemoteIPAddress();
-    },
-
-    startGlobalTimeout: function() {
-        return new Promise((resolve, reject) => {
-          // TODO - Don't set this as a variable. We should be using
-          // Promise.race instead
-          this._globalFailResolve = resolve;
-          setTimeout(reject, Handshake.GLOBAL_TIMEOUT * 1000);
-        });
-    },
-
-
-
-});
-*/
-module.exports = Handshake;
+export default Handshake;
