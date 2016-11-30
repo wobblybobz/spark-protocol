@@ -13,11 +13,15 @@
 *
 *   You should have received a copy of the GNU Lesser General Public
 *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* @flow
+*
 */
 
+import type SparkCore from '../clients/SparkCore';
+import type {Socket} from 'net';
+import type {Duplex} from 'stream';
 
-var extend = require('xtend');
-var IHandshake = require('./IHandshake');
 var CryptoLib = require('./ICrypto');
 var utilities = require('../lib/utilities.js');
 var ChunkingStream = require('./ChunkingStream').default;
@@ -75,29 +79,369 @@ type HandshakeStage =
   'send-nonce' |
   'send-session-key';
 
+//statics
+const NONCE_BYTES = 40;
+const ID_BYTES = 12;
+const SESSION_BYTES = 40;
+const GLOBAL_TIMEOUT = 120;
 
 class Handshake {
+  _client: SparkCore;
   _socket: Socket;
   _handshakeStage: HandshakeStage = 'send-nonce';
+  _onSuccess: Function;
+  _onFail: Function;
+  _reject: ?Function;
+  _coreId: string = '';
+  _pending: ?Array<Buffer>;
+  _useChunkingStream: boolean = true;
 
-  constructor(socket) {
-    this._socket = socket;
+  constructor(client: SparkCore, onSuccess: Function, onFail: Function) {
+    this._client = client;
+    this._socket = client.socket;
+    this._onSuccess = onSuccess;
+    this._onFail = onFail;
+  }
+
+  start = async (): Promise<*> => {
+    try {
+      const dataAwaitable = this._onSocketDataAvailable();
+      const nonce = await this._sendNonce();
+      const data = await dataAwaitable;
+      const coreProvidedPem = this._readCoreId(nonce, data);
+      this._client.coreID = this._coreId;
+      const publicKey = this._getCoreKey(coreProvidedPem);
+      const {
+        cipherStream,
+        decipherStream,
+        sessionKey,
+      } = await this._sendSessionKey(publicKey);
+
+      const chunk = await Promise.race([
+        this._onDecipherStreamReadable(decipherStream),
+        this._onDecipherStreamTimeout(),
+      ]);
+      this._getHello(chunk);
+      this._sendHello(cipherStream);
+      this._client.sessionKey = sessionKey;
+      this._finished();
+    } catch (exception) {
+      logger.error(exception);
+    }
+
+  };
+
+  //
+  // 1.) Start listening to the socket.  This will be the response from the core
+  // containing the coreId.
+  //
+  _onSocketDataAvailable = (): Promise<Buffer> => {
+    return new Promise((resolve, reject): void => {
+      const onReadable = (): void => {
+        const data = ((this._socket.read(): any): Buffer);
+        try {
+          if (!data) {
+            logger.log('onSocketData called, but no data sent.');
+            reject();
+          }
+
+          resolve(data);
+        } catch (exception) {
+          logger.log('Handshake: Exception thrown while processing data');
+          logger.error(exception);
+          reject();
+        }
+
+        this._socket.removeListener('readable', onReadable);
+      };
+      this._socket.on('readable', onReadable);
+    });
+  };
+
+  //
+  // 2.) Server responds with 40 bytes of random data as a nonce.
+  // * Core should read exactly 40 bytes from the socket.
+  // Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket and
+  // retry the connection.
+  //
+  _sendNonce = async (): Promise<Buffer> => {
+    this._handshakeStage = 'send-nonce';
+
+    const nonce = await CryptoLib.getRandomBytes(NONCE_BYTES);
+    this._socket.write(nonce);
+
+    return nonce;
+  };
+
+  //
+  // 3.) Server should read exactly 256 bytes from the socket.
+  // Timeout waiting for the encrypted message is 30 seconds.  If the timeout is
+  // reached, Server must close the connection.
+  //
+  // * Server RSA decrypts the message with its private key.  If the decryption
+  //   fails, Server must close the connection.
+  // * Decrypted message should be 52 bytes, otherwise Server must close the
+  //   connection.
+  // * The first 40 bytes of the message must match the previously sent nonce,
+  //   otherwise Server must close the connection.
+  // * Remaining 12 bytes of message represent STM32 ID.  Server looks up STM32
+  //   ID, retrieving the Core's public RSA key.
+  // * If the public key is not found, Server must close the connection.
+  //
+  _readCoreId = (nonce: Buffer, data: Buffer): string => {
+    //server should read 256 bytes
+    //decrypt msg using server private key
+    let plaintext;
+    try {
+      plaintext = CryptoLib.decrypt(CryptoLib.getServerKeys(), data);
+    } catch (exception) {
+      logger.error('Handshake decryption error: ', exception);
+    }
+
+    if (!plaintext) {
+      this._handshakeFail('decryption failed');
+      return '';
+    }
+
+    //plaintext should be 52 bytes, else fail
+    if (plaintext.length < (NONCE_BYTES + ID_BYTES)) {
+		  this._handshakeFail('plaintext was too small: ' + plaintext.length);
+      return '';
+    }
+
+    //success
+    const nonceBuffer = new Buffer(40);
+    const coreIdBuffer = new Buffer(12);
+
+    plaintext.copy(nonceBuffer, 0, 0, 40);
+    plaintext.copy(coreIdBuffer, 0, 40, 52);
+
+		const coreKey = new Buffer(plaintext.length - 52);
+		plaintext.copy(coreKey, 0, 52, plaintext.length);
+		const coreProvidedPem = utilities.convertDERtoPEM(coreKey);
+
+    //nonces should match
+    if (!utilities.bufferCompare(nonceBuffer, nonce)) {
+      this._handshakeFail('nonces didn\'t match');
+      return '';
+    }
+
+    this._coreId = coreIdBuffer.toString('hex');
+
+    this._handshakeStage = 'read-core-id';
+
+    return coreProvidedPem;
+  };
+
+  // 4.) Read the public key from disk for this core
+  _getCoreKey = (coreProvidedPem: string): Object => {
+    const publicKey = utilities.get_core_key(this._coreId);
+    try {
+      if (!publicKey) {
+        this._handshakeFail(`couldn't find key for core: ${this._coreId}`);
+        if (coreProvidedPem) {
+          utilities.save_handshake_key(this._coreId, coreProvidedPem);
+        }
+        return '';
+      }
+    } catch (exception) {
+      logger.error('Error handling get_corekey ', exception);
+      this._handshakeFail(`Failed handling find key for core: ${this._coreId}`);
+    }
+
+    this._handshakeStage = 'get-core-key';
+    return publicKey;
+  };
+
+  //  4.) Server creates secure session key
+  //  * Server generates 40 bytes of secure random data to serve as components
+  //      of a session key for AES-128-CBC encryption.
+  //      The first 16 bytes (MSB first) will be the key, the next 16 bytes
+  //      (MSB first) will be the initialization vector (IV), and the final 8
+  //      bytes (MSB first) will be the salt.
+  //      Server RSA encrypts this 40-byte message using the Core's public key
+  //      to create a 128-byte ciphertext.
+  //  * Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
+  //    bytes generated in the previous step as the HMAC key.
+  //  * Server signs the HMAC with its RSA private key generating a 256-byte
+  //    signature.
+  //  * Server sends 384 bytes to Core: the ciphertext then the signature.
+
+  // creates a session key, encrypts it using the core's public key, and sends
+  // it back
+  _sendSessionKey = async (
+    corePublicKey: Object,
+  ): Object => {
+    const sessionKey = await CryptoLib.getRandomBytes(SESSION_BYTES);
+
+    // Server RSA encrypts this 40-byte message using the Core's public key to
+    // create a 128-byte ciphertext.
+    const ciphertext = CryptoLib.encrypt(corePublicKey, sessionKey);
+
+    // Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
+    // bytes generated in the previous step as the HMAC key.
+    const hash = CryptoLib.createHmacDigest(ciphertext, sessionKey);
+
+    // Server signs the HMAC with its RSA private key generating a 256-byte
+    // signature.
+    const signedhmac = CryptoLib.sign(null, hash);
+
+    //Server sends ~384 bytes to Core: the ciphertext then the signature.
+    const message = Buffer.concat(
+      [ciphertext, signedhmac],
+      ciphertext.length + signedhmac.length,
+    );
+    this._socket.write(message);
+
+    const decipherStream = CryptoLib.CreateAESDecipherStream(sessionKey);
+    const cipherStream = CryptoLib.CreateAESCipherStream(sessionKey);
+
+    if (this._useChunkingStream) {
+      const chunkingIn = new ChunkingStream({outgoing: false });
+      const chunkingOut = new ChunkingStream({outgoing: true });
+
+      // What I receive gets broken into message chunks, and goes into the
+      // decrypter
+      this._socket.pipe(chunkingIn);
+      chunkingIn.pipe(decipherStream);
+
+      // What I send goes into the encrypter, and then gets broken into message
+      // chunks
+      cipherStream.pipe(chunkingOut);
+      chunkingOut.pipe(this._socket);
+    } else {
+      this._socket.pipe(decipherStream);
+      cipherStream.pipe(this._socket);
+    }
+
+    this._handshakeStage = 'send-session-key';
+
+    return {
+      cipherStream,
+      decipherStream,
+      sessionKey,
+    };
+  }
+
+  _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> => {
+    return new Promise((resolve, reject) => {
+      const callback = () => {
+        var chunk = ((decipherStream.read(): any): Buffer);
+        if (this._handshakeStage === 'done') {
+          // This line keeps the connection to the core alive
+          this._routeToClient(chunk);
+        } else if (this._handshakeStage === 'send-hello') {
+          this._queueEarlyData(this._handshakeStage, chunk);
+        } else {
+          resolve(chunk);
+        }
+      };
+      decipherStream.on('readable', callback);
+    });
+  }
+
+  _queueEarlyData = (name: HandshakeStage, data: Buffer): void => {
+    if (!data) {
+      return;
+    }
+    this._pending = this._pending || [];
+    this._pending.push(data);
+    logger.error('recovering from early data! ', {
+      step: name,
+      data: (data) ? data.toString('hex') : data,
+      cache_key: this._client._connection_key
+    });
+  }
+
+
+  _onDecipherStreamTimeout = (): Promise<*> => {
+    return new Promise(
+      (resolve, reject) => setTimeout(() => reject(), 30 * 1000),
+    );
+  }
+
+  /**
+   * receive a hello from the client, taking note of the counter
+   */
+  _getHello = (data: Buffer): void => {
+    var env = this._client.parseMessage(data);
+    var msg = (env && env.hello) ? env.hello : env;
+    if (!msg) {
+        this._handshakeFail('failed to parse hello');
+        return;
+    }
+    this._client.recvCounter = msg.getId();
+    try {
+      if (msg.getPayload) {
+        var payload = msg.getPayload();
+        if (payload.length > 0) {
+          var r = new buffers.BufferReader(payload);
+          this._client.spark_product_id = r.shiftUInt16();
+          this._client.product_firmware_version = r.shiftUInt16();
+          this._client.platform_id = r.shiftUInt16();
+        }
+      } else {
+        logger.log('msg object had no getPayload fn');
+      }
+    }
+    catch (ex) {
+      logger.log('error while parsing hello payload ', ex);
+    }
+  }
+
+  /**
+   * send a hello to the client, with our new random counter
+   */
+  _sendHello = (cipherStream: Duplex): void => {
+      this._handshakeStage = 'send-hello';
+      //client will set the counter property on the message
+      //logger.log('server: send hello');
+      this._client.secureOut = cipherStream;
+      this._client.sendCounter = CryptoLib.getRandomUINT16();
+      this._client.sendMessage('Hello', {}, null, null);
+  }
+
+  _finished = (): void => {
+    this._handshakeStage = 'done';
+    this._onSuccess && this._onSuccess();
+
+    this._flushEarlyData();
+  }
+
+  _flushEarlyData = (): void => {
+    if (!this._pending) {
+      return;
+    }
+
+    this._pending.map(data => this._routeToClient(data));
+    this._pending = null;
+  }
+
+  _routeToClient = (data: Buffer): void => {
+    if (!data) {
+      return;
+    }
+    process.nextTick(() => this._client.routeMessage(data));
+  }
+
+  _handshakeFail = (message: string): void => {
+    const {_onFail, _reject} = this;
+    _onFail && _onFail(message);
+
+    var logInfo = {
+      cache_key: this._client && this._client._connection_key,
+      ip: this._socket && this._socket.remoteAddress
+        ? this._socket.remoteAddress.toString()
+        : 'unknown',
+      coreId: this._coreId ? this._coreId.toString('hex') : null,
+    };
+
+    logger.error('Handshake failed: ', message, logInfo);
+    _reject && _reject();
   }
 }
 
-//statics
-Handshake.stages = { SEND_NONCE: 0, READ_COREID: 1, GET_COREKEY: 2, SEND_SESSIONKEY: 3, GET_HELLO: 4, SEND_HELLO: 5, DONE: 6 };
-Handshake.NONCE_BYTES = 40;
-Handshake.ID_BYTES = 12;
-Handshake.SESSION_BYTES = 40;
-
-/**
- * If we don't finish the handshake in xx seconds, then report a failure
- * @type {number}
- */
-Handshake.GLOBAL_TIMEOUT = 120;
-
-
+/*
 Handshake.prototype = extend(IHandshake.prototype, {
     classname: 'Handshake',
     socket: null,
@@ -111,28 +455,19 @@ Handshake.prototype = extend(IHandshake.prototype, {
     //The public RSA key for the given coreId from the datastore
     corePublicKey: null,
 
-    useChunkingStream: true,
+    _useChunkingStream: true,
 
 
     handshake: async function (client, onSuccess, onFail) {
-        this.client = client;
-        this.socket = client.socket;
+        this._client = client;
+        this._socket = client.socket;
         this.onSuccess = onSuccess;
         this.onFail = onFail;
 
-        const noncePromise = this.send_nonce();
-        const data = await this.onSocketDataAvailable();
-        const nonce = await noncePromise;
-        const {coreId, coreProvidedPem} = this.read_coreId(nonce, data);
-        this.client.coreID = coreId;
-        const publicKey = await this.get_corekey(coreId, coreProvidedPem);
-        const {chunk, cipherStream} = await this.send_sessionkey(publicKey);
-        this.get_hello(chunk);
-        this.send_hello(cipherStream);
-        this.finished();
+
 
         this.startGlobalTimeout()
-          .catch(() => this.handshakeFail(
+          .catch(() => this._handshakeFail(
             'Handshake did not complete in ' + Handshake.GLOBAL_TIMEOUT +
               ' seconds'
           ));
@@ -150,338 +485,8 @@ Handshake.prototype = extend(IHandshake.prototype, {
         });
     },
 
-    clearGlobalTimeout: function() {
-      if (!this._globalFailResolve) {
-        return;
-      }
 
-      this._globalFailResolve();
-      this._globalFailResolve = null;
-    },
-
-    getRemoteIPAddress: function () {
-        return this.socket && this.socket.remoteAddress
-          ? this.socket.remoteAddress.toString()
-          : 'unknown';
-    },
-
-    handshakeFail: function (message) {
-        //aww
-        this.onFail && this.onFail(message);
-
-        var logInfo = {
-          cache_key: this.client && this.client._connection_key,
-          ip: this._ipAddress,
-          coreId: this.coreId ? this.coreId.toString('hex') : null,
-        };
-
-        logger.error('Handshake failed: ', message, logInfo);
-        this.clearGlobalTimeout();
-    },
-
-    routeToClient: function(data) {
-      if (!data) {
-        return;
-      }
-      process.nextTick(() => this.client.routeMessage(data));
-    },
-
-    _pending: null,
-    queueEarlyData: function(name, data) {
-        if (!data) {
-          return;
-        }
-        this._pending = this._pending || [];
-        this._pending.push(data);
-        logger.error('recovering from early data! ', {
-            step: name,
-            data: (data) ? data.toString('hex') : data,
-            cache_key: this.client._connection_key
-        });
-    },
-    flushEarlyData: function() {
-      if (!this._pending) {
-        return;
-      }
-
-      this._pending.map(data => this.routeToClient(data));
-      this._pending = null;
-    },
-
-    onSocketDataAvailable: function(): Promise {
-      return new Promise((resolve, reject): void => {
-        const onReadable = (): void => {
-          const data = this.socket.read();
-          try {
-            if (!data) {
-              logger.log('onSocketData called, but no data sent.');
-              reject();
-            }
-
-            resolve(data);
-          } catch (exception) {
-            logger.log('Handshake: Exception thrown while processing data');
-            logger.error(ex);
-            reject();
-          }
-
-          this.socket.removeListener('readable', onReadable);
-        };
-        this.socket.on('readable', onReadable);
-      });
-    },
-
-
-
-//
-//2.) Server responds with 40 bytes of random data as a nonce.
-// * Core should read exactly 40 bytes from the socket.
-// Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket and retry the connection.
-//
-
-
-    send_nonce: async function () {
-      console.log('send_nonce');
-
-      const nonce = await CryptoLib.getRandomBytes(Handshake.NONCE_BYTES);
-      this.socket.write(nonce);
-
-      return nonce;
-    },
-
-//
-// 3.) Server should read exactly 256 bytes from the socket.
-// Timeout waiting for the encrypted message is 30 seconds.  If the timeout is reached, Server must close the connection.
-//
-// * Server RSA decrypts the message with its private key.  If the decryption fails, Server must close the connection.
-// * Decrypted message should be 52 bytes, otherwise Server must close the connection.
-// * The first 40 bytes of the message must match the previously sent nonce, otherwise Server must close the connection.
-// * Remaining 12 bytes of message represent STM32 ID.  Server looks up STM32 ID, retrieving the Core's public RSA key.
-// * If the public key is not found, Server must close the connection.
-//
-
-    read_coreId: function (nonce, data) {
-      //server should read 256 bytes
-      //decrypt msg using server private key
-      let plaintext;
-      try {
-        plaintext = CryptoLib.decrypt(CryptoLib.getServerKeys(), data);
-      } catch (ex) {
-        logger.error('Handshake decryption error: ', ex);
-      }
-
-      if (!plaintext) {
-        that.handshakeFail('decryption failed');
-        return;
-      }
-
-      //plaintext should be 52 bytes, else fail
-      if (plaintext.length < (Handshake.NONCE_BYTES + Handshake.ID_BYTES)) {
-			  that.handshakeFail('plaintext was too small: ' + plaintext.length);
-        return;
-      }
-
-      //success
-      const nonceBuffer = new Buffer(40);
-      const coreIdBuffer = new Buffer(12);
-
-      plaintext.copy(nonceBuffer, 0, 0, 40);
-      plaintext.copy(coreIdBuffer, 0, 40, 52);
-
-			const coreKey = new Buffer(plaintext.length - 52);
-			plaintext.copy(coreKey, 0, 52, plaintext.length);
-			const coreProvidedPem = utilities.convertDERtoPEM(coreKey);
-
-      //nonces should match
-      if (!utilities.bufferCompare(nonceBuffer, nonce)) {
-        this.handshakeFail('nonces didn\'t match');
-        return;
-      }
-
-      const coreId = this.coreId = coreIdBuffer.toString('hex');
-
-      console.log('read_coreId');
-
-      return {
-        coreId,
-        coreProvidedPem,
-      };
-    },
-
-
-    // * Remaining 12 bytes of message represent STM32 ID.  Server retrieves the Core's public RSA key.
-    // * If the public key is not found, Server must close the connection.
-    get_corekey: async function (coreId, coreProvidedPem) {
-		  return new Promise((resolve, reject) => {
-        utilities.get_core_key(coreId, publicKey => {
-          try {
-            if (!publicKey) {
-              that.handshakeFail(`couldn't find key for core: ${coreId}`);
-    					if (coreProvidedPem) {
-    						utilities.save_handshake_key(coreId, coreProvidedPem);
-    					}
-              return;
-            }
-
-            //cool!
-            console.log('get_corekey ' + this.stage);
-
-            resolve(publicKey);
-          } catch (exception) {
-            logger.error('Error handling get_corekey ', exception);
-            this.handshakeFail(`Failed handling find key for core: ${coreId}`);
-          }
-        });
-      });
-    },
-
-
-//  4.) Server creates secure session key
-//  * Server generates 40 bytes of secure random data to serve as components of a session key for AES-128-CBC encryption.
-//      The first 16 bytes (MSB first) will be the key, the next 16 bytes (MSB first) will be the initialization vector (IV), and the final 8 bytes (MSB first) will be the salt.
-//      Server RSA encrypts this 40-byte message using the Core's public key to create a 128-byte ciphertext.
-//  * Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40 bytes generated in the previous step as the HMAC key.
-//  * Server signs the HMAC with its RSA private key generating a 256-byte signature.
-//  * Server sends 384 bytes to Core: the ciphertext then the signature.
-
-    //creates a session key, encrypts it using the core's public key, and sends it back
-    send_sessionkey: async function (corePublicKey) {
-      const buffer = await CryptoLib.getRandomBytes(Handshake.SESSION_BYTES);
-      const sessionKey = buffer;
-
-      //Server RSA encrypts this 40-byte message using the Core's public key to create a 128-byte ciphertext.
-      const ciphertext = CryptoLib.encrypt(corePublicKey, sessionKey);
-
-      //Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40 bytes generated in the previous step as the HMAC key.
-      const hash = CryptoLib.createHmacDigest(ciphertext, sessionKey);
-
-      //Server signs the HMAC with its RSA private key generating a 256-byte signature.
-      const signedhmac = CryptoLib.sign(null, hash);
-
-      //Server sends ~384 bytes to Core: the ciphertext then the signature.
-      //logger.log('server: ciphertext was :', ciphertext.toString('hex'));
-      //console.log('signature block was: ' + signedhmac.toString('hex'));
-
-      const message = Buffer.concat(
-        [ciphertext, signedhmac],
-        ciphertext.length + signedhmac.length,
-      );
-      this.socket.write(message);
-      //logger.log('Handshake: sent encrypted sessionKey');
-
-      const decipherStream = CryptoLib.CreateAESDecipherStream(sessionKey);
-      const cipherStream = CryptoLib.CreateAESCipherStream(sessionKey);
-
-      if (this.useChunkingStream) {
-        const chunkingIn = new ChunkingStream({outgoing: false });
-        const chunkingOut = new ChunkingStream({outgoing: true });
-
-        //what I receive gets broken into message chunks, and goes into the decrypter
-        this.socket.pipe(chunkingIn);
-        chunkingIn.pipe(decipherStream);
-
-        //what I send goes into the encrypter, and then gets broken into message chunks
-        cipherStream.pipe(chunkingOut);
-        chunkingOut.pipe(this.socket);
-      } else {
-        this.socket.pipe(decipherStream);
-        cipherStream.pipe(this.socket);
-      }
-
-      const chunk = await Promise.race([
-        this.onDecipherStreamReadable(decipherStream),
-        this.onDecipherStreamTimeout(),
-      ]);
-
-      console.log('send_sessionkey');
-
-      return {
-        chunk,
-        cipherStream,
-      };
-    },
-
-    onDecipherStreamReadable: function (decipherStream) {
-      return new Promise((resolve, reject) => {
-        const callback = () => {
-          var chunk = decipherStream.read();
-          if (this.stage === Handshake.stages.DONE) {
-            // This line keeps the connection to the core alive
-            this.routeToClient(chunk);
-          } else if (this.stage === Handshake.stages.SEND_HELLO) {
-            this.queueEarlyData(this.stage, chunk);
-          } else {
-            resolve(chunk);
-          }
-        };
-        decipherStream.on('readable', callback);
-      });
-    },
-
-    onDecipherStreamTimeout: function () {
-      return new Promise(
-        (resolve, reject) => setTimeout(() => reject(), 30 * 1000),
-      );
-    },
-
-    /**
-     * receive a hello from the client, taking note of the counter
-     */
-    get_hello: function (data) {
-      console.log('get_hello');
-        var that = this;
-
-        var env = this.client.parseMessage(data);
-        var msg = (env && env.hello) ? env.hello : env;
-        if (!msg) {
-            this.handshakeFail('failed to parse hello');
-            return;
-        }
-        this.client.recvCounter = msg.getId();
-
-        try {
-            if (msg.getPayload) {
-                var payload = msg.getPayload();
-                if (payload.length > 0) {
-                    var r = new buffers.BufferReader(payload);
-                    this.client.spark_product_id = r.shiftUInt16();
-                    this.client.product_firmware_version = r.shiftUInt16();
-                    this.client.platform_id = r.shiftUInt16();
-                }
-            }
-            else {
-                logger.log('msg object had no getPayload fn');
-            }
-        }
-        catch (ex) {
-            logger.log('error while parsing hello payload ', ex);
-        }
-
-    },
-
-    /**
-     * send a hello to the client, with our new random counter
-     */
-    send_hello: function (cipherStream) {
-        this.stage = Handshake.stages.SEND_HELLO;
-        //client will set the counter property on the message
-        //logger.log('server: send hello');
-        this.client.secureOut = cipherStream;
-        this.client.sendCounter = CryptoLib.getRandomUINT16();
-        this.client.sendMessage('Hello', {}, null, null);
-
-        console.log('send_hello');
-    },
-
-    finished: function () {
-      this.stage = Handshake.stages.DONE;
-      this.client.sessionKey = this.sessionKey;
-      this.onSuccess && this.onSuccess();
-
-      this.clearGlobalTimeout();
-      this.flushEarlyData();
-      console.log('DONE');
-    }
 
 });
+*/
 module.exports = Handshake;

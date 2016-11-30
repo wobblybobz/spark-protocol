@@ -123,13 +123,14 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     },
 
     handshake: function () {
-        var shaker = new this.options.HandshakeClass();
+        var shaker = new this.options.HandshakeClass(
+          this,
+          () => this.ready(),
+          message => this.disconnect(message),
+        );
 
         //when the handshake is done, we can expect two stream properties, 'secureIn' and 'secureOut'
-        shaker.handshake(this,
-            utilities.proxy(this.ready, this),
-            utilities.proxy(this.disconnect, this)
-        );
+        shaker.start();
     },
 
     ready: function () {
