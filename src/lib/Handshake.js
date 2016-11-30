@@ -310,6 +310,9 @@ class Handshake {
     };
   }
 
+  // TODO - Remove this callback once it resolves. When the stream is passed
+  // into the SparkCore, it should be rebound there to listen for the keep-alive
+  // pings.
   _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> => {
     return new Promise((resolve, reject) => {
       const callback = () => {
@@ -339,7 +342,6 @@ class Handshake {
       cache_key: this._client._connection_key
     });
   }
-
 
   _onDecipherStreamTimeout = (): Promise<*> => {
     return new Promise(
@@ -376,7 +378,6 @@ class Handshake {
   _sendHello = (cipherStream: Duplex): void => {
       this._handshakeStage = 'send-hello';
       //client will set the counter property on the message
-      //logger.log('server: send hello');
       this._client.secureOut = cipherStream;
       this._client.sendCounter = CryptoLib.getRandomUINT16();
       this._client.sendMessage('Hello', {}, null, null);
