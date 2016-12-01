@@ -97,7 +97,7 @@ class Handshake {
 
   constructor(client: SparkCore, onSuccess: Function, onFail: Function) {
     this._client = client;
-    this._socket = client.socket;
+    this._socket = client._socket;
     this._onSuccess = onSuccess;
     this._onFail = onFail;
   }

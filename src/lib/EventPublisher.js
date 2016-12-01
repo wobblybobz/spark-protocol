@@ -89,7 +89,7 @@ class EventPublisher extends EventEmitter {
     const eventName = this.getEventName(name, coreId);
     const handler = eventHandler
       ? eventHandler
-      : ((
+      : (
         isPublic: boolean,
         name: string,
         userId: string,
@@ -99,10 +99,10 @@ class EventPublisher extends EventEmitter {
         coreId: string
       ): void => {
         const emitName = isPublic ? "public" : "private";
-        if (typeof(this.emit) == 'function') {
-          this.emit(emitName, name, data, ttl, publishedAt, coreId);
+        if (typeof(obj.emit) == 'function') {
+          obj.emit(emitName, name, data, ttl, publishedAt, coreId);
         }
-      }).bind(obj);
+      };
 
     this._eventHandlerByKey.set(eventKey, handler);
     this.on(eventName, handler);

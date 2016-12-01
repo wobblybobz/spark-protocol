@@ -28,7 +28,7 @@ var path = require('path');
 var net = require('net');
 var fs = require('fs');
 var moment = require('moment');
-
+var eventDebug = require('event-debug');
 
 var DeviceServer = function (options) {
     this.options = options;
@@ -180,7 +180,7 @@ DeviceServer.prototype = {
 
 	/* publish special events */
 	publishSpecialEvents: function (name, data, coreid) {
-		return global.publisher.publish(false,name,null,data,60,moment(new Date()).toISOString(),coreid);
+		return global.publisher.publish(false,name,null,data,60,new Date(),coreid);
 	},
 
 //id: core.coreID,
@@ -205,7 +205,7 @@ DeviceServer.prototype = {
                         logger.log("Connection from: " + socket.remoteAddress + ", connId: " + connId);
 
                         var core = new SparkCore();
-                        core.socket = socket;
+                        core._socket = socket;
                         core.startupProtocol();
                         core._connection_key = key;
 
@@ -237,14 +237,14 @@ DeviceServer.prototype = {
                         });
                     }
                     catch (ex) {
-                        logger.error("core startup failed " + ex);
+                        logger.error("core startup failed " + ex + ex.stack);
                     }
                 });
             });
 
         global.cores = _cores;
         global.publisher = new EventPublisher();
-
+        eventDebug(server, 'COAP Server')
         server.on('error', function () {
             logger.error("something blew up ", arguments);
         });
