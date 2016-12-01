@@ -23,14 +23,14 @@
 
 import type {MessageSpecificationType} from './MessageSpecifications';
 
-var fs = require('fs');
-var settings = require('../settings');
-var Message = require('h5.coap').Message;
-var Option = require('h5.coap/lib/Option.js');
-var logger = require('../lib/logger.js');
-
+import fs from 'fs';
+import settings from '../settings';
+import {Message} from 'h5.coap';
+import Option from 'h5.coap/lib/Option.js';
+import logger from '../lib/logger.js';
 import {BufferBuilder, BufferReader} from 'h5.buffers';
 import MessageSpecifications from './MessageSpecifications';
+import nullthrows from 'nullthrows';
 
 /**
  * Interface for the Spark Core Messages
@@ -314,13 +314,17 @@ class Messages {
   };
 
   toBinary = (
-    value: string | number | Buffer,
+    value: ?(string | number | Buffer),
     typeName?: string,
     bufferBuilder?: BufferBuilder,
   ): Buffer => {
     typeName = typeName || (typeof value);
 
     bufferBuilder = bufferBuilder || new BufferBuilder();
+
+    if (value === null) {
+      return bufferBuilder;
+    }
 
     switch (typeName) {
       case 'uint32':
@@ -379,30 +383,24 @@ class Messages {
     return null;
   };
 
-  parseArguments = (args: Object, desc: Array<Object>): ?Array<any> => {
-    console.log('TODO: Type `parseArguments`');
+  parseArguments = (
+    args: ?Array<Object>,
+    descriptions: Array<[string, string]>,
+  ): ?Array<any> => {
     try {
-      if (!args || (args.length != desc.length)) {
-          return null;
+      if (!args || args.length !== descriptions.length) {
+        return null;
       }
 
-      var results = [];
-      for (var i = 0; i < desc.length; i++) {
-        var p = desc[i];
-        if (!p) {
-            continue;
-        }
+      return descriptions
+        .filter(description => description)
+        .map((description, index) => {
+          const type = description[1];
+          args = nullthrows(args);
+          const value = index < args.length ? args[index] : '';
 
-        //desc -> [ [ name, type ], ... ]
-        var type = p[1];
-        var val = (i < args.length) ? args[i] : '';
-
-        results.push(
-          this.fromBinary(new Buffer(val, 'binary'), type)
-        );
-      }
-
-      return results;
+          this.fromBinary(new Buffer(value, 'binary'), type)
+        });
     } catch (exception) {
       logger.error('parseArguments: ', exception);
     }

@@ -59,7 +59,7 @@ class Flasher {
 	_fileBuffer: ?Buffer = null;
 	_fileName: ?string = null;
 	_fileStream: ?Object = null;  // TODO - Type this correctly
-	_lastCrc: ?Object = null;
+	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
 	_numChunksMissed: number = 0;
 	_stage: FlashingStage = 'prepare';
@@ -456,7 +456,10 @@ class Flasher {
 						);
 						message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
 						if (includeIndex) {
-							const indexBinary = messages.toBinary(chunkIndex, 'uint16');
+							const indexBinary = messages.toBinary(
+								chunkIndex || null, 
+								'uint16',
+							);
 							message.addOption(
 								new Option(Message.Option.URI_QUERY, indexBinary),
 							);
