@@ -277,7 +277,7 @@ class Flasher {
 
 				let version = 0;
 				if (message && (message.getPayloadLength() > 0)) {
-					version = messages.FromBinary(message.getPayload(), 'byte');
+					version = messages.fromBinary(message.getPayload(), 'byte');
 				}
 				this._protocolVersion = version;
 				this._startStep('send_file');
@@ -296,7 +296,7 @@ class Flasher {
 				this.clearWatch('UpdateReady');
 				let failReason = '';
 				if (message && message.getPayloadLength() > 0) {
-					failReason = messages.FromBinary(message.getPayload(), 'byte');
+					failReason = messages.fromBinary(message.getPayload(), 'byte');
 				}
 
 				this.failed('aborted ' + failReason);
@@ -441,7 +441,10 @@ class Flasher {
 		const includeIndex = this._protocolVersion > 0;
 
 		if (this._chunk) {
-			const encodedCrc = messages.ToBinary(this._lastCrc, 'crc');
+			const encodedCrc = messages.toBinary(
+				nullthrows(this._lastCrc),
+				'crc',
+			);
 
 			this._client.sendMessage(
 				'Chunk',
@@ -453,7 +456,7 @@ class Flasher {
 						);
 						message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
 						if (includeIndex) {
-							const indexBinary = messages.ToBinary(chunkIndex, 'uint16');
+							const indexBinary = messages.toBinary(chunkIndex, 'uint16');
 							message.addOption(
 								new Option(Message.Option.URI_QUERY, indexBinary),
 							);

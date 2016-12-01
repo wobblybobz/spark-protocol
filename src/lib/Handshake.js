@@ -244,12 +244,13 @@ class Handshake {
         if (coreProvidedPem) {
           utilities.save_handshake_key(this._coreId, coreProvidedPem);
         }
-        this._handshakeFail(`Failed finding key for core: ${this._coreId}`);
-        return '';
+        throw `Failed finding key for core: ${this._coreId}`;
       }
     } catch (exception) {
       logger.error('Error handling get_corekey ', exception);
-      this._handshakeFail(`Failed handling find key for core: ${this._coreId}`);
+      this._handshakeFail(
+        `Failed handling find key for core: ${this._coreId}`,
+      );
     }
 
     this._handshakeStage = 'get-core-key';

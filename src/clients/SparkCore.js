@@ -27,7 +27,7 @@ var Message = require('h5.coap').Message;
 var settings = require('../settings');
 var ISparkCore = require('./ISparkCore');
 var CryptoLib = require('../lib/ICrypto');
-var messages = require('../lib/Messages');
+var messages = require('../lib/Messages').default;
 var Handshake = require('../lib/Handshake').default;
 var utilities = require('../lib/utilities.js');
 var Flasher = require('../lib/Flasher').default;
@@ -644,7 +644,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     setVariable: function (name, data, callback) {
 
         /*TODO: data type! */
-        var payload = messages.ToBinary(data);
+        var payload = messages.toBinary(data);
         var token = this.sendMessage('VariableRequest', { name: name }, payload);
 
         //are we expecting a response?
@@ -853,7 +853,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
             if (msg && msg.getPayload) {
                 //leaving raw payload in response message for now, so we don't shock our users.
                 data = msg.getPayload();
-                niceResult = messages.FromBinary(data, varType);
+                niceResult = messages.fromBinary(data, varType);
             }
         }
         catch (ex) {
@@ -890,7 +890,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         var niceResult = null;
         try {
             if (msg && msg.getPayload) {
-                niceResult = messages.FromBinary(msg.getPayload(), varType);
+                niceResult = messages.fromBinary(msg.getPayload(), varType);
             }
         }
         catch (ex) {
@@ -1126,7 +1126,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
         //moment#unix outputs a Unix timestamp (the number of seconds since the Unix Epoch).
         var stamp = moment().utc().unix();
-        var binVal = messages.ToBinary(stamp, 'uint32');
+        var binVal = messages.toBinary(stamp, 'uint32');
 
         this.sendReply('GetTimeReturn', msg.getId(), binVal, msg.getToken());
     },
@@ -1278,7 +1278,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
         if (fnState && fnState.v) {
             //'v':{'temperature':2}
-            fnState.v = messages.TranslateIntTypes(fnState.v);
+            fnState.v = messages.translateIntTypes(fnState.v);
         }
 
         this.coreFnState = fnState;
