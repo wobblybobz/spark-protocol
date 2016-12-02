@@ -88,18 +88,14 @@ class Handshake {
   _client: SparkCore;
   _socket: Socket;
   _handshakeStage: HandshakeStage = 'send-nonce';
-  _onSuccess: Function;
-  _onFail: Function;
   _reject: ?Function;
   _coreId: string = '';
-  _pending: ?Array<Buffer>;
+  _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
 
-  constructor(client: SparkCore, onSuccess: Function, onFail: Function) {
+  constructor(client: SparkCore) {
     this._client = client;
     this._socket = client._socket;
-    this._onSuccess = onSuccess;
-    this._onFail = onFail;
   }
 
   start = async (): Promise<*> => {
@@ -108,10 +104,8 @@ class Handshake {
       this._startGlobalTimeout(),
       new Promise((resolve, reject) => this._reject = reject),
     ]).catch((message) => {
-      this._onFail && this._onFail(message);
-
       var logInfo = {
-        cache_key: this._client && this._client._connection_key,
+        cache_key: this._client && this._client._connectionKey,
         ip: this._socket && this._socket.remoteAddress
           ? this._socket.remoteAddress.toString()
           : 'unknown',
@@ -119,6 +113,8 @@ class Handshake {
       };
 
       logger.error('Handshake failed: ', message, logInfo);
+
+      throw message;
     });
   };
 
@@ -128,7 +124,6 @@ class Handshake {
       const nonce = await this._sendNonce();
       const data = await dataAwaitable;
       const coreProvidedPem = this._readCoreId(nonce, data);
-      this._client.coreID = this._coreId;
       const publicKey = this._getCoreKey(coreProvidedPem);
       const {
         cipherStream,
@@ -136,16 +131,22 @@ class Handshake {
         sessionKey,
       } = await this._sendSessionKey(publicKey);
 
-      const chunk = await Promise.race([
+      const handshakeBuffer = await Promise.race([
         this._onDecipherStreamReadable(decipherStream),
         this._onDecipherStreamTimeout(),
       ]);
-      this._getHello(chunk);
-      this._sendHello(cipherStream);
-      this._client.sessionKey = sessionKey;
       this._finished();
+      return {
+        coreId: this._coreId,
+        cipherStream,
+        decipherStream,
+        handshakeBuffer,
+        pendingBuffers: [...this._pendingBuffers],
+        sessionKey,
+      };
     } catch (exception) {
       logger.error(exception);
+      throw exception;
     }
   };
 
@@ -317,14 +318,12 @@ class Handshake {
   _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> => {
     return new Promise((resolve, reject) => {
       const callback = () => {
-        var chunk = ((decipherStream.read(): any): Buffer);
-        if (this._handshakeStage === 'done') {
-          // This line keeps the connection to the core alive
-          this._routeToClient(chunk);
-        } else if (this._handshakeStage === 'send-hello') {
+        const chunk = ((decipherStream.read(): any): Buffer);
+        if (this._handshakeStage === 'send-hello') {
           this._queueEarlyData(this._handshakeStage, chunk);
         } else {
           resolve(chunk);
+          decipherStream.removeListener('readable', callback);
         }
       };
       decipherStream.on('readable', callback);
@@ -335,12 +334,11 @@ class Handshake {
     if (!data) {
       return;
     }
-    this._pending = this._pending || [];
-    this._pending.push(data);
+    this._pendingBuffers.push(data);
     logger.error('recovering from early data! ', {
       step: name,
       data: (data) ? data.toString('hex') : data,
-      cache_key: this._client._connection_key
+      cache_key: this._client._connectionKey
     });
   }
 
@@ -350,54 +348,17 @@ class Handshake {
     );
   }
 
-  _getHello = (chunk: Buffer): void => {
-    var message = this._client.parseMessage(chunk);
-    if (!message) {
-        this._handshakeFail('failed to parse hello');
-        return;
-    }
-
-    this._client.recvCounter = message.getId();
-    try {
-      if (message.getPayload) {
-        var payload = message.getPayload();
-        if (payload.length > 0) {
-          var payloadBuffer = new buffers.BufferReader(payload);
-          // TODO: This shouldn't be set here :/
-          this._client.spark_product_id = payloadBuffer.shiftUInt16();
-          this._client.product_firmware_version = payloadBuffer.shiftUInt16();
-          this._client.platform_id = payloadBuffer.shiftUInt16();
-        }
-      } else {
-        logger.log('msg object had no getPayload fn');
-      }
-    } catch (exception) {
-      logger.log('error while parsing hello payload ', exception);
-    }
-  }
-
-  _sendHello = (cipherStream: Duplex): void => {
-      this._handshakeStage = 'send-hello';
-      //client will set the counter property on the message
-      this._client.secureOut = cipherStream;
-      this._client.sendCounter = CryptoLib.getRandomUINT16();
-      this._client.sendMessage('Hello', {}, null, null);
-  }
-
   _finished = (): void => {
     this._handshakeStage = 'done';
-    this._onSuccess && this._onSuccess();
-
-    this._flushEarlyData();
   }
-
+/*
   _flushEarlyData = (): void => {
-    if (!this._pending) {
+    if (!this._pendingBuffers) {
       return;
     }
 
-    this._pending.map(data => this._routeToClient(data));
-    this._pending = null;
+    this._pendingBuffers.map(data => this._routeToClient(data));
+    this._pendingBuffers = null;
   }
 
   _routeToClient = (data: Buffer): void => {
@@ -406,7 +367,7 @@ class Handshake {
     }
     process.nextTick(() => this._client.routeMessage(data));
   }
-
+*/
   _handshakeFail = (message: string): void => {
     this._reject && this._reject(message);
   }

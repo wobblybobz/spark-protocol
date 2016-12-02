@@ -584,7 +584,7 @@ class Flasher {
 	getLogInfo = (): {cache_key?: string, coreID: string} => {
 		if (this._client) {
 			return {
-				cache_key: this._client._connection_key,
+				cache_key: this._client._connectionKey,
 				coreID: this._client.getHexCoreID(),
 			};
 		}	else {

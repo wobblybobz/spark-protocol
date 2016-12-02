@@ -69,12 +69,12 @@ class DeviceServer {
             `Connection from: ${socket.remoteAddress} - ` +
               `Connection ID: ${connectionIdCounter}`,
           );
-          
+
           // TODO: This is really shitty. Refactor `SparkCore` and clean this up
           var core = new SparkCore();
           core.socket = socket;
           core.startupProtocol();
-          core._connection_key = key;
+          core._connectionKey = key;
 
           core.on('ready', () => {
             logger.log("Device online!");
@@ -82,8 +82,8 @@ class DeviceServer {
             const deviceAttributes = {
               ...this._config.deviceAttributeRepository.getById(deviceId),
               ip: core.getRemoteIPAddress(),
-              particleProductId: core.spark_product_id,
-              productFirmwareVersion: core.product_firmware_version,
+              _particleProductId: core._particleProductId,
+              _productFirmwareVersion: core._productFirmwareVersion,
             };
 
             this._config.deviceAttributeRepository.update(
@@ -98,7 +98,7 @@ class DeviceServer {
             const coreId = core.getHexCoreID();
             this._devicesById.delete(coreId);
             this._publishSpecialEvent('particle/status', 'offline', coreId);
-            logger.log("Session ended for " + core._connection_key);
+            logger.log("Session ended for " + core._connectionKey);
           });
         } catch (exception) {
           logger.error("Device startup failed " + exception);

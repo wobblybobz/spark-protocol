@@ -26,8 +26,8 @@ import type {MessageSpecificationType} from './MessageSpecifications';
 import fs from 'fs';
 import settings from '../settings';
 import {Message} from 'h5.coap';
-import Option from 'h5.coap/lib/Option.js';
-import logger from '../lib/logger.js';
+import Option from 'h5.coap/lib/Option';
+import logger from '../lib/logger';
 import {BufferBuilder, BufferReader} from 'h5.buffers';
 import MessageSpecifications from './MessageSpecifications';
 import nullthrows from 'nullthrows';
@@ -105,10 +105,19 @@ class Messages {
       return message.getCode() < Message.Code.BAD_REQUEST;
   };
 
+  isNonTypeMessage = (messageName: string): boolean => {
+    const specification = this._specifications.get(messageName);
+    if (!specification) {
+      return false;
+    }
+
+    return specification.type === Message.Type.NON;
+  }
+
   /**
    *
-   * @param name
-   * @param id - must be an unsigned 16 bit integer
+   * @param messageName
+   * @param messageCounterId - must be an unsigned 16 bit integer
    * @param params
    * @param data
    * @param token - helps us associate responses w/ requests
@@ -116,14 +125,14 @@ class Messages {
    * @returns {*}
    */
   wrap = (
-    specificationName: string,
+    messageName: string,
     messageCounterId: number,
     params: Object,
     data: Buffer,
     token?: number,
     onError?: Function,
   ): ?Buffer => {
-      var specification = this._specifications.get(specificationName);
+      const specification = this._specifications.get(messageName);
       if (!specification) {
         onError && onError('Unknown Message Type');
         return null;

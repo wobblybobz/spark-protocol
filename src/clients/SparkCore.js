@@ -27,11 +27,12 @@ var Message = require('h5.coap').Message;
 var settings = require('../settings');
 var ISparkCore = require('./ISparkCore');
 var CryptoLib = require('../lib/ICrypto');
-var messages = require('../lib/Messages').default;
+var Messages = require('../lib/Messages').default;
 var Handshake = require('../lib/Handshake').default;
 var utilities = require('../lib/utilities.js');
 var Flasher = require('../lib/Flasher').default;
 var logger = require('../lib/logger.js');
+import {BufferReader} from 'h5.buffers';
 
 
 
@@ -78,12 +79,12 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     },
 
     socket: null,
-    secureIn: null,
-    secureOut: null,
-    sendCounter: null,
+    _decipherStream: null,
+    _cipherStream: null,
+    _sendCounter: null,
     sendToken: 0,
     _tokens: null,
-    recvCounter: null,
+    _messageRecievedCounter: null,
 
     apiSocket: null,
     eventsSocket: null,
@@ -93,9 +94,9 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
      */
     coreFnState: null,
 
-    spark_product_id: null,
-    product_firmware_version: null,
-    platform_id: null,
+    _particleProductId: null,
+    _productFirmwareVersion: null,
+    _platformId: null,
 
     /**
      * Used to track calls waiting on a description response
@@ -110,38 +111,107 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
       this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); //every 15 second(s)
       this._socket.setTimeout(SOCKET_TIMEOUT);
 
-      this._socket.on('error', error => this.disconnect(`socket error ${error}`));
-      this._socket.on('close', error => this.disconnect(`socket close ${error}`));
-      this._socket.on('timeout', error => this.disconnect(`socket timeout ${error}`));
+      this._socket.on(
+        'error',
+        error => this.disconnect(`socket error ${error}`),
+      );
+      this._socket.on(
+        'close',
+        error => this.disconnect(`socket close ${error}`),
+      );
+      this._socket.on(
+        'timeout',
+        error => this.disconnect(`socket timeout ${error}`),
+      );
 
       this.handshake();
     },
 
-    handshake: function () {
-      var handshake = new Handshake(
-        this,
-        () => this.ready(),
-        message => this.disconnect(message),
-      );
+    handshake: async function () {
+      var handshake = new Handshake(this);
 
-      //when the handshake is done, we can expect two stream properties, 'secureIn' and 'secureOut'
-      handshake.start();
+      //when the handshake is done, we can expect two stream properties, '_decipherStream' and '_cipherStream'
+      try{
+        const {
+          coreId,
+          cipherStream,
+          decipherStream,
+          handshakeBuffer,
+          pendingBuffers,
+          sessionKey,
+        } = await handshake.start();
+        this._coreId = coreId;
+
+        this._getHello(handshakeBuffer);
+        this._sendHello(cipherStream, decipherStream);
+
+        this.ready();
+
+        pendingBuffers.map(data => this.routeMessage(data));
+        this._decipherStream.on('readable', () => {
+          const chunk = ((decipherStream.read(): any): Buffer);
+          if (!chunk) {
+            return;
+          }
+          this.routeMessage(chunk);
+        });
+      } catch (exception) {
+        this.disconnect(exception);
+      }
+    },
+
+    _getHello: function (chunk: Buffer): void {
+      var message = Messages.unwrap(chunk);
+      if (!message) {
+        throw 'failed to parse hello';
+      }
+
+      this._messageRecievedCounter = message.getId();
+
+      try {
+        const payload = message.getPayload();
+        if (payload.length <= 0) {
+          return;
+        }
+
+        var payloadBuffer = new BufferReader(payload);
+        this._particleProductId = payloadBuffer.shiftUInt16();
+        this._productFirmwareVersion = payloadBuffer.shiftUInt16();
+        this._platformId = payloadBuffer.shiftUInt16();
+      } catch (exception) {
+        logger.log('error while parsing hello payload ', exception);
+      }
+    },
+
+    _sendHello: function (cipherStream: Duplex, decipherStream: Duplex): void {
+        this._cipherStream = cipherStream;
+        this._decipherStream = decipherStream
+
+        //client will set the counter property on the message
+        this._sendCounter = CryptoLib.getRandomUINT16();
+        this.sendMessage('Hello', {}, null, null);
     },
 
     ready: function () {
-        this._connStartTime = new Date();
+        this._connectionStartTime = new Date();
 
-        logger.log('on ready', {
+        logger.log(
+          'on ready',
+          {
             coreID: this.getHexCoreID(),
             ip: this.getRemoteIPAddress(),
-            product_id: this.spark_product_id,
-            firmware_version: this.product_firmware_version,
-            platform_id: this.platform_id,
-            cache_key: this._connection_key
-        });
+            product_id: this._particleProductId,
+            firmware_version: this._productFirmwareVersion,
+            _platformId: this._platformId,
+            cache_key: this._connectionKey,
+          },
+        );
 
         //catch any and all describe responses
-        this.on('msg_describereturn', message => this.onDescribeReturn(message));
+        this.on(
+          'msg_describereturn',
+          message => this.onDescribeReturn(message),
+        );
         this.on(
           'msg_PrivateEvent'.toLowerCase(),
           message => this.onCorePrivateEvent(message),
@@ -179,8 +249,8 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     /**
      * Handles messages coming from the API over our message queue service
      */
-    onApiMessage: function (sender, message) {
-      if (!msg) {
+    onApiMessage: function (sender, message: ?Message): void {
+      if (!message) {
         logger.log(
           'onApiMessage - no message? got ' + JSON.stringify(arguments),
           { coreID: this.getHexCoreID() },
@@ -189,9 +259,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
       }
 
       //if we're not the owner, then the socket is busy
-      var isBusy = !this._isSocketAvailable(null, error => {
-        logger.error(error + ': ' + msg.cmd , { coreID: this.getHexCoreID() });
-      });
+      const isBusy = !this._isSocketAvailable(null);
       if (isBusy) {
         this.sendApiResponse(
           sender,
@@ -200,8 +268,6 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         return;
       }
 
-      //TODO: simplify this more?
-      const that = this;
       switch (message.cmd) {
         case 'Describe': {
           if (settings.logApiMessages) {
@@ -214,18 +280,18 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
               sender,
               {
                 cmd: 'DescribeReturn',
+                firmware_version: this._productFirmwareVersion,
                 name: msg.name,
+                product_id: this._particleProductId,
                 state: this.coreFnState,
-                product_id: this.spark_product_id,
-                firmware_version: this.product_firmware_version,
               },
             ),
             message => this.sendApiResponse(
               sender,
               {
                 cmd: 'DescribeReturn',
-                name: message.name,
                 err: 'Error, no device state',
+                name: message.name,
               },
             ),
           );
@@ -244,8 +310,8 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
                 sender,
                 {
                   cmd: 'VarReturn',
-                  name: message.name,
                   error: error,
+                  name: message.name,
                   result: value,
                 },
               );
@@ -253,94 +319,124 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
           );
           break;
         }
-        case 'SetVar':
-            if (settings.logApiMessages) {
-                logger.log('SetVar', { coreID: that.coreID });
-            }
-            this.setVariable(msg.name, msg.value, function (resp) {
+        case 'SetVar': {
+          if (settings.logApiMessages) {
+            logger.log('SetVar', { coreID: this.coreID });
+          }
+          this.setVariable(
+            message.name,
+            message.value,
+            (resp) => this.sendApiResponse(
+              sender,
+              {
+                cmd: 'VarReturn',
+                name: message.name,
+                result: resp.getPayload().toString(),
+              },
+            ),
+          );
+          break;
+        }
 
-                //that.sendApiResponse(sender, resp);
+        case 'CallFn': {
+          if (settings.logApiMessages) {
+            logger.log('FunCall', { coreID: this.coreID });
+          }
+          this.callFunction(
+            message.name,
+            message.args,
+            (functionResult) => this.sendApiResponse(
+              sender,
+              {
+                  cmd: 'FnReturn',
+                  error: functionResult.Error,
+                  name: message.name,
+                  result: functionResult,
+              },
+            ),
+          );
+          break;
+        }
 
-                var response = {
-                    cmd: 'VarReturn',
-                    name: msg.name,
-                    result: resp.getPayload().toString()
-                };
-                that.sendApiResponse(sender, response);
-            });
-            break;
-        case 'CallFn':
-            if (settings.logApiMessages) {
-                logger.log('FunCall', { coreID: that.coreID });
-            }
-            this.callFunction(msg.name, msg.args, function (fnResult) {
-                var response = {
-                    cmd: 'FnReturn',
-                    name: msg.name,
-                    result: fnResult,
-                    error: fnResult.Error
-                };
+        case 'UFlash': {
+          if (settings.logApiMessages) {
+            logger.log('FlashCore', { coreID: this.coreID });
+          }
 
-                that.sendApiResponse(sender, response);
-            });
-            break;
-        case 'UFlash':
-            if (settings.logApiMessages) {
-                logger.log('FlashCore', { coreID: that.coreID });
-            }
+          this.flashCore(message.args.data, sender);
+          break;
+        }
 
-            this.flashCore(msg.args.data, sender);
-            break;
+        case 'FlashKnown': {
+          if (settings.logApiMessages) {
+            logger.log(
+              'FlashKnown',
+              { app: message.app, coreID: this.coreID },
+            );
+          }
 
-        case 'FlashKnown':
-            if (settings.logApiMessages) {
-                logger.log('FlashKnown', { coreID: that.coreID, app: msg.app });
-            }
+          // Responsibility for sanitizing app names lies with API Service
+          // This includes only allowing apps whose binaries are deployed and thus exist
+          fs.readFile(
+            `known_firmware/${message.app}_${settings.environment}.bin`,
+            (error, buffer) => {
+              if (!error) {
+                that.flashCore(buf, buffer);
+                return;
+              }
 
-            // Responsibility for sanitizing app names lies with API Service
-            // This includes only allowing apps whose binaries are deployed and thus exist
-            fs.readFile('known_firmware/' + msg.app + '_' + settings.environment + '.bin', function (err, buf) {
-                if (err) {
-                    logger.log('Error flashing known firmware', { coreID: that.coreID, err: err });
-                    that.sendApiResponse(sender, { cmd: 'Event', name: 'Update', message: 'Update failed - ' + JSON.stringify(err) });
-                    return;
-                }
+              logger.log(
+                'Error flashing known firmware',
+                { coreID: this.coreID, err: error },
+              );
+              this.sendApiResponse(
+                sender,
+                {
+                  cmd: 'Event',
+                  message: 'Update failed - ' + JSON.stringify(error),
+                  name: 'Update',
+                },
+              );
+            },
+          );
+          break;
+        }
 
-                that.flashCore(buf, sender);
-            });
-            break;
+        case 'RaiseHand': {
+          if (settings.logApiMessages) {
+            logger.log('SignalCore', { coreID: this.coreID });
+          }
 
-        case 'RaiseHand':
-            if (isBusy) {
-                if (settings.logApiMessages) {
-                    logger.log('SignalCore - flashing', { coreID: that.coreID });
-                }
-                that.sendApiResponse(sender, { cmd: 'RaiseHandReturn', result: true });
-            }
-            else {
-                if (settings.logApiMessages) {
-                    logger.log('SignalCore', { coreID: that.coreID });
-                }
+          var showSignal = message.args && message.args.signal;
+          this.raiseYourHand(
+            showSignal,
+            (result) => this.sendApiResponse(
+              sender,
+              {cmd: 'RaiseHandReturn', result},
+            ),
+          );
+          break;
+        }
 
-                var showSignal = (msg.args && msg.args.signal);
-                this.raiseYourHand(showSignal, function (result) {
-                    that.sendApiResponse(sender, {
-                        cmd: 'RaiseHandReturn',
-                        result: result
-                    });
-                });
-            }
+        case 'Ping': {
+          if (settings.logApiMessages) {
+            logger.log('Pinged, replying', { coreID: that.coreID });
+          }
 
-            break;
-        case 'Ping':
-            if (settings.logApiMessages) {
-                logger.log('Pinged, replying', { coreID: that.coreID });
-            }
+          this.sendApiResponse(
+            sender,
+            {
+              cmd: 'Pong',
+              lastPing: this._lastCorePing,
+              online: this._socket !== null,
+            },
+          );
+          break;
+        }
 
-            this.sendApiResponse(sender, { cmd: 'Pong', online: (this._socket != null), lastPing: this._lastCorePing });
-            break;
-        default:
-            this.sendApiResponse(sender, {error: 'unknown message' });
+        default: {
+          this.sendApiResponse(sender, {error: 'unknown message' });
+        }
       }
     },
 
@@ -349,7 +445,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
      * @param data
      */
     routeMessage: function (data) {
-        var msg = messages.unwrap(data);
+        var msg = Messages.unwrap(data);
         if (!msg) {
             logger.error('routeMessage got a NULL coap message ', { coreID: this.getHexCoreID() });
             return;
@@ -361,14 +457,14 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         var msgCode = msg.getCode();
         if ((msgCode > Message.Code.EMPTY) && (msgCode <= Message.Code.DELETE)) {
             //probably a request
-            msg._type = messages.getRequestType(msg);
+            msg._type = Messages.getRequestType(msg);
         }
 
         if (!msg._type) {
             msg._type = this.getResponseType(msg.getTokenString());
         }
 
-        //console.log('core got message of type ' + msg._type + ' with token ' + msg.getTokenString() + ' ' + messages.getRequestType(msg));
+        //console.log('core got message of type ' + msg._type + ' with token ' + msg.getTokenString() + ' ' + Messages.getRequestType(msg));
 
         if (msg.isAcknowledgement()) {
             if (!msg._type) {
@@ -380,15 +476,15 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         }
 
 
-        var nextPeerCounter = ++this.recvCounter;
+        var nextPeerCounter = ++this._messageRecievedCounter;
         if (nextPeerCounter > 65535) {
             //TODO: clean me up! (I need settings, and maybe belong elsewhere)
-            this.recvCounter = nextPeerCounter = 0;
+            this._messageRecievedCounter = nextPeerCounter = 0;
         }
 
         if (msg.isEmpty() && msg.isConfirmable()) {
             this._lastCorePing = new Date();
-            //var delta = (this._lastCorePing - this._connStartTime) / 1000.0;
+            //var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
             //logger.log('core ping @ ', delta, ' seconds ', { coreID: this.getHexCoreID() });
             this.sendReply('PingAck', msg.getId());
             return;
@@ -412,8 +508,9 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     },
 
     sendReply: function (name, id, data, token, onError, requester) {
-        if (!this._isSocketAvailable(requester, onError, name)) {
-            return;
+        if (!this._isSocketAvailable(requester, name)) {
+          onError && onError('This client has an exclusive lock.');
+          return;
         }
 
         //if my reply is an acknowledgement to a confirmable message
@@ -421,72 +518,64 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
         //set our counter
         if (id < 0) {
-            id = this.getIncrSendCounter();
+          this._incrementSendCounter();
+          id = this._sendCounter;
         }
 
 
-        var msg = messages.wrap(name, id, null, data, token, null);
-        if (!this.secureOut) {
+        var message = Messages.wrap(name, id, null, data, token, null);
+        if (!this._cipherStream) {
             logger.error('SparkCore - sendReply before READY', { coreID: this.getHexCoreID() });
             return;
         }
-        this.secureOut.write(msg, null, null);
+        this._cipherStream.write(message, null, null);
         //logger.log('Replied with message of type: ', name, ' containing ', data);
     },
 
 
     sendMessage: function (name, params, data, onResponse, onError, requester) {
-        if (!this._isSocketAvailable(requester, onError, name)) {
-            return false;
-        }
+      if (!this._isSocketAvailable(requester, name)) {
+        onError && onError('This client has an exclusive lock.');
+        return false;
+      }
 
-        //increment our counter
-        var id = this.getIncrSendCounter();
+      //increment our counter
+      this._incrementSendCounter();
 
-        //TODO: messages of type 'NON' don't really need a token // alternatively: 'no response type == no token'
-        var token = this.getNextToken();
+      //TODO: messages of type 'NON' don't really need a token // alternatively: 'no response type == no token'
+      let token = null;
+
+      if (!Messages.isNonTypeMessage(name)) {
+        token = this.getNextToken()
         this.useToken(name, token);
 
-        var msg = messages.wrap(name, id, params, data, token, onError);
-        if (!this.secureOut) {
-            logger.error('SparkCore - sendMessage before READY', { coreID: this.getHexCoreID() });
-            return;
-        }
-        this.secureOut.write(msg, null, null);
-//        logger.log('Sent message of type: ', name, ' containing ', data,
-//            'BYTES: ' + msg.toString('hex'));
+        return;
+      }
 
-        return token;
-    },
+      const message = Messages.wrap(
+        name,
+        this._sendCounter,
+        params,
+        data,
+        token,
+        onError,
+      );
 
-    /**
-     * Same as 'sendMessage', but sometimes the core can't handle Tokens on certain message types.
-     *
-     * Somewhat rare / special case, so this seems like a better option at the moment, should converge these
-     * back at some point
-     */
-    sendNONTypeMessage: function (name, params, data, onResponse, onError, requester) {
-        if (!this._isSocketAvailable(requester, onError, name)) {
-            return;
-        }
+      if (message === null) {
+        logger.error('Could not wrap message', name, params, data);
+      }
 
-        //increment our counter
-        var id = this.getIncrSendCounter();
-        var msg = messages.wrap(name, id, params, data, null, onError);
-        if (!this.secureOut) {
-            logger.error('SparkCore - sendMessage before READY', { coreID: this.getHexCoreID() });
-            return;
-        }
-        this.secureOut.write(msg, null, null);
-        //logger.log('Sent message of type: ', name, ' containing ', data,
-        //        'BYTES: ' + msg.toString('hex'));
+      if (!this._cipherStream) {
+        logger.error(
+          'Client - sendMessage before READY',
+          { coreID: this.getHexCoreID() },
+        );
+        return;
+      }
 
-    },
+      this._cipherStream.write(message, null, null);
 
-
-    parseMessage: function (data): Message {
-        //we're assuming data is a serialized CoAP message
-        return messages.unwrap(data);
+      return token || 0;
     },
 
     /**
@@ -549,14 +638,12 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
      * Gets or wraps
      * @returns {null}
      */
-    getIncrSendCounter: function () {
-        this.sendCounter++;
+    _incrementSendCounter: function (): void {
+      this._sendCounter++;
 
-        if (this.sendCounter >= COUNTER_MAX) {
-            this.sendCounter = 0;
-        }
-
-        return this.sendCounter;
+      if (this._sendCounter >= COUNTER_MAX) {
+        this._sendCounter = 0;
+      }
     },
 
 
@@ -604,7 +691,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         if (!request) {
             return null;
         }
-        return messages.getResponseType(request);
+        return Messages.getResponseType(request);
     },
 
     /**
@@ -644,7 +731,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     setVariable: function (name, data, callback) {
 
         /*TODO: data type! */
-        var payload = messages.toBinary(data);
+        var payload = Messages.toBinary(data);
         var token = this.sendMessage('VariableRequest', { name: name }, payload);
 
         //are we expecting a response?
@@ -694,7 +781,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         //TODO:  var listenHandler = this.listenFor('RaiseYourHandReturn',  ... );
 
         //logger.log('RaiseYourHand: asking core to signal? ' + showSignal);
-        var token = this.sendMessage('RaiseYourHand', { _writeCoapUri: messages.raiseYourHandUrlGenerator(showSignal) }, null);
+        var token = this.sendMessage('RaiseYourHand', { _writeCoapUri: Messages.raiseYourHandUrlGenerator(showSignal) }, null);
         this.listenFor('RaiseYourHandReturn', null, token, function () {
             clearTimeout(timer);
             callback(true);
@@ -738,48 +825,47 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
     },
 
 
-    _isSocketAvailable: function (requester, onError, messageName) {
-        if (!this._owner || (this._owner == requester)) {
-            return true;
-        }
-        else {
-            //either call their callback, or log the error
-            var msg = 'this client has an exclusive lock';
-            if (onError) {
-                process.nextTick(function () {
-                    onError(msg);
-                });
-            }
-            else {
-                logger.error(msg, { coreID: this.getHexCoreID(), cache_key: this._connection_key, msgName: messageName });
-            }
+    _isSocketAvailable: function (
+      requester: Object,
+      messageName: string,
+    ): boolean {
+      if (!this._owningFlasher || (this._owningFlasher == requester)) {
+        return true;
+      }
 
-            return false;
-        }
+      logger.error(
+        'This client has an exclusive lock',
+        {
+          coreID: this.getHexCoreID(),
+          cache_key: this._connectionKey,
+          msgName: messageName,
+        },
+      );
+
+      return false;
     },
 
-    takeOwnership: function (obj, onError) {
-        if (this._owner) {
-            logger.error('already owned', { coreID: this.getHexCoreID() });
-            if (onError) {
-                onError('Already owned');
-            }
-            return false;
+    takeOwnership: function (flasher: Flasher): boolean {
+        if (this._owningFlasher) {
+          logger.error('already owned', { coreID: this.getHexCoreID() });
+          return false;
         }
-        else {
-            //only permit 'obj' to send messages
-            this._owner = obj;
-            return true;
-        }
+        //only permit the owning object to send messages.
+        this._owningFlasher = flasher;
+        return true;
     },
-    releaseOwnership: function (obj) {
-        logger.log('releasing flash ownership ', { coreID: this.getHexCoreID() });
-        if (this._owner == obj) {
-            this._owner = null;
-        }
-        else if (this._owner) {
-            logger.error('cannot releaseOwnership, ', obj, ' isn\'t the current owner ', { coreID: this.getHexCoreID() });
-        }
+    releaseOwnership: function (flasher: Flasher): void {
+      logger.log('releasing flash ownership ', { coreID: this.getHexCoreID() });
+      if (this._owningFlasher == flasher) {
+        this._owningFlasher = null;
+      } else if (this._owningFlasher) {
+        logger.error(
+          'cannot releaseOwnership, ',
+          flasher,
+          ' isn\'t the current owner ',
+          { coreID: this.getHexCoreID() },
+        );
+      }
     },
 
 
@@ -853,7 +939,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
             if (msg && msg.getPayload) {
                 //leaving raw payload in response message for now, so we don't shock our users.
                 data = msg.getPayload();
-                niceResult = messages.fromBinary(data, varType);
+                niceResult = Messages.fromBinary(data, varType);
             }
         }
         catch (ex) {
@@ -890,7 +976,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         var niceResult = null;
         try {
             if (msg && msg.getPayload) {
-                niceResult = messages.fromBinary(msg.getPayload(), varType);
+                niceResult = Messages.fromBinary(msg.getPayload(), varType);
             }
         }
         catch (ex) {
@@ -950,7 +1036,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         }
 
         //  'HelloWorld': { returns: 'string', args: [ {'name': 'string'}, {'adjective': 'string'}  ]} };
-        return messages.buildArguments(args, fn.args);
+        return Messages.buildArguments(args, fn.args);
     },
 
     /**
@@ -1015,12 +1101,12 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
         //name: '/E/TestEvent', trim the '/e/' or '/E/' off the start of the uri path
         var obj = {
-            name: msg.getUriPath().substr(3),
-            is_public: isPublic,
-            ttl: msg.getMaxAge(),
-            data: msg.getPayload().toString(),
-            published_by: this.getHexCoreID(),
-            published_at: moment().toISOString()
+          name: msg.getUriPath().substr(3),
+          is_public: isPublic,
+          ttl: msg.getMaxAge(),
+          data: msg.getPayload().toString(),
+          published_by: this.getHexCoreID(),
+          published_at: moment().toISOString()
         };
 
         //snap obj.ttl to the right value.
@@ -1047,7 +1133,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
    	        	global.server.setCoreAttribute(coreid, 'claimCode', claimCode);
 	        	//claim device
 	        	if (global.api) {
-	        		global.api.linkDevice(coreid, claimCode, this.spark_product_id);
+	        		global.api.linkDevice(coreid, claimCode, this._particleProductId);
 	        	}
 	        }
         }
@@ -1126,7 +1212,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
         //moment#unix outputs a Unix timestamp (the number of seconds since the Unix Epoch).
         var stamp = moment().utc().unix();
-        var binVal = messages.toBinary(stamp, 'uint32');
+        var binVal = Messages.toBinary(stamp, 'uint32');
 
         this.sendReply('GetTimeReturn', msg.getId(), binVal, msg.getToken());
     },
@@ -1207,7 +1293,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         }
 
         data = (data) ? data.toString() : data;
-        this.sendNONTypeMessage(msgName, { event_name: name, _raw: rawFn }, data);
+        this.sendMessage(msgName, { event_name: name, _raw: rawFn }, data);
     },
 
 //    _wifiScan: null,
@@ -1278,7 +1364,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 
         if (fnState && fnState.v) {
             //'v':{'temperature':2}
-            fnState.v = messages.translateIntTypes(fnState.v);
+            fnState.v = Messages.translateIntTypes(fnState.v);
         }
 
         this.coreFnState = fnState;
@@ -1324,7 +1410,7 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
 //        var elapsed = ((new Date()) - this._lastMessageTime) / 1000;
 //        if (elapsed > 30) {
 //            //we don't expect a response, but by trying to send anything, the socket should blow up if disconnected.
-//            logger.log('Socket seems quiet, checking...', { coreID: this.getHexCoreID(), elapsed: elapsed,  cache_key: this._connection_key });
+//            logger.log('Socket seems quiet, checking...', { coreID: this.getHexCoreID(), elapsed: elapsed,  cache_key: this._connectionKey });
 //            this.sendMessage('SocketPing');
 //            this._lastMessageTime = new Date(); //don't check for another 30 seconds.
 //        }
@@ -1342,9 +1428,9 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
         }
 
         try {
-            var logInfo = { coreID: this.getHexCoreID(), cache_key: this._connection_key };
-            if (this._connStartTime) {
-                var delta = ((new Date()) - this._connStartTime) / 1000.0;
+            var logInfo = { coreID: this.getHexCoreID(), cache_key: this._connectionKey };
+            if (this._connectionStartTime) {
+                var delta = ((new Date()) - this._connectionStartTime) / 1000.0;
                 logInfo['duration'] = delta;
             }
 
@@ -1365,22 +1451,22 @@ SparkCore.prototype = extend(ISparkCore.prototype, EventEmitter.prototype, {
             logger.error('Disconnect TCPSocket error: ' + ex);
         }
 
-        if (this.secureIn) {
+        if (this._decipherStream) {
             try {
-                this.secureIn.end();
-                this.secureIn = null;
+                this._decipherStream.end();
+                this._decipherStream = null;
             }
             catch(ex) {
-                logger.error('Error cleaning up secureIn ', ex);
+                logger.error('Error cleaning up _decipherStream ', ex);
             }
         }
-        if (this.secureOut) {
+        if (this._cipherStream) {
             try {
-                this.secureOut.end();
-                this.secureOut = null;
+                this._cipherStream.end();
+                this._cipherStream = null;
             }
             catch(ex) {
-                logger.error('Error cleaning up secureOut ', ex);
+                logger.error('Error cleaning up _cipherStream ', ex);
             }
         }
 
