@@ -129,7 +129,7 @@ class Messages {
     messageCounterId: number,
     params: Object,
     data: Buffer,
-    token?: number,
+    token: ?number,
     onError?: Function,
   ): ?Buffer => {
       const specification = this._specifications.get(messageName);

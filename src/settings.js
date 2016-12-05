@@ -51,5 +51,5 @@ module.exports = {
   	socketTimeout: 31000, //31 seconds
 
     verboseProtocol: false,
-
+    showVerboseDeviceLogs: false,
 };
