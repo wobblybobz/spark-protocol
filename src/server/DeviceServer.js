@@ -80,7 +80,7 @@ DeviceServer.prototype = {
                 ext = utilities.getFilenameExt(filename),
                 id = utilities.filenameNoExt(utilities.filenameNoExt(filename));
 
-            if (ext == ".pem") {
+            if (ext===".pem") {
             	if (!this._allIDs[id]) {
                 	console.log("found pem " + id);
                 	this._allIDs[id] = true;
@@ -91,7 +91,7 @@ DeviceServer.prototype = {
                     attribsByID[id] = core;
                 }
             }
-            else if (ext == ".json") {
+            else if (ext===".json") {
                 try {
                     var contents = fs.readFileSync(fullPath);
                     var core = JSON.parse(contents);
@@ -155,7 +155,7 @@ DeviceServer.prototype = {
         var cores = this._attribsByID;
         for (var coreid in cores) {
             var attribs = cores[coreid];
-            if (attribs && (attribs.name == name)) {
+            if (attribs && (attribs.name===name)) {
                 return this._allCoresByID[coreid];
             }
         }
@@ -229,7 +229,7 @@ DeviceServer.prototype = {
                             that.publishSpecialEvents('spark/status', 'online', coreid);
                         });
                         core.on('disconnect', function (msg) {
-                        	if(core.coreID in that._allCoresByID && that._allCoresByID[core.coreID]._connectionKey == core._connectionKey) {
+                        	if(core.coreID in that._allCoresByID && that._allCoresByID[core.coreID]._connectionKey===core._connectionKey) {
                                 that.publishSpecialEvents('spark/status', 'offline', core.coreID);
                             }
                             logger.log("Session ended for " + core._connectionKey);

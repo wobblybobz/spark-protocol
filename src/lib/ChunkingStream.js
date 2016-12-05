@@ -104,7 +104,7 @@ class ChunkingStream extends Transform {
       chunk.copy(remainder, 0, endIndex, chunk.length);
     }
 
-    if (this._incomingIndex == this._expectedLength && this._incomingBuffer) {
+    if (this._incomingIndex===this._expectedLength && this._incomingBuffer) {
       this.push(this._incomingBuffer);
       this._incomingBuffer = null;
       this._incomingIndex = -1;

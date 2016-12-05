@@ -352,7 +352,7 @@ class Flasher {
 					this,
 				);
 				maxTries--;
-			}	else if (maxTries == 0) {
+			}	else if (maxTries===0) {
 				 //give us one last LONG wait, for really really slow connections.
 				 this.failWatch('UpdateReady', 90, tryBeginUpdate);
 				 sentStatus = this._client.sendMessage(

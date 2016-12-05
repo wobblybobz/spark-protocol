@@ -297,7 +297,7 @@ module.exports = {
     loadServerKeys: function (filename, passFile, envVar) {
 
         var password = null;
-        if (envVar && (envVar != '')) {
+        if (envVar && (envVar !== '')) {
             password = process.env[envVar];
 
             if (!password) {
@@ -307,7 +307,7 @@ module.exports = {
                 password = new Buffer(password, 'base64');
             }
         }
-        else if (passFile && (passFile != '') && (fs.existsSync(passFile))) {
+        else if (passFile && (passFile !== '') && (fs.existsSync(passFile))) {
             password = fs.readFileSync(passFile);
 
             if (!password) {

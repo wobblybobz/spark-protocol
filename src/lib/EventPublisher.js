@@ -99,7 +99,7 @@ class EventPublisher extends EventEmitter {
         coreId: string
       ): void => {
         const emitName = isPublic ? "public" : "private";
-        if (typeof(obj.emit) == 'function') {
+        if (typeof(obj.emit)==='function') {
           obj.emit(emitName, name, data, ttl, publishedAt, coreId);
         }
       };

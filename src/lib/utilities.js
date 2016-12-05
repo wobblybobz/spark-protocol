@@ -57,10 +57,10 @@ module.exports = {
      * @param right
      */
     bufferCompare: function (left, right) {
-        if ((left == null) && (right == null)) {
+        if ((left===null) && (right===null)) {
             return true;
         }
-        else if ((left == null) || (right == null)) {
+        else if ((left===null) || (right===null)) {
             return false;
         }
 
@@ -73,12 +73,12 @@ module.exports = {
 
         //logger.log('left: ', left.toString('hex'), ' right: ', right.toString('hex'));
 
-        var same = (left.length == right.length),
+        var same = (left.length===right.length),
             i = 0,
             max = left.length;
 
         while (i < max) {
-            same &= (left[i] == right[i]);
+            same &= (left[i]===right[i]);
             i++;
         }
 
@@ -101,7 +101,7 @@ module.exports = {
             if (!right.hasOwnProperty(prop)) {
                 continue;
             }
-            matches &= (left[prop] == right[prop]);
+            matches &= (left[prop]===right[prop]);
         }
         return matches;
     },
@@ -175,7 +175,7 @@ module.exports = {
     arrayContains: function (arr, obj) {
         if (arr && (arr.length > 0)) {
             for (var i = 0; i < arr.length; i++) {
-                if (arr[i] == obj) {
+                if (arr[i]===obj) {
                     return true;
                 }
             }
@@ -193,7 +193,7 @@ module.exports = {
                     continue;
                 }
 
-                if (key.toLowerCase() == str) {
+                if (key.toLowerCase()===str) {
                     return true;
                 }
             }
@@ -303,7 +303,7 @@ module.exports = {
         }
 
         var idx = str.indexOf(sub);
-        return (idx == (str.length - sub.length));
+        return (idx===(str.length - sub.length));
     },
     getFilenameExt: function (filename) {
         if (!filename || (filename.length === 0)) {
@@ -370,7 +370,7 @@ module.exports = {
 	 * @returns {*}
 	 */
 	convertDERtoPEM: function(buf) {
-		if (!buf || (buf.length == 0)) {
+		if (!buf || (buf.length===0)) {
 			return null;
 		}
 		var str;

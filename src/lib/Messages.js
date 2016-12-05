@@ -214,7 +214,7 @@ class Messages {
         return null;
     }
 
-    for (var varName in varState) {
+    for (let varName in varState) {
       if (!varState.hasOwnProperty(varName)) {
         continue;
       }
@@ -223,7 +223,7 @@ class Messages {
       if (typeof intType === 'number') {
         const str = this.getNameFromTypeInt(intType);
 
-        if (str != null) {
+        if (str !== null) {
           varState[varName] = str;
         }
       }
@@ -282,7 +282,7 @@ class Messages {
 
     switch (typeName) {
       case 'bool': {
-        return newBuffer.shiftByte() != 0;
+        return newBuffer.shiftByte() !== 0;
       }
 
       case 'crc': {
