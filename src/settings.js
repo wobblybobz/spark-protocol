@@ -24,7 +24,7 @@ var path = require('path');
 module.exports = {
     PORT: 5683,
     HOST: "localhost",
-
+    environment: 'prn',
 
     /**
      * Your server crypto keys!
@@ -52,4 +52,5 @@ module.exports = {
 
     verboseProtocol: false,
     showVerboseDeviceLogs: false,
+    logApiMessages: true,
 };

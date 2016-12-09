@@ -32,11 +32,6 @@ import {BufferBuilder, BufferReader} from 'h5.buffers';
 import MessageSpecifications from './MessageSpecifications';
 import nullthrows from 'nullthrows';
 
-/**
- * Interface for the Spark Core Messages
- * @constructor
- */
-
 const _getRouteKey = (code: string, path: string): string => {
   var uri = code + path;
 
@@ -127,14 +122,13 @@ class Messages {
   wrap = (
     messageName: string,
     messageCounterId: number,
-    params: Object,
-    data: Buffer,
+    params: ?Object,
+    data: ?Buffer,
     token: ?number,
-    onError?: Function,
   ): ?Buffer => {
       const specification = this._specifications.get(messageName);
       if (!specification) {
-        onError && onError('Unknown Message Type');
+        logger.error('Unknown Message Type');
         return null;
       }
 
@@ -261,7 +255,7 @@ class Messages {
     }
   };
 
-  tryfromBinary = (buffer: Buffer, typeName: string): any => {
+  tryfromBinary = <TType>(buffer: Buffer, typeName: string): ?TType => {
       var result = null;
       try {
         result = this.fromBinary(buffer, typeName);
@@ -271,18 +265,18 @@ class Messages {
       return result;
   };
 
-  fromBinary = (buffer: Buffer, typeName: string): any => {
+  fromBinary = <TType>(buffer: Buffer, typeName: string): TType => {
     //logger.log('converting a ' + name + ' fromBinary input was ' + buf);
 
     if (!Buffer.isBuffer(buffer)) {
-        buffer = new Buffer(buffer);
+      buffer = new Buffer(buffer);
     }
 
     var newBuffer = new BufferReader(buffer);
 
     switch (typeName) {
       case 'bool': {
-        return newBuffer.shiftByte() !== 0;
+        return !!newBuffer.shiftByte();
       }
 
       case 'crc': {
@@ -312,12 +306,12 @@ class Messages {
       }
 
       case 'buffer': {
-        return buffer;
+        return newBuffer.getPayload();
       }
 
       case 'string':
       default: {
-        return buffer.toString();
+        return newBuffer.getPayload().toString();
       }
     }
   };
@@ -368,7 +362,7 @@ class Messages {
     return bufferBuilder.toBuffer();
   };
 
-  buildArguments = (value: Object, args: Array<Object>): ?Buffer => {
+  buildArguments = (value: Object, args: Array<Array<any>>): ?Buffer => {
     console.log('TODO: Type `buildArguments`');
     try {
       var bufferBuilder = new BufferBuilder();

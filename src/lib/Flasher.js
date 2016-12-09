@@ -55,7 +55,7 @@ class Flasher {
 	_chunk: ?Buffer = null;
 	_chunkSize: number = CHUNK_SIZE;
 	_chunkIndex: number;
-	_client: SparkCore = null;
+	_client: SparkCore;
 	_fileBuffer: ?Buffer = null;
 	_fileName: ?string = null;
 	_fileStream: ?Object = null;  // TODO - Type this correctly
@@ -79,14 +79,16 @@ class Flasher {
 	_onStarted: ?Function = null;
 	_chunkReceivedHandler: ?Function = null;
 
+	constructor(client: SparkCore) {
+		this._client = client;
+	}
+
 	startFlashFile = (
 		filename: string,
-		client: Object,
 		onSuccess: Function,
 		onError: Function,
 	): void => {
 		this._fileName = filename;
-		this._client = client;
 		this._onSuccess = onSuccess;
 		this._onError = onError;
 
@@ -136,13 +138,11 @@ class Flasher {
 
 	startFlashBuffer = (
 		buffer: Buffer,
-		client: Object,
 		onSuccess: Function,
 		onError: Function,
 		onStarted: Function,
 	): void => {
 		this._fileBuffer = buffer;
-		this._client = client;
 		this._onSuccess = onSuccess;
 		this._onError = onError;
 		this._onStarted = onStarted;
@@ -259,40 +259,28 @@ class Flasher {
 		}
 	}
 
-	beginUpdate = (): void =>{
+	beginUpdate = async (): Promise<any> => {
 		let maxTries = 3;
 		// NOTE: this is 6 because it's double the ChunkMissed 3 second delay
 		const resendDelay = 6;
 
 		// Wait for UpdateReady — sent by Core to indicate readiness to receive
 		// firmware chunks
-		this._client.listenFor(
-			'UpdateReady',
-			null,
-			null,
-			(message: Message): void => {
+		const message = await Promise.race([
+			this._client.listenFor(
+				'UpdateReady',
+				/*uri*/ null,
+				/*token*/ null,
+			).then((message: ?Message): ?Message => {
 				this.clearWatch('UpdateReady');
-				// we got an ok, stop listening for err
 				this._client.removeAllListeners('msg_updateabort');
-
-				let version = 0;
-				if (message && (message.getPayloadLength() > 0)) {
-					version = messages.fromBinary(message.getPayload(), 'byte');
-				}
-				this._protocolVersion = version;
-				this._startStep('send_file');
-				const onStarted = this._onStarted;
-				onStarted && process.nextTick((): void => onStarted());
-			},
-			true,
-		);
-
-		//client didn't like what we had to say.
-		this._client.listenFor(
-			'UpdateAbort',
-			/*uri*/ null,
-			/*token*/ null,
-			(message: Message): void => {
+				return message;
+			}),
+			this._client.listenFor(
+				'UpdateAbort',
+				/*uri*/ null,
+				/*token*/ null,
+			).then((message: ?Message): ?Message => {
 				this.clearWatch('UpdateReady');
 				let failReason = '';
 				if (message && message.getPayloadLength() > 0) {
@@ -300,10 +288,18 @@ class Flasher {
 				}
 
 				this.failed('aborted ' + failReason);
-			},
-			/*once*/ true
-		);
+				return message;
+			}),
+		]);
 
+		let version = 0;
+		if (message && message.getPayloadLength() > 0) {
+			version = messages.fromBinary(message.getPayload(), 'byte');
+		}
+		this._protocolVersion = version;
+		this._startStep('send_file');
+		const onStarted = this._onStarted;
+		onStarted && process.nextTick((): void => onStarted());
 
 		const tryBeginUpdate = () => {
 			var sentStatus = true;
@@ -347,8 +343,6 @@ class Flasher {
 					'UpdateBegin',
 					null,
 					bufferBuilder.toBuffer(),
-					null,
-					this.failed,
 					this,
 				);
 				maxTries--;
@@ -359,8 +353,6 @@ class Flasher {
 					 'UpdateBegin',
 					 null,
 					 null,
-					 null,
-					 this.failed,
 					 this,
 				 );
 				 maxTries--;
@@ -378,7 +370,7 @@ class Flasher {
 		tryBeginUpdate();
 	}
 
-	sendFile = (): void => {
+	sendFile = async (): Promise<*> => {
 		this._chunk = null;
 		this._lastCrc = null;
 
@@ -399,14 +391,13 @@ class Flasher {
 			);
 			this._sendAllChunks();
 		}	else {
-			this._chunkReceivedHandler = this.onChunkResponse;
-			this._client.listenFor(
+			const result = await this._client.listenFor(
 				'ChunkReceived',
 				null,
 				null,
-				this._chunkReceivedHandler,
-				false,
 			);
+
+			this.onChunkResponse(result);
 
 			this.failWatch('CompleteTransfer', 600, this.failed);
 
@@ -437,44 +428,42 @@ class Flasher {
 		this._lastCrc = this._chunk ? crc32.unsigned(chunk) : null;
 	}
 
-	sendChunk = (chunkIndex?: number): void => {
+	sendChunk = async (chunkIndex?: number): Promise<*> => {
 		const includeIndex = this._protocolVersion > 0;
 
-		if (this._chunk) {
-			const encodedCrc = messages.toBinary(
-				nullthrows(this._lastCrc),
-				'crc',
-			);
-
-			this._client.sendMessage(
-				'Chunk',
-				{
-					crc: encodedCrc,
-					_writeCoapUri: (message: Message): Message => {
-						message.addOption(
-							new Option(Message.Option.URI_PATH, new Buffer('c')),
-						);
-						message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
-						if (includeIndex) {
-							const indexBinary = messages.toBinary(
-								chunkIndex || null, 
-								'uint16',
-							);
-							message.addOption(
-								new Option(Message.Option.URI_QUERY, indexBinary),
-							);
-						}
-						return message;
-					},
-				},
-				this._chunk,
-				null,
-				null,
-				this,
-			);
-		} else {
-			this.onAllChunksDone();
+		if (!this._chunk) {
+			await this.onAllChunksDone();
+			return;
 		}
+		const encodedCrc = messages.toBinary(
+			nullthrows(this._lastCrc),
+			'crc',
+		);
+
+		this._client.sendMessage(
+			'Chunk',
+			{
+				crc: encodedCrc,
+				_writeCoapUri: (message: Message): Message => {
+					message.addOption(
+						new Option(Message.Option.URI_PATH, new Buffer('c')),
+					);
+					message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
+					if (includeIndex) {
+						const indexBinary = messages.toBinary(
+							chunkIndex || null,
+							'uint16',
+						);
+						message.addOption(
+							new Option(Message.Option.URI_QUERY, indexBinary),
+						);
+					}
+					return message;
+				},
+			},
+			this._chunk,
+			this,
+		);
 	}
 
 	onChunkResponse = (message: Buffer): void => {
@@ -509,7 +498,7 @@ class Flasher {
 		this.onAllChunksDone();
 	}
 
-	onAllChunksDone = (): void => {
+	onAllChunksDone = async (): Promise<*> => {
 		logger.log('on response, no chunk, transfer done!');
 		if (this._chunkReceivedHandler) {
 			this._client.removeListener(
@@ -522,24 +511,21 @@ class Flasher {
 		this.clearWatch('CompleteTransfer');
 
 		if (
-			!this._client.sendMessage('UpdateDone', null, null, null, null, this)
+			!this._client.sendMessage('UpdateDone', null, null, this)
 		) {
 			logger.log('Flasher - failed sending updateDone message');
 		}
 
 		if (this._protocolVersion > 0) {
-			this._chunkReceivedHandler = this._waitForMissedChunks.bind(this, true);
-			this._client.listenFor(
+			const result = await this._client.listenFor(
 				'ChunkReceived',
 				null,
 				null,
-				this._chunkReceivedHandler,
-				false,
 			);
 
 			// fast ota, lets stick around until 10 seconds after the last chunkmissed
 			// message
-			this._waitForMissedChunks();
+			this._waitForMissedChunks(true);
 		} else {
 			this.clearWatch('CompleteTransfer');
 			this._startStep('teardown');
@@ -551,7 +537,7 @@ class Flasher {
 	 * chunkmissed message.
 	 * @private
 	 */
-	_waitForMissedChunks = (wasAck?: boolean): void => {
+	_waitForMissedChunks = async (wasAck?: boolean): Promise<*> => {
 		if (this._protocolVersion <= 0) {
 			//this doesn't apply to normal slow ota
 			return;
@@ -584,7 +570,7 @@ class Flasher {
 	getLogInfo = (): {cache_key?: string, coreID: string} => {
 		if (this._client) {
 			return {
-				cache_key: this._client._connectionKey,
+				cache_key: this._client._connectionKey || undefined,
 				coreID: this._client.getHexCoreID(),
 			};
 		}	else {
@@ -618,7 +604,6 @@ class Flasher {
 		this._client.sendReply(
 			'ChunkMissedAck',
 			message.getId(),
-			null,
 			null,
 			null,
 			this,

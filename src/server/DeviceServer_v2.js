@@ -71,8 +71,7 @@ class DeviceServer {
           );
 
           // TODO: This is really shitty. Refactor `SparkCore` and clean this up
-          var core = new SparkCore();
-          core.socket = socket;
+          var core = new SparkCore(socket);
           core.startupProtocol();
           core._connectionKey = key;
 
@@ -98,7 +97,7 @@ class DeviceServer {
             const coreId = core.getHexCoreID();
             this._devicesById.delete(coreId);
             this._publishSpecialEvent('particle/status', 'offline', coreId);
-            logger.log("Session ended for " + core._connectionKey);
+            logger.log("Session ended for " + (core._connectionKey || ''));
           });
         } catch (exception) {
           logger.error("Device startup failed " + exception);

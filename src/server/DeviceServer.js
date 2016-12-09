@@ -47,8 +47,16 @@ DeviceServer.prototype = {
     _attribsByID: null,
     _allIDs: null,
 
+        _serverReady: null,
+        _serverFailed: null,
+        _severReadyPromise: null,
 
     init: function () {
+
+      this._severReadyPromise = new Promise((resolve, reject) => {
+        this._serverReady = resolve;
+        this._serverFailed = reject;
+      });
         this.loadCoreData();
     },
 
@@ -135,7 +143,7 @@ DeviceServer.prototype = {
     },
 
     getCore: function (coreid) {
-        return this._allCoresByID[coreid];
+      return this._allCoresByID[coreid];
     },
     getCoreAttributes: function (coreid) {
         //assert this exists and is set properly when asked.
@@ -245,8 +253,9 @@ DeviceServer.prototype = {
         global.cores = _cores;
         global.publisher = new EventPublisher();
         eventDebug(server, 'COAP Server')
-        server.on('error', function () {
+        server.on('error', () => {
             logger.error("something blew up ", arguments);
+            this._serverFailed();
         });
 
 
@@ -283,11 +292,16 @@ DeviceServer.prototype = {
         //
         //  Wait for the keys to be ready, then start accepting connections
         //
-        server.listen(settings.PORT, function () {
+        server.listen(settings.PORT, () => {
             logger.log("server started", { host: settings.HOST, port: settings.PORT });
+            this._serverReady();
         });
 
 
+    },
+
+    onReady: function(): Promise<*> {
+      return this._severReadyPromise;
     }
 
 };
