@@ -157,7 +157,7 @@ class DeviceServer {
     console.log('init');
   }
 
-  addCoreKey(coreid, public_key) {
+  addCoreKey(coreID: string, publicKey: Object) {
     console.log('addCoreKey');
   }
 
@@ -165,20 +165,20 @@ class DeviceServer {
     console.log('loadCoreData');
   }
 
-  saveCoreData(coreid, attribs) {
+  saveCoreData(coreID: string, attribs: Object) {
     console.log('saveCoreData');
   }
 
-  getCore(coreId) {
-    return this._devicesById.get(coreId);
+  getCore(coreID: string) {
+    return this._devicesById.get(coreID);
   }
-  getCoreAttributes(coreId) {
-    return this._config.deviceAttributeRepository.getById(coreId);
+  getCoreAttributes(coreID: string) {
+    return this._config.deviceAttributeRepository.getById(coreID);
   }
-  setCoreAttribute(coreid, name, value) {
+  setCoreAttribute(coreID: string, name: string, value: mixed) {
     console.log('getCoreAttributes');
   }
-  getCoreByName(name) {
+  getCoreByName(name: string) {
     console.log('getCoreByName');
   }
 
