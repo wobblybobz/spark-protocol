@@ -58,7 +58,7 @@ class Flasher {
 	_client: SparkCore;
 	_fileBuffer: ?Buffer = null;
 	_fileName: ?string = null;
-	_fileStream: ?Object = null;  // TODO - Type this correctly
+	_fileStream: ?ReadStream = null;
 	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
 	_numChunksMissed: number = 0;
@@ -74,8 +74,8 @@ class Flasher {
 	_ignoreMissedChunks: boolean = false;
 
 	// callbacks
-	_onError: ?Function = null;
-	_onSuccess: ?Function = null;
+	_onError: ?(error: string) => void = null;
+	_onSuccess: ?() => void = null;
 	_onStarted: ?Function = null;
 	_chunkReceivedHandler: ?Function = null;
 
@@ -138,8 +138,8 @@ class Flasher {
 
 	startFlashBuffer = (
 		buffer: Buffer,
-		onSuccess: Function,
-		onError: Function,
+		onSuccess: () => void,
+		onError: (error: string) => void,
 		onStarted: Function,
 	): void => {
 		this._fileBuffer = buffer;
@@ -172,7 +172,7 @@ class Flasher {
 		}
 
 		this.cleanup();
-		this._onError && this._onError(message);
+		this._onError && this._onError(message || '');
 	}
 
 	prepare = (): void => {
@@ -193,8 +193,7 @@ class Flasher {
 				this._startStep('begin_update');
 			}
 		} else {
-			utilities.promiseStreamFile(this._fileName)
-				.promise
+			utilities.promiseStreamFile(nullthrows(this._fileName))
 				.then(
 					(readStream: ReadStream): void => {
 						this._fileStream = readStream;
@@ -232,13 +231,7 @@ class Flasher {
 			//release our file handle
 			const fileStream = this._fileStream;
 			if (fileStream) {
-				if (fileStream.end) {
-					fileStream.end();
-				}
-				if (fileStream.close) {
-					fileStream.close();
-				}
-
+				fileStream.close();
 				this._fileStream = null;
 			}
 
@@ -413,7 +406,7 @@ class Flasher {
 		}
 
 		let chunk = this._chunk = this._fileStream
-			? this._fileStream.read(this._chunkSize)
+			? new Buffer(this._fileStream.read(this._chunkSize) || '')
 			: null;
 
 		//workaround for https://github.com/spark/core-firmware/issues/238
@@ -425,10 +418,10 @@ class Flasher {
 		}
 		this._chunkIndex++;
 		//end workaround
-		this._lastCrc = this._chunk ? crc32.unsigned(chunk) : null;
+		this._lastCrc = chunk ? crc32.unsigned(chunk) : null;
 	}
 
-	sendChunk = async (chunkIndex?: number): Promise<*> => {
+	sendChunk = async (chunkIndex: ?number = null): Promise<*> => {
 		const includeIndex = this._protocolVersion > 0;
 
 		if (!this._chunk) {
@@ -537,7 +530,7 @@ class Flasher {
 	 * chunkmissed message.
 	 * @private
 	 */
-	_waitForMissedChunks = async (wasAck?: boolean): Promise<*> => {
+	_waitForMissedChunks = async (): Promise<*> => {
 		if (this._protocolVersion <= 0) {
 			//this doesn't apply to normal slow ota
 			return;

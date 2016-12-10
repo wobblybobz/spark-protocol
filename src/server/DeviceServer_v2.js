@@ -49,7 +49,7 @@ type DeviceServerConfig = {|
 let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
-  _devicesById: WeakMap<string, SparkCore> = new WeakMap();
+  _devicesById: Map<string, SparkCore> = new Map();
   _eventPublisher: EventPublisher;
 
   constructor(deviceServerConfig: DeviceServerConfig) {
@@ -78,6 +78,7 @@ class DeviceServer {
           core.on('ready', () => {
             logger.log("Device online!");
             const deviceId = core.getHexCoreID();
+            this._devicesById.set(deviceId, core);
             const deviceAttributes = {
               ...this._config.deviceAttributeRepository.getById(deviceId),
               ip: core.getRemoteIPAddress(),
@@ -94,9 +95,9 @@ class DeviceServer {
           });
 
           core.on('disconnect', (message) => {
-            const coreId = core.getHexCoreID();
-            this._devicesById.delete(coreId);
-            this._publishSpecialEvent('particle/status', 'offline', coreId);
+            const deviceId = core.getHexCoreID();
+            this._devicesById.delete(deviceId);
+            this._publishSpecialEvent('particle/status', 'offline', deviceId);
             logger.log("Session ended for " + (core._connectionKey || ''));
           });
         } catch (exception) {
@@ -128,7 +129,6 @@ class DeviceServer {
     //  Wait for the keys to be ready, then start accepting connections
     //
     const serverConfig = {
-      host: this._config.host,
       port: this._config.port,
     };
     server.listen(
@@ -150,7 +150,55 @@ class DeviceServer {
   }
 
   _createCore(): void {
+    console.log('_createCore');
+  }
 
+  init() {
+    console.log('init');
+  }
+
+  addCoreKey(coreid, public_key) {
+    console.log('addCoreKey');
+  }
+
+  loadCoreData() {
+    console.log('loadCoreData');
+  }
+
+  saveCoreData(coreid, attribs) {
+    console.log('saveCoreData');
+  }
+
+  getCore(coreId) {
+    return this._devicesById.get(coreId);
+  }
+  getCoreAttributes(coreId) {
+    return this._config.deviceAttributeRepository.getById(coreId);
+  }
+  setCoreAttribute(coreid, name, value) {
+    console.log('getCoreAttributes');
+  }
+  getCoreByName(name) {
+    console.log('getCoreByName');
+  }
+
+  /**
+   * return all the cores we know exist
+   * @returns {null}
+   */
+  // TODO: Remove this function and have the callers use the repository.
+  getAllCoreIDs() {
+    return this._config.deviceAttributeRepository.getAll().map(
+      core => core.coreID,
+    );
+  }
+
+  /**
+   * return all the cores that are connected
+   * @returns {null}
+   */
+  getAllCores() {
+    console.log('getAllCores');
   }
 }
 

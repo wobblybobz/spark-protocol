@@ -16,39 +16,22 @@
 *   along with Spark-protocol.  If not, see <http://www.gnu.org/licenses/>.
 *
 *   You can download the source here: https://github.com/spark/spark-protocol
+*
+* @flow
+*
 */
 
+import type {ReadStream} from 'fs';
 
-var logger = require('./logger.js');
-var when = require('when');
-var extend = require('xtend');
-var fs = require('fs');
-var path = require('path');
-var settings = require('../settings.js');
-var ursa = require('ursa');
+import logger from './logger.js';
+import when from 'when';
+import extend from 'xtend';
+import fs from 'fs';
+import path from 'path';
+import settings from '../settings.js';
+import ursa from 'ursa';
 
-var utilities;
-module.exports = {
-
-    /**
-     * ensures the function in the provided scope
-     * @param fn
-     * @param scope
-     * @returns {Function}
-     */
-    proxy: function (fn, scope) {
-        return function () {
-            try {
-                return fn.apply(scope, arguments);
-            }
-            catch (ex) {
-                logger.error(ex);
-                logger.error(ex.stack);
-                logger.log('error bubbled up ' + ex);
-            }
-        };
-    },
-
+var utilities = {
     /**
      * Surely there is a better way to do this.
      * NOTE! This function does NOT short-circuit when an in-equality is detected.  This is
@@ -56,33 +39,23 @@ module.exports = {
      * @param left
      * @param right
      */
-    bufferCompare: function (left, right) {
-        if ((left===null) && (right===null)) {
-            return true;
-        }
-        else if ((left===null) || (right===null)) {
-            return false;
-        }
+    bufferCompare: function (left: Buffer, right: Buffer): boolean {
+      if (left === null && right === null) {
+          return true;
+      } else if (left === null || right === null) {
+          return false;
+      }
 
-        if (!Buffer.isBuffer(left)) {
-            left = new Buffer(left);
-        }
-        if (!Buffer.isBuffer(right)) {
-            right = new Buffer(right);
-        }
+      if (!Buffer.isBuffer(left)) {
+          left = new Buffer(left);
+      }
+      if (!Buffer.isBuffer(right)) {
+          right = new Buffer(right);
+      }
 
-        //logger.log('left: ', left.toString('hex'), ' right: ', right.toString('hex'));
+      //logger.log('left: ', left.toString('hex'), ' right: ', right.toString('hex'));
 
-        var same = (left.length===right.length),
-            i = 0,
-            max = left.length;
-
-        while (i < max) {
-            same &= (left[i]===right[i]);
-            i++;
-        }
-
-        return same;
+      return Buffer.compare(left, right) == 0;
     },
 
     /**
@@ -91,268 +64,102 @@ module.exports = {
      * @param left
      * @param right
      */
-    leftHasRightFilter: function (left, right) {
+    leftHasRightFilter: function (
+      left: Object,
+      right: Object,
+    ): boolean {
         if (!left && !right) {
             return true;
         }
-        var matches = true;
 
         for (var prop in right) {
-            if (!right.hasOwnProperty(prop)) {
-                continue;
-            }
-            matches &= (left[prop]===right[prop]);
-        }
-        return matches;
-    },
-
-    promiseDoFile: function (filename, callback) {
-        var deferred = when.defer();
-        fs.exists(filename, function (exists) {
-            if (!exists) {
-                logger.error("File: " + filename + " doesn't exist.");
-                deferred.reject();
-            }
-            else {
-                fs.readFile(filename, function (err, data) {
-                    if (err) {
-                        logger.error("error reading " + filename, err);
-                        deferred.reject();
-                    }
-
-                    if (callback(data)) {
-                        deferred.resolve();
-                    }
-                });
-            }
-        });
-        return deferred;
-    },
-
-    promiseStreamFile: function (filename) {
-        var deferred = when.defer();
-        try {
-            fs.exists(filename, function (exists) {
-                if (!exists) {
-                    logger.error("File: " + filename + " doesn't exist.");
-                    deferred.reject();
-                }
-                else {
-                    var readStream = fs.createReadStream(filename);
-
-                    //TODO: catch can't read file stuff.
-
-                    deferred.resolve(readStream);
-                }
-            });
-        }
-        catch (ex) {
-            logger.error('promiseStreamFile: ' + ex);
-            deferred.reject("promiseStreamFile said " + ex);
-        }
-        return deferred;
-    },
-
-    bufferToHexString: function (buf) {
-        if (!buf || (buf.length <= 0)) {
-            return null;
-        }
-
-        var r = [];
-        for (var i = 0; i < buf.length; i++) {
-            if (buf[i] < 10) {
-                r.push('0');
-            }
-            r.push(buf[i].toString(16));
-        }
-        return r.join('');
-    },
-
-    toHexString: function (val) {
-        return ((val < 10) ? '0' : '') + val.toString(16);
-    },
-
-    arrayContains: function (arr, obj) {
-        if (arr && (arr.length > 0)) {
-            for (var i = 0; i < arr.length; i++) {
-                if (arr[i]===obj) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    },
-
-    arrayContainsLower: function (arr, str) {
-        if (arr && (arr.length > 0)) {
-            str = str.toLowerCase();
-
-            for (var i = 0; i < arr.length; i++) {
-                var key = arr[i];
-                if (!key) {
-                    continue;
-                }
-
-                if (key.toLowerCase()===str) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    },
-
-    /**
-     * filename should be relative from wherever we're running the require, sorry!
-     * @param filename
-     * @returns {*}
-     */
-    tryRequire: function (filename) {
-        try {
-            return require(filename);
-        }
-        catch (ex) {
-            logger.error("tryRequire error " + filename, ex);
-        }
-        return null;
-    },
-
-    tryMixin: function (destObj, newObj) {
-        try {
-            return extend(destObj, newObj);
-        }
-        catch (ex) {
-            logger.error("tryMixin error" + ex);
-        }
-        return destObj;
-    },
-
-    /**
-     * recursively create a list of all files in a directory and all subdirectories
-     * @param dir
-     * @param search
-     * @returns {Array}
-     */
-    recursiveFindFiles: function (dir, search, excludedDirs) {
-        excludedDirs = excludedDirs || [];
-
-        var result = [];
-        var files = fs.readdirSync(dir);
-        for (var i = 0; i < files.length; i++) {
-            var fullpath = path.join(dir, files[i]);
-            var stat = fs.statSync(fullpath);
-            if (stat.isDirectory() && (!excludedDirs.contains(fullpath))) {
-                result = result.concat(utilities.recursiveFindFiles(fullpath, search));
-            }
-            else if (!search || (fullpath.indexOf(search) >= 0)) {
-                result.push(fullpath);
-            }
-        }
-        return result;
-    },
-
-    /**
-     * handle an array of stuff, in order, and don't stop if something fails.
-     * @param arr
-     * @param handler
-     * @returns {promise|*|Function|Promise|when.promise}
-     */
-    promiseDoAllSequentially: function (arr, handler) {
-        var tmp = when.defer();
-        var index = -1;
-        var results = [];
-
-        var doNext = function () {
-            try {
-                index++;
-
-                if (index > arr.length) {
-                    tmp.resolve(results);
-                }
-
-                var file = arr[index];
-                var promise = handler(file);
-                if (promise) {
-                    when(promise).then(function (result) {
-                        results.push(result);
-                        process.nextTick(doNext);
-                    }, function () {
-                        process.nextTick(doNext);
-                    });
-//                    when(promise).ensure(function () {
-//                        process.nextTick(doNext);
-//                    });
-                }
-                else {
-                    //logger.log('skipping bad promise');
-                    process.nextTick(doNext);
-                }
-            }
-            catch (ex) {
-                logger.error("pdas error: " + ex);
-            }
-        };
-
-        process.nextTick(doNext);
-
-        return tmp.promise;
-    },
-
-    endsWith:  function(str, sub) {
-        if (!str || !sub) {
+          if (!right.hasOwnProperty(prop)) {
+              continue;
+          }
+          if (left[prop] !== right[prop]) {
             return false;
+          }
         }
 
-        var idx = str.indexOf(sub);
-        return (idx===(str.length - sub.length));
-    },
-    getFilenameExt: function (filename) {
-        if (!filename || (filename.length === 0)) {
-            return filename;
-        }
-
-        var idx = filename.lastIndexOf('.');
-        if (idx >= 0) {
-            return filename.substr(idx);
-        }
-        else {
-            return filename;
-        }
-    },
-    filenameNoExt: function (filename) {
-        if (!filename || (filename.length === 0)) {
-            return filename;
-        }
-
-        var idx = filename.lastIndexOf('.');
-        if (idx >= 0) {
-            return filename.substr(0, idx);
-        }
-        else {
-            return filename;
-        }
+        return true;
     },
 
-    get_core_key: function(coreid) {
+    promiseStreamFile: function (fileName: string): Promise<ReadStream> {
+      return new Promise((resolve, reject) => {
+        try {
+          fs.exists(fileName, (exists): void => {
+            if (!exists) {
+              logger.error('File: ' + fileName + ' doesn\'t exist.');
+              reject();
+            } else {
+              resolve(fs.createReadStream(fileName));
+            }
+          });
+        } catch (exception) {
+          logger.error('promiseStreamFile: ' + exception);
+          reject('promiseStreamFile said ' + exception);
+        }
+      });
+    },
+
+    toHexString: function (value: number) {
+      return (value < 10 ? '0' : '') + value.toString(16);
+    },
+
+    getFilenameExt: function (fileName: string): string {
+      if (!fileName || !fileName.length) {
+        return fileName;
+      }
+
+      const index = fileName.lastIndexOf('.');
+      if (index >= 0) {
+        return fileName.substr(index);
+      } else {
+        return fileName;
+      }
+    },
+
+    filenameNoExt: function (fileName: string): string {
+      if (!fileName || (fileName.length === 0)) {
+        return fileName;
+      }
+
+      const index = fileName.lastIndexOf('.');
+      if (index >= 0) {
+        return fileName.substr(0, index);
+      } else {
+        return fileName;
+      }
+    },
+
+    get_core_key: function(coreId: string): Object {
       const keyFile = path.join(
-        global.settings.coreKeysDir || settings.coreKeysDir,
-        coreid + ".pub.pem",
+        global.settings && global.settings.coreKeysDir || settings.coreKeysDir,
+        coreId + '.pub.pem',
       );
       if (!fs.existsSync(keyFile)) {
-        logger.log("Expected to find public key for core " + coreid + " at " + keyFile);
-        return null;
+        throw `Expected to find public key for core ${coreId} at ${keyFile}`;
       }
-      var keyStr = fs.readFileSync(keyFile).toString();
+      const keyStr = fs.readFileSync(keyFile).toString();
       return ursa.createPublicKey(keyStr, 'binary');
     },
 
-	save_handshake_key: function(coreid, pem) {
-		var keyFile = path.join(global.settings.coreKeysDir || settings.coreKeysDir, coreid + "_handshake.pub.pem");
-		if (!fs.existsSync(keyFile)) {
+  	save_handshake_key: function(coreId: string, pem: string) {
+  		const keyFile = path.join(
+        global.settings && global.settings.coreKeysDir || settings.coreKeysDir,
+        coreId + '_handshake.pub.pem',
+      );
+  		if (fs.existsSync(keyFile)) {
+        return;
+      }
 
-			logger.log("I saved a key given during the handshake, (remove the _handshake from the filename to accept this device)", keyFile);
-			fs.writeFileSync(keyFile, pem);
-		}
-	},
+  		logger.log(
+        'I saved a key given during the handshake, (remove the _handshake ' +
+          'from the filename to accept this device)',
+        keyFile,
+      );
+  		fs.writeFileSync(keyFile, pem);
+  	},
 
     /**
 	 * base64 encodes raw binary into
@@ -369,31 +176,31 @@ module.exports = {
 	 * @param buf
 	 * @returns {*}
 	 */
-	convertDERtoPEM: function(buf) {
-		if (!buf || (buf.length===0)) {
+	convertDERtoPEM: function(buffer: ?Buffer): ?string {
+		if (!buffer || !buffer.length) {
 			return null;
 		}
-		var str;
+
+    const bufferString = buffer.toString('base64');
 		try {
-			str = buf.toString('base64');
-			var lines = [
-				"-----BEGIN PUBLIC KEY-----"
-			];
-			var i = 0;
-			while (i < str.length) {
-				var chunk = str.substr(i, 64);
-				i += chunk.length;
-				lines.push(chunk);
-			}
-			lines.push("-----END PUBLIC KEY-----");
-			return lines.join("\n");
-		}
-		catch(ex) {
-			logger.error("error converting DER to PEM, was: " + str);
+			const lines = [
+        '-----BEGIN PUBLIC KEY-----',
+        ...(bufferString.match(/.{1,64}/g) || []),
+        '-----END PUBLIC KEY-----',
+      ];
+			return lines.join('\n');
+		} catch(exception) {
+			logger.error(
+        'error converting DER to PEM, was: ' +
+          bufferString +
+          ' ' +
+          exception,
+      );
 		}
 		return null;
 	},
 
     foo: null
 };
-utilities = module.exports;
+
+export default utilities;

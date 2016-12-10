@@ -906,13 +906,13 @@ class SparkCore extends EventEmitter {
   };
 
   takeOwnership = (flasher: Flasher): boolean => {
-      if (this._owningFlasher) {
-        logger.error('already owned', { coreID: this.getHexCoreID() });
-        return false;
-      }
-      //only permit the owning object to send messages.
-      this._owningFlasher = flasher;
-      return true;
+    if (this._owningFlasher) {
+      logger.error('already owned', { coreID: this.getHexCoreID() });
+      return false;
+    }
+    //only permit the owning object to send messages.
+    this._owningFlasher = flasher;
+    return true;
   };
   releaseOwnership = (flasher: Flasher): void => {
     logger.log('releasing flash ownership ', { coreID: this.getHexCoreID() });
@@ -1020,7 +1020,7 @@ class SparkCore extends EventEmitter {
       const oldProtocolFunctionState = deviceFunctionState.f;
       if (
         oldProtocolFunctionState &&
-        utilities.arrayContainsLower(oldProtocolFunctionState, name)
+        oldProtocolFunctionState.some(fn => fn.toLowerCase() === name)
       ) {
         //logger.log('_transformArguments - using old format', { coreID: this.getHexCoreID() });
         //current / simplified function format (one string arg, int return type)
@@ -1350,13 +1350,16 @@ class SparkCore extends EventEmitter {
 
   HasSparkFunction = (name: string): boolean => {
     //has state, and... the function is an object, or it's in the function array
+    const lowercaseName = name.toLowerCase();
     return !!(
       this._deviceFunctionState &&
       (
         this._deviceFunctionState[name] ||
         (
           this._deviceFunctionState.f &&
-          utilities.arrayContainsLower(this._deviceFunctionState.f, name)
+          this._deviceFunctionState.f.some(
+            fn => fn.toLowerCase() === lowercaseName,
+          )
         )
       )
     );
@@ -1433,4 +1436,5 @@ class SparkCore extends EventEmitter {
     }
   }
 };
-module.exports = SparkCore;
+
+export default SparkCore;

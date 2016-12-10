@@ -16,7 +16,7 @@
 */
 
 import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
-import DeviceServer from './server/DeviceServer';
+import DeviceServer from './server/DeviceServer_v2';
 import FileManager from './repository/FileManager';
 import ServerConfigFileRepository from './repository/ServerConfigFileRepository';
 import SparkCore from './clients/SparkCore';

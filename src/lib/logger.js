@@ -16,14 +16,20 @@
 *   along with Spark-protocol.  If not, see <http://www.gnu.org/licenses/>.
 *
 *   You can download the source here: https://github.com/spark/spark-protocol
+*
+* @flow
+*
 */
 
 
-module.exports = {
-    log: function() {
-        console.log.apply(console, arguments);
-    },
-    error: function() {
-        console.error.apply(console, arguments);
-    },
-};
+class Logger {
+  log(): void {
+    console.log.apply(console, arguments);
+  };
+
+  error(): void {
+    console.error.apply(console, arguments);
+  }
+}
+
+export default new Logger();

@@ -23,10 +23,11 @@ import type {Socket} from 'net';
 import type {Duplex} from 'stream';
 
 import CryptoLib from './ICrypto';
-import utilities from '../lib/utilities.js';
+import utilities from './utilities';
 import ChunkingStream from './ChunkingStream';
-import logger from '../lib/logger.js';
+import logger from './logger';
 import buffers from 'h5.buffers';
+import nullthrows from 'nullthrows';
 
 /*
  Handshake protocol v1
@@ -124,7 +125,7 @@ class Handshake {
       const nonce = await this._sendNonce();
       const data = await dataAwaitable;
       const coreProvidedPem = this._readCoreId(nonce, data);
-      const publicKey = this._getCoreKey(coreProvidedPem);
+      const publicKey = this._getCoreKey(nullthrows(coreProvidedPem));
       const {
         cipherStream,
         decipherStream,
@@ -191,7 +192,7 @@ class Handshake {
     return nonce;
   };
 
-  _readCoreId = (nonce: Buffer, data: Buffer): string => {
+  _readCoreId = (nonce: Buffer, data: Buffer): ?string => {
     //server should read 256 bytes
     //decrypt msg using server private key
     let plaintext;

@@ -31,12 +31,14 @@ class FileManager {
   }
 
   getAllData<TModel>(): Array<TModel> {
-    return fs.readdirSync(this._path).map(
-      fileName => JSON.parse(fs.readFileSync(
-        path.join(this._path, fileName),
-        'utf8',
-      )),
-    );
+    return fs.readdirSync(this._path)
+      .filter(fileName => fileName.endsWith('.json'))
+      .map(
+        fileName => JSON.parse(fs.readFileSync(
+          path.join(this._path, fileName),
+          'utf8',
+        )),
+      );
   }
 
   getFile<TModel>(fileName: string): ?TModel {

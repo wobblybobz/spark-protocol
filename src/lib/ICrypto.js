@@ -21,8 +21,8 @@ var ursa = require('ursa');
 var CryptoStream = require("./CryptoStream").default;
 var when = require('when');
 var fs = require('fs');
-var utilities = require("../lib/utilities.js");
-var logger = require('../lib/logger.js');
+var utilities = require("./utilities.js").default;
+var logger = require('./logger.js').default;
 
 
 /*
@@ -285,15 +285,6 @@ module.exports = {
         return hmac.digest();
     },
 
-    loadServerPublicKey: function(filename) {
-        return utilities.promiseDoFile(filename,function (data) {
-            //CryptoLib.setServerKeys(ursa.createPublicKey(data));
-            CryptoLib.setServerKeys(ursa.createKey(data));
-            logger.log("server public key is: ", CryptoLib.getServerKeys().toPublicPem('binary'));
-            return true;
-        }).promise;
-    },
-
     loadServerKeys: function (filename, passFile, envVar) {
 
         var password = null;
@@ -317,13 +308,11 @@ module.exports = {
         if (!password) {
             password = undefined;
         }
-
         //synchronous version
         if (!fs.existsSync(filename)) { return false; }
 
         var data = fs.readFileSync(filename);
         var keys = ursa.createPrivateKey(data, password);
-
         CryptoLib.setServerKeys(keys);
         logger.log("server public key is: ", keys.toPublicPem('binary'));
         return true;

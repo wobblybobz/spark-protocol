@@ -18,11 +18,14 @@
 *
 */
 
-class BufferStream {
+import {ReadStream} from 'fs';
+
+class BufferStream extends ReadStream {
   _buffer: ?Buffer;
   _index: number = 0;
 
   constructor(buffer: Buffer) {
+    super();
     this._buffer = buffer;
   }
 
@@ -30,7 +33,7 @@ class BufferStream {
     this._index = index;
   }
 
-  read = (size: number): ?Buffer => {
+  read = (size?: number): ?(string | Buffer) => {
     if (!this._buffer) {
       return null;
     }
@@ -51,7 +54,7 @@ class BufferStream {
     return result;
   }
 
-  end = (): void => {
+  close = (): void => {
     this._buffer = null;
   }
 }
