@@ -382,7 +382,6 @@ class Messages {
       logger.error('buildArguments: ', exception);
     }
 
-
     return null;
   };
 

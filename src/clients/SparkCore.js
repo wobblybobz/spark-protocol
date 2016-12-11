@@ -185,7 +185,7 @@ class SparkCore extends EventEmitter {
       this._connectionStartTime = new Date();
 
       logger.log(
-        'on ready',
+        'On Device Ready:\r\n',
         {
           coreID: this.getHexCoreID(),
           ip: this.getRemoteIPAddress(),
@@ -456,15 +456,6 @@ class SparkCore extends EventEmitter {
         requestType = this._getResponseType(message.getTokenString());
       }
 
-      console.log(
-        'Device got message of type ',
-        requestType,
-        ' with token ',
-        message.getTokenString(),
-        ' ',
-        Messages.getRequestType(message),
-      );
-
       if (message.isAcknowledgement()) {
         if (!requestType) {
             //no type, can't route it.
@@ -705,7 +696,6 @@ class SparkCore extends EventEmitter {
    */
   _useToken = (name: string, sendToken: number): void => {
     const key = utilities.toHexString(sendToken);
-    console.log('_useToken', name, sendToken, key);
 
     if (this._tokens[key]) {
       throw 'Token ${name} ${token} ${key} already in use';
@@ -785,6 +775,10 @@ class SparkCore extends EventEmitter {
   ): Promise<*> => {
     try {
       const buffer = await this._transformArguments(name, args);
+      if (!buffer) {
+        throw `Unknown Function ${name}`
+      }
+
       if (settings.showVerboseDeviceLogs) {
         logger.log(
           'sending function call to the core',
@@ -797,6 +791,7 @@ class SparkCore extends EventEmitter {
         if (buffer) {
           message.setUriQuery(buffer.toString());
         }
+
         return message;
       };
 
@@ -1033,6 +1028,7 @@ class SparkCore extends EventEmitter {
     //TODO: lowercase function keys on new state format
     name = name.toLowerCase();
     const deviceFunctionState = nullthrows(this._deviceFunctionState);
+
     let functionState = deviceFunctionState[name];
     if (!functionState || !functionState.args) {
       //maybe it's the old protocol?

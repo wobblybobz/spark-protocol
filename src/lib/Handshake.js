@@ -323,7 +323,6 @@ class Handshake {
         if (this._handshakeStage === 'send-hello') {
           this._queueEarlyData(this._handshakeStage, chunk);
         } else {
-          console.log(chunk);
           resolve(chunk);
           decipherStream.removeListener('readable', callback);
         }
@@ -333,7 +332,6 @@ class Handshake {
   }
 
   _queueEarlyData = (name: HandshakeStage, data: Buffer): void => {
-    console.log('_queueEarlyData')
     if (!data) {
       return;
     }
