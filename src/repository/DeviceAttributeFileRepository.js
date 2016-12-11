@@ -2,14 +2,14 @@
 
 import type {DeviceAttributes} from '../types';
 
-import FileManager from './FileManager';
+import JSONFileManager from './JSONFileManager';
 import uuid from '../lib/uuid';
 
 class DeviceAttributeFileRepository {
-  _fileManager: FileManager;
+  _fileManager: JSONFileManager;
 
   constructor(path: string) {
-    this._fileManager = new FileManager(path);
+    this._fileManager = new JSONFileManager(path);
   }
 
   create(id: string, model: DeviceAttributes): DeviceAttributes {

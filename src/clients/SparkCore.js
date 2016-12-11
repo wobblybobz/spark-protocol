@@ -322,27 +322,28 @@ class SparkCore extends EventEmitter {
             message.name,
             message.args,
           );
-
+          const sendResult = {
+            cmd: 'FnReturn',
+            name: message.name,
+            result: result,
+          };
           this.sendApiResponse(
             sender,
-            {
-              cmd: 'FnReturn',
-              name: message.name,
-              result: result,
-            },
+            sendResult,
           );
+          return sendResult;
         } catch (exception) {
+          const sendResult = {
+            cmd: 'FnReturn',
+            error: exception,
+            name: message.name,
+          };
           this.sendApiResponse(
             sender,
-            {
-              cmd: 'FnReturn',
-              error: exception,
-              name: message.name,
-            },
+            sendResult,
           );
+          return sendResult;
         }
-
-        break;
       }
 
       case 'UFlash': {
@@ -613,8 +614,16 @@ class SparkCore extends EventEmitter {
     const eventName = 'msg_' + name.toLowerCase();
 
     return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+          cleanUpListeners();
+          reject('Request timed out');
+        },
+        KEEP_ALIVE_TIMEOUT,
+      );
+
       //adds a one time event
       const handler = (message: Message): void => {
+        clearTimeout(timeout);
         if (uri && message.getUriPath().indexOf(uri) !== 0) {
           if (beVerbose) {
             logger.log(
@@ -641,12 +650,22 @@ class SparkCore extends EventEmitter {
           return;
         }
 
-        this.removeListener(eventName, handler);
-
+        cleanUpListeners();
         resolve(message);
       };
 
+      const disconnectHandler = () => {
+        cleanUpListeners();
+        reject();
+      };
+
+      const cleanUpListeners = () => {
+        this.removeListener(eventName, handler);
+        this.removeListener('disconnect', disconnectHandler);
+      }
+
       this.on(eventName, handler);
+      this.on('disconnect', disconnectHandler);
     });
   };
 

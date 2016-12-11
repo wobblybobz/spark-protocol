@@ -16,16 +16,20 @@
 */
 
 import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
+import DeviceKeyFileRepository from './repository/DeviceKeyFileRepository';
 import DeviceServer from './server/DeviceServer_v2';
 import FileManager from './repository/FileManager';
+import JSONFileManager from './repository/JSONFileManager';
 import ServerConfigFileRepository from './repository/ServerConfigFileRepository';
 import SparkCore from './clients/SparkCore';
 import uuid from './lib/uuid';
 
 export {
   DeviceAttributeFileRepository,
+  DeviceKeyFileRepository,
   DeviceServer,
   FileManager,
+  JSONFileManager,
   ServerConfigFileRepository,
   SparkCore,
   uuid,
