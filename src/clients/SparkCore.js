@@ -407,16 +407,17 @@ class SparkCore extends EventEmitter {
         if (settings.logApiMessages) {
           logger.log('Pinged, replying', { coreID: this._coreId });
         }
-
+        const result = {
+          cmd: 'Pong',
+          lastPing: this._lastCorePing,
+          connected: this._socket !== null,
+        };
         this.sendApiResponse(
           sender,
-          {
-            cmd: 'Pong',
-            lastPing: this._lastCorePing,
-            online: this._socket !== null,
-          },
+          result,
         );
-        break;
+
+        return result;
       }
 
       default: {
@@ -614,7 +615,6 @@ class SparkCore extends EventEmitter {
     return new Promise((resolve, reject) => {
       //adds a one time event
       const handler = (message: Message): void => {
-        console.log('asdfasdfasdfasdfasdfasdfas');
         if (uri && message.getUriPath().indexOf(uri) !== 0) {
           if (beVerbose) {
             logger.log(
