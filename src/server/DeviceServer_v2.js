@@ -49,11 +49,13 @@ type DeviceServerConfig = {|
 let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
+  _deviceAttributeRepository: Repository<DeviceAttributes>;
   _devicesById: Map<string, SparkCore> = new Map();
   _eventPublisher: EventPublisher;
 
   constructor(deviceServerConfig: DeviceServerConfig) {
     this._config = deviceServerConfig;
+    this._deviceAttributeRepository = this._config.deviceAttributeRepository;
     // TODO: Remove this once the event system has been reworked
     global.publisher = this._eventPublisher = new EventPublisher();
     settings.coreKeysDir =
@@ -77,28 +79,27 @@ class DeviceServer {
 
           core.on('ready', () => {
             logger.log("Device online!");
-            const deviceId = core.getHexCoreID();
-            this._devicesById.set(deviceId, core);
+            const deviceID = core.getHexCoreID();
+            this._devicesById.set(deviceID, core);
             const deviceAttributes = {
-              ...this._config.deviceAttributeRepository.getById(deviceId),
-              coreID: deviceId,
+              ...this._deviceAttributeRepository.getById(deviceID),
+              deviceID: deviceID,
               ip: core.getRemoteIPAddress(),
               particleProductId: core._particleProductId,
               productFirmwareVersion: core._productFirmwareVersion,
             };
 
-            this._config.deviceAttributeRepository.update(
-              deviceId,
+            this._deviceAttributeRepository.update(
               deviceAttributes,
             );
 
-            this._publishSpecialEvent('particle/status', 'online', deviceId);
+            this._publishSpecialEvent('particle/status', 'online', deviceID);
           });
 
           core.on('disconnect', (message) => {
-            const deviceId = core.getHexCoreID();
-            this._devicesById.delete(deviceId);
-            this._publishSpecialEvent('particle/status', 'offline', deviceId);
+            const deviceID = core.getHexCoreID();
+            this._devicesById.delete(deviceID);
+            this._publishSpecialEvent('particle/status', 'offline', deviceID);
             logger.log("Session ended for " + (core._connectionKey || ''));
           });
         } catch (exception) {

@@ -12,23 +12,23 @@ class DeviceAttributeFileRepository {
     this._fileManager = new JSONFileManager(path);
   }
 
-  create(id: string, model: DeviceAttributes): DeviceAttributes {
+  create(model: DeviceAttributes): DeviceAttributes {
     const modelToSave = {
       ...model,
       timestamp: new Date(),
     };
 
-    this._fileManager.createFile(id + '.json', modelToSave);
+    this._fileManager.createFile(model.deviceID + '.json', modelToSave);
     return modelToSave;
   }
 
-  update(id: string, model: DeviceAttributes): DeviceAttributes {
+  update(model: DeviceAttributes): DeviceAttributes {
     const modelToSave = {
       ...model,
       timestamp: new Date(),
     };
-
-    this._fileManager.writeFile(id + '.json', model);
+console.log(model.deviceID);
+    this._fileManager.writeFile(model.deviceID + '.json', modelToSave);
     return modelToSave;
   }
 

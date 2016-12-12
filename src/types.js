@@ -1,18 +1,19 @@
 export type DeviceAttributes = {
-  deviceId: string,
+  deviceID: string,
   ip: string,
+  name: string,
   particleProductId: number,
-  productFirmwareVersion: number,
+  productFirmwareVersion: string,
   registrar: string,
   timestamp: Date,
 };
 
 export type Repository<TModel> = {
-  create: (id: string, model: TModel) => TModel,
+  create: (model: TModel) => TModel,
   delete: (id: string) => void,
   getAll: () => Array<TModel>,
   getById: (id: string) => TModel,
-  update: (id: string, model: TModel) => TModel,
+  update: (model: TModel) => TModel,
 };
 
 export type ServerConfigRepository = {
