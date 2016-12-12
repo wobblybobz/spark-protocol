@@ -191,7 +191,7 @@ class SparkCore extends EventEmitter {
           ip: this.getRemoteIPAddress(),
           product_id: this._particleProductId,
           firmware_version: this._productFirmwareVersion,
-          _platformId: this._platformId,
+          platformId: this._platformId,
           cache_key: this._connectionKey,
         },
       );
@@ -267,7 +267,7 @@ class SparkCore extends EventEmitter {
             sender,
             {
               cmd: 'DescribeReturn',
-              err: 'Error, no device state',
+              error: 'Error, no device state',
               name: message.name,
             },
           );
@@ -279,19 +279,33 @@ class SparkCore extends EventEmitter {
         if (settings.logApiMessages) {
           logger.log('GetVar', { coreID: this._coreId });
         }
-        const result = await this._getVariable(
-          message.name,
-          message.type,
-        );
-        this.sendApiResponse(
-          sender,
-          {
+        try {
+          const result = await this._getVariable(
+            message.name,
+            message.type,
+          );
+          const response = {
             cmd: 'VarReturn',
             name: message.name,
             result: result,
-          },
-        )
-        break;
+          };
+          this.sendApiResponse(
+            sender,
+            response,
+          );
+          return result;
+        } catch (exception) {
+          const response = {
+            cmd: 'VarReturn',
+            error: exception,
+            name: message.name,
+          };
+          this.sendApiResponse(
+            sender,
+            response,
+          );
+          return response;
+        }
       }
       case 'SetVar': {
         if (settings.logApiMessages) {

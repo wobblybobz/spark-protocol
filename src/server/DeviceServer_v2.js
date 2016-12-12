@@ -83,8 +83,8 @@ class DeviceServer {
               ...this._config.deviceAttributeRepository.getById(deviceId),
               coreID: deviceId,
               ip: core.getRemoteIPAddress(),
-              _particleProductId: core._particleProductId,
-              _productFirmwareVersion: core._productFirmwareVersion,
+              particleProductId: core._particleProductId,
+              productFirmwareVersion: core._productFirmwareVersion,
             };
 
             this._config.deviceAttributeRepository.update(
