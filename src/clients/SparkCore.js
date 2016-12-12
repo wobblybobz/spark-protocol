@@ -261,7 +261,9 @@ class SparkCore extends EventEmitter {
               product_id: this._particleProductId,
               state: this._deviceFunctionState,
             },
-          )
+          );
+
+          return this._deviceFunctionState;
         } catch (exception) {
           this.sendApiResponse(
             sender,
@@ -1094,7 +1096,6 @@ class SparkCore extends EventEmitter {
       }
 
       this._deviceFunctionState = functionState;
-
     } catch (exception) {
       throw exception;
     }
