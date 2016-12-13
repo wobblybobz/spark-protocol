@@ -1,7 +1,10 @@
+// @flow
+
 export type DeviceAttributes = {
   deviceID: string,
   ip: string,
   name: string,
+  ownerID: ?string,
   particleProductId: number,
   productFirmwareVersion: string,
   registrar: string,
