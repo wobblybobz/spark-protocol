@@ -51,6 +51,11 @@ const CHUNK_SIZE = 256;
 const MAX_CHUNK_SIZE = 594;
 const MAX_MISSED_CHUNKS = 10;
 
+type FlashStream = {
+	close(): void,
+	read(size?: number): ?(string | Buffer),
+};
+
 class Flasher {
 	_chunk: ?Buffer = null;
 	_chunkSize: number = CHUNK_SIZE;
@@ -58,7 +63,7 @@ class Flasher {
 	_client: SparkCore;
 	_fileBuffer: ?Buffer = null;
 	_fileName: ?string = null;
-	_fileStream: ?ReadStream = null;
+	_fileStream: ?FlashStream = null;
 	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
 	_numChunksMissed: number = 0;
@@ -187,6 +192,8 @@ class Flasher {
 					this._fileBuffer = Buffer.from(fileBuffer);
 					fileBuffer = this._fileBuffer;
 				}
+
+				console.log('FILE BUFFER', fileBuffer);
 
 				this._fileStream = new BufferStream(fileBuffer);
 				this._chunkIndex = -1;

@@ -20,12 +20,11 @@
 
 import {ReadStream} from 'fs';
 
-class BufferStream extends ReadStream {
+class BufferStream {
   _buffer: ?Buffer;
   _index: number = 0;
 
   constructor(buffer: Buffer) {
-    super();
     this._buffer = buffer;
   }
 
