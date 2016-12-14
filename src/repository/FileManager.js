@@ -1,6 +1,7 @@
 // @flow
 
 import fs from 'fs';
+import mkdirp from 'mkdirp';
 import path from 'path';
 
 class FileManager {
@@ -11,7 +12,7 @@ class FileManager {
     this._path = path;
     this._isJSON = isJSON;
     if (!fs.existsSync(path)) {
-      fs.mkdirSync(path);
+      mkdirp.sync(path);
     }
   }
 
