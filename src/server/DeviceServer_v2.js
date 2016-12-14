@@ -77,12 +77,14 @@ class DeviceServer {
           core.startupProtocol();
           core._connectionKey = key;
 
-          core.on('ready', () => {
+          core.on('ready', async () => {
             logger.log("Device online!");
             const deviceID = core.getHexCoreID();
             this._devicesById.set(deviceID, core);
+            const existingAttributes =
+              await this._deviceAttributeRepository.getById(deviceID);
             const deviceAttributes = {
-              ...this._deviceAttributeRepository.getById(deviceID),
+              ...existingAttributes,
               deviceID: deviceID,
               ip: core.getRemoteIPAddress(),
               particleProductId: core._particleProductId,
@@ -190,9 +192,7 @@ class DeviceServer {
    */
   // TODO: Remove this function and have the callers use the repository.
   getAllCoreIDs() {
-    return this._config.deviceAttributeRepository.getAll().map(
-      core => core.coreID,
-    );
+    console.log('getAllCoreIDs');
   }
 
   /**

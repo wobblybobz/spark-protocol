@@ -32,8 +32,8 @@ class DeviceKeyFileRepository {
     return this._fileManager.getAllData();
   }
 
-  getById(id: string): DeviceAttributes {
-    return this._fileManager.getFile(id + FILE_EXTENSION);
+  getById(id: string): Promise<?string> {
+    return Promise.resolve(this._fileManager.getFile(id + FILE_EXTENSION));
   }
 }
 

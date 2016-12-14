@@ -12,49 +12,54 @@ class DeviceAttributeFileRepository {
     this._fileManager = new JSONFileManager(path);
   }
 
-  create(model: DeviceAttributes): DeviceAttributes {
-    const modelToSave = {
-      ...model,
-      timestamp: new Date(),
-    };
-
-    this._fileManager.createFile(`${model.deviceID}.json`, modelToSave);
-    return modelToSave;
+  create = (model: DeviceAttributes): Promise<DeviceAttributes> => {
+    throw new Error('Create device attributes not implemented');
   }
 
-  update(model: DeviceAttributes): DeviceAttributes {
+  update = (model: DeviceAttributes): Promise<DeviceAttributes> => {
     const modelToSave = {
       ...model,
       timestamp: new Date(),
     };
 
     this._fileManager.writeFile(`${model.deviceID}.json`, modelToSave);
-    return modelToSave;
-  }
+    return Promise.resolve(modelToSave);
+  };
 
-  delete(id: string): void {
+  deleteById = (id: string): Promise<*> => {
     this._fileManager.deleteFile(`${id}.json`);
-  }
+    return Promise.resolve();
+  };
 
-  getAll(userID?: string): Array<DeviceAttributes> {
+  getAll = (userID?: string): Promise<Array<DeviceAttributes>> => {
     const allData = this._fileManager.getAllData();
 
     if (userID) {
-      return allData.filter(
-        (attributes: DeviceAttributes): boolean =>
-          attributes.ownerID === userID,
+      return Promise.resolve(
+        allData.filter(
+          (attributes: DeviceAttributes): boolean =>
+            attributes.ownerID === userID,
+        )
       );
     }
-    return allData;
-  }
+    return Promise.resolve(allData);
+  };
 
-  getById(id: string, userID?: string): ?DeviceAttributes {
+  getById = (id: string, userID?: string): Promise<?DeviceAttributes> => {
     const attributes = this._fileManager.getFile(`${id}.json`);
     if (userID) {
-      return attributes && attributes.ownerID === userID ? attributes : null;
+      if (!attributes) {
+        return Promise.resolve();
+      }
+
+      const ownerID = attributes.ownerID;
+      if (!ownerID || ownerID !== userID) {
+        return Promise.resolve();
+      }
     }
-    return attributes;
-  }
+
+    return Promise.resolve(attributes);
+  };
 }
 
 export default DeviceAttributeFileRepository;

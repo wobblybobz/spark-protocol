@@ -6,19 +6,19 @@ export type DeviceAttributes = {
   name: string,
   ownerID: ?string,
   particleProductId: number,
-  productFirmwareVersion: string,
+  productFirmwareVersion: number,
   registrar: string,
   timestamp: Date,
 };
 
 export type Repository<TModel> = {
-  create: (model: TModel) => TModel,
-  delete: (id: string) => void,
-  getAll: () => Array<TModel>,
-  getById: (id: string) => TModel,
-  update: (model: TModel) => TModel,
+  create: (model: TModel) => Promise<TModel>,
+  deleteById: (id: string) => Promise<void>,
+  getAll: () => Promise<Array<TModel>>,
+  getById: (id: string) => Promise<?TModel>,
+  update: (model: TModel) => Promise<TModel>,
 };
 
 export type ServerConfigRepository = {
-  setupKeys(): () => void,
+  setupKeys(): void,
 };
