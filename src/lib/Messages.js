@@ -279,6 +279,10 @@ class Messages {
         return !!newBuffer.shiftByte();
       }
 
+      case 'byte': {
+        return newBuffer.shiftByte();
+      }
+
       case 'crc': {
         return newBuffer.shiftUInt32();
       }
@@ -330,6 +334,7 @@ class Messages {
     }
 
     switch (typeName) {
+      case 'uint16':
       case 'uint32':
       case 'crc': {
         bufferBuilder.pushUInt32(value);

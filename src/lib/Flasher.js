@@ -139,7 +139,7 @@ class Flasher {
 					}
 				}
 			} catch (exception) {
-				console.log(exception);
+				console.log('EXXX', exception);
 			}
 		});
 	};
@@ -380,7 +380,7 @@ class Flasher {
 
 		let version = 0;
 		if (message && message.getPayloadLength() > 0) {
-			version = messages.fromBinary(message.getPayload(), 'byte');
+			// version = messages.fromBinary(message.getPayload(), 'byte');
 		}
 		this._protocolVersion = version;
 		this._startStep('send_file');
@@ -444,7 +444,7 @@ class Flasher {
 		this._lastCrc = chunk ? crc32.unsigned(chunk) : null;
 	}
 
-	sendChunk = async (chunkIndex: ?number = null): Promise<*> => {
+	sendChunk = async (chunkIndex: ?number = 0): Promise<*> => {
 		const includeIndex = this._protocolVersion > 0;
 
 		if (!this._chunk) {
@@ -467,7 +467,7 @@ class Flasher {
 					message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
 					if (includeIndex) {
 						const indexBinary = messages.toBinary(
-							chunkIndex || null,
+							chunkIndex,
 							'uint16',
 						);
 						message.addOption(
@@ -496,7 +496,7 @@ class Flasher {
 		if (!this._chunk) {
 			await this.onAllChunksDone();
 		}	else {
-			await this.sendChunk();
+			this.sendChunk();
 			const result = await this._client.listenFor(
 				'ChunkReceived',
 				null,
@@ -509,7 +509,7 @@ class Flasher {
 	_sendAllChunks = async (): Promise<void> => {
 		this.readNextChunk();
 		while (this._chunk) {
-			await this.sendChunk(this._chunkIndex);
+			this.sendChunk(this._chunkIndex);
 			this.readNextChunk();
 		}
 		// this is fast ota, let's let them re-request every single chunk at least
@@ -539,15 +539,14 @@ class Flasher {
 		}
 
 		if (this._protocolVersion > 0) {
+			// fast ota, lets stick around until 10 seconds after the last chunkmissed
+			// message
+			this._waitForMissedChunks(true);
 			const result = await this._client.listenFor(
 				'ChunkReceived',
 				null,
 				null,
 			);
-
-			// fast ota, lets stick around until 10 seconds after the last chunkmissed
-			// message
-			this._waitForMissedChunks(true);
 		} else {
 			this.clearWatch('CompleteTransfer');
 			this._startStep('teardown');
