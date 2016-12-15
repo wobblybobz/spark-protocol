@@ -511,7 +511,7 @@ class SparkCore extends EventEmitter {
         return;
       }
 
-      this.emit(('msg_' + requestType).toLowerCase(), message);
+      this.emit(('msg_' + (requestType || '')).toLowerCase(), message);
   };
 
   sendReply = (

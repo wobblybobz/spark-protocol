@@ -455,7 +455,7 @@ class Flasher {
 			nullthrows(this._lastCrc),
 			'crc',
 		);
-console.log('sending chunk: ' + this._chunk.length)
+
 		this._client.sendMessage(
 			'Chunk',
 			{
