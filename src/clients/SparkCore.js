@@ -732,7 +732,7 @@ class SparkCore extends EventEmitter {
     }
   };
 
-  _getResponseType = (tokenString: string): string => {
+  _getResponseType = (tokenString: string): ?string => {
     const request = this._tokens[tokenString];
     //logger.log('respType for key ', tokenStr, ' is ', request);
 
@@ -740,7 +740,9 @@ class SparkCore extends EventEmitter {
       return '';
     }
 
-    return nullthrows(Messages.getResponseType(request));
+    console.log(request);
+
+    return Messages.getResponseType(request);
   };
 
   /**
@@ -880,7 +882,8 @@ class SparkCore extends EventEmitter {
         binary,
         (): void => {
           logger.log('flash core finished! - sending api event', { coreID: this.getHexCoreID() });
-          global.server.publishSpecialEvents('spark/flash/status','success',this.getHexCoreID());
+
+          global.server.publishSpecialEvent('spark/flash/status','success',this.getHexCoreID());
           this.sendApiResponse(sender, { cmd: 'Event', name: 'Update', message: 'Update done' });
         },
         (message: Message): void => {
@@ -888,7 +891,7 @@ class SparkCore extends EventEmitter {
             'flash core failed! - sending api event',
             { coreID: this.getHexCoreID(), error: message },
           );
-          global.server.publishSpecialEvents(
+          global.server.publishSpecialEvent(
             'spark/flash/status',
             'failed',
             this.getHexCoreID(),
@@ -903,7 +906,7 @@ class SparkCore extends EventEmitter {
             'flash core started! - sending api event',
             { coreID: this.getHexCoreID() },
           );
-          global.server.publishSpecialEvents(
+          global.server.publishSpecialEvent(
             'spark/flash/status',
             'started',
             this.getHexCoreID(),

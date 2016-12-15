@@ -311,7 +311,7 @@ class Messages {
 
       case 'string':
       default: {
-        return newBuffer.getPayload().toString();
+        return newBuffer.toString();
       }
     }
   };

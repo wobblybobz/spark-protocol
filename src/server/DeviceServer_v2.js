@@ -27,6 +27,7 @@ import type {
 } from '../types';
 
 import net from 'net';
+import nullthrows from 'nullthrows';
 import SparkCore from '../clients/SparkCore';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
@@ -80,6 +81,14 @@ class DeviceServer {
           core.on('ready', async () => {
             logger.log("Device online!");
             const deviceID = core.getHexCoreID();
+
+            if (this._devicesById.has(deviceID)) {
+              const existingConnection = this._devicesById.get(deviceID);
+              nullthrows(existingConnection).disconnect(
+                'Device was already connected. Reconnecting.\r\n',
+              );
+            }
+
             this._devicesById.set(deviceID, core);
             const existingAttributes =
               await this._deviceAttributeRepository.getById(deviceID);
@@ -95,13 +104,17 @@ class DeviceServer {
               deviceAttributes,
             );
 
-            this._publishSpecialEvent('particle/status', 'online', deviceID);
+            this.publishSpecialEvent('particle/status', 'online', deviceID);
           });
 
           core.on('disconnect', (message) => {
             const deviceID = core.getHexCoreID();
-            this._devicesById.delete(deviceID);
-            this._publishSpecialEvent('particle/status', 'offline', deviceID);
+            const coreInDevicesByID =
+              nullthrows(this._devicesById.get(deviceID));
+            if (core._connectionKey === coreInDevicesByID._connectionKey) {
+              this._devicesById.delete(deviceID);
+              this.publishSpecialEvent('particle/status', 'offline', deviceID);
+            }
             logger.log("Session ended for " + (core._connectionKey || ''));
           });
         } catch (exception) {
@@ -141,7 +154,7 @@ class DeviceServer {
     );
   }
 
-  _publishSpecialEvent(eventName: string, data: string, coreId: string): void {
+  publishSpecialEvent(eventName: string, data: string, coreId: string): void {
     this._eventPublisher.publish(
       /* isPublic */ false,
       eventName,
