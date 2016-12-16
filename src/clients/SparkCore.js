@@ -740,8 +740,6 @@ class SparkCore extends EventEmitter {
       return '';
     }
 
-    console.log(request);
-
     return Messages.getResponseType(request);
   };
 
@@ -1088,11 +1086,28 @@ class SparkCore extends EventEmitter {
 
     try {
       this.sendMessage('Describe');
-      const message = await this.listenFor('DescribeReturn', null, null);
+      const systemMessage = await this.listenFor('DescribeReturn', null, null);
 
       //got a description, is it any good?
-      const data = message.getPayload();
-      const functionState = JSON.parse(data.toString());
+      const data = systemMessage.getPayload();
+      const firstFunctionState = JSON.parse(data.toString());
+
+      // In the newer firmware the application data comes in a later message.
+      // We run a race to see if the function state comes in the first response.
+      const functionState = await Promise.race([
+        this.listenFor('DescribeReturn', null, null)
+          .then(applicationMessage => {
+            //got a description, is it any good?
+            const data = applicationMessage.getPayload();
+            return JSON.parse(data.toString());
+          }),
+        new Promise((resolve, reject) => {
+          if (firstFunctionState.f && firstFunctionState.v) {
+            resolve(firstFunctionState);
+          }
+        }),
+      ])
+
       if (functionState && functionState.v) {
         //'v':{'temperature':2}
         functionState.v = Messages.translateIntTypes(functionState.v);
