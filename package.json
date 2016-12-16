@@ -42,6 +42,6 @@
     "eslint-plugin-flowtype": "^2.28.2",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-sorting": "^0.3.0",
-    "flow-bin": "^0.36.0"
+    "flow-bin": "^0.37.0"
   }
 }
