@@ -18,44 +18,44 @@
 *
 */
 
-import type {Socket} from 'net';
-import type {Duplex} from 'stream';
+import type { Socket } from 'net';
+import type { Duplex } from 'stream';
 
 import EventEmitter from 'events';
 import moment from 'moment';
 import fs from 'fs';
 
-import {Message} from 'h5.coap';
+import { Message } from 'h5.coap';
 
 import settings from '../settings';
 import CryptoLib from '../lib/ICrypto';
 import Messages from '../lib/Messages';
 import Handshake from '../lib/Handshake';
-import utilities from '../lib/utilities.js';
+import utilities from '../lib/utilities';
 import Flasher from '../lib/Flasher';
-import logger from '../lib/logger.js';
-import {BufferReader} from 'h5.buffers';
+import logger from '../lib/logger';
+import { BufferReader } from 'h5.buffers';
 import nullthrows from 'nullthrows';
 
+// Hello — sent first by Core then by Server immediately after handshake, never again
+// Ignored — sent by either side to respond to a message with a bad counter value. The receiver of an Ignored message can optionally decide to resend a previous message if the indicated bad counter value matches a recently sent message.
 
+// package flasher
+// Chunk — sent by Server to send chunks of a firmware binary to Core
+// ChunkReceived — sent by Core to respond to each chunk, indicating the CRC of the received chunk data.  if Server receives CRC that does not match the chunk just sent, that chunk is sent again
+// UpdateBegin — sent by Server to initiate an OTA firmware update
+// UpdateReady — sent by Core to indicate readiness to receive firmware chunks
+// UpdateDone — sent by Server to indicate all firmware chunks have been sent
 
-//Hello — sent first by Core then by Server immediately after handshake, never again
-//Ignored — sent by either side to respond to a message with a bad counter value. The receiver of an Ignored message can optionally decide to resend a previous message if the indicated bad counter value matches a recently sent message.
+// FunctionCall — sent by Server to tell Core to call a user-exposed function
+// FunctionReturn — sent by Core in response to FunctionCall to indicate return value.
+// void functions will not send this message
+// VariableRequest — sent by Server to request the value of a user-exposed variable
+// VariableValue — sent by Core in response to VariableRequest to indicate the value
 
-//package flasher
-//Chunk — sent by Server to send chunks of a firmware binary to Core
-//ChunkReceived — sent by Core to respond to each chunk, indicating the CRC of the received chunk data.  if Server receives CRC that does not match the chunk just sent, that chunk is sent again
-//UpdateBegin — sent by Server to initiate an OTA firmware update
-//UpdateReady — sent by Core to indicate readiness to receive firmware chunks
-//UpdateDone — sent by Server to indicate all firmware chunks have been sent
-
-//FunctionCall — sent by Server to tell Core to call a user-exposed function
-//FunctionReturn — sent by Core in response to FunctionCall to indicate return value. void functions will not send this message
-//VariableRequest — sent by Server to request the value of a user-exposed variable
-//VariableValue — sent by Core in response to VariableRequest to indicate the value
-
-//Event — sent by Core to initiate a Server Sent Event and optionally an HTTP callback to a 3rd party
-//KeyChange — sent by Server to change the AES credentials
+// Event — sent by Core to initiate a Server Sent Event and optionally
+// an HTTP callback to a 3rd party
+// KeyChange — sent by Server to change the AES credentials
 
 const COUNTER_MAX = settings.message_counter_max;
 const KEEP_ALIVE_TIMEOUT = settings.keepaliveTimeout;
@@ -95,9 +95,9 @@ class SparkCore extends EventEmitter {
   /**
    * configure our socket and start the handshake
    */
-  startupProtocol = (): void => {
+  startupProtocol = () => {
     this._socket.setNoDelay(true);
-    this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); //every 15 second(s)
+    this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); // every 15 second(s)
     this._socket.setTimeout(SOCKET_TIMEOUT);
 
     this._socket.on(
@@ -117,10 +117,11 @@ class SparkCore extends EventEmitter {
   };
 
   handshake = async (): Promise<*> => {
-    var handshake = new Handshake(this);
+    const handshake = new Handshake(this);
 
-    //when the handshake is done, we can expect two stream properties, '_decipherStream' and '_cipherStream'
-    try{
+    // when the handshake is done, we can expect two stream properties,
+    // '_decipherStream' and '_cipherStream'
+    try {
       const {
         coreId,
         cipherStream,
@@ -150,9 +151,9 @@ class SparkCore extends EventEmitter {
   };
 
   _getHello = (chunk: Buffer): void => {
-    var message = Messages.unwrap(chunk);
+    const message = Messages.unwrap(chunk);
     if (!message) {
-      throw 'failed to parse hello';
+      throw new Error('failed to parse hello');
     }
 
     this._recieveCounter = message.getId();
@@ -163,7 +164,7 @@ class SparkCore extends EventEmitter {
         return;
       }
 
-      var payloadBuffer = new BufferReader(payload);
+      const payloadBuffer = new BufferReader(payload);
       this._particleProductId = payloadBuffer.shiftUInt16();
       this._productFirmwareVersion = payloadBuffer.shiftUInt16();
       this._platformId = payloadBuffer.shiftUInt16();
@@ -173,47 +174,47 @@ class SparkCore extends EventEmitter {
   };
 
   _sendHello = (cipherStream: Duplex, decipherStream: Duplex): void => {
-      this._cipherStream = cipherStream;
-      this._decipherStream = decipherStream
+    this._cipherStream = cipherStream;
+    this._decipherStream = decipherStream;
 
-      //client will set the counter property on the message
-      this._sendCounter = CryptoLib.getRandomUINT16();
-      this.sendMessage('Hello', {}, null);
+    // client will set the counter property on the message
+    this._sendCounter = CryptoLib.getRandomUINT16();
+    this.sendMessage('Hello', {}, null);
   };
 
   ready = (): void => {
-      this._connectionStartTime = new Date();
+    this._connectionStartTime = new Date();
 
-      logger.log(
-        'On Device Ready:\r\n',
-        {
-          coreID: this.getHexCoreID(),
-          ip: this.getRemoteIPAddress(),
-          product_id: this._particleProductId,
-          firmware_version: this._productFirmwareVersion,
-          platformId: this._platformId,
-          cache_key: this._connectionKey,
-        },
-      );
+    logger.log(
+      'On Device Ready:\r\n',
+      {
+        cache_key: this._connectionKey,
+        coreID: this.getHexCoreID(),
+        firmware_version: this._productFirmwareVersion,
+        ip: this.getRemoteIPAddress(),
+        platformId: this._platformId,
+        product_id: this._particleProductId,
+      },
+    );
 
-      this.on(
-        'msg_PrivateEvent'.toLowerCase(),
-        message => this._onCorePrivateEvent(message),
-      );
-      this.on(
-        'msg_PublicEvent'.toLowerCase(),
-        message => this._onCorePublicEvent(message),
-      );
-      this.on(
-        'msg_Subscribe'.toLowerCase(),
-        message => this.onCorePublicSubscribe(message),
-      );
-      this.on(
-        'msg_GetTime'.toLowerCase(),
-        message => this._onCoreGetTime(message),
-      );
+    this.on(
+      'msg_PrivateEvent'.toLowerCase(),
+      message => this._onCorePrivateEvent(message),
+    );
+    this.on(
+      'msg_PublicEvent'.toLowerCase(),
+      message => this._onCorePublicEvent(message),
+    );
+    this.on(
+      'msg_Subscribe'.toLowerCase(),
+      message => this.onCorePublicSubscribe(message),
+    );
+    this.on(
+      'msg_GetTime'.toLowerCase(),
+      message => this._onCoreGetTime(message),
+    );
 
-      this.emit('ready');
+    this.emit('ready');
   };
 
 
@@ -234,12 +235,12 @@ class SparkCore extends EventEmitter {
    * Handles messages coming from the API over our message queue service
    */
   onApiMessage = async (sender: string, message: Message): Promise<*> => {
-    //if we're not the owner, then the socket is busy
+    // if we're not the owner, then the socket is busy
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       this.sendApiResponse(
         sender,
-        { error: 'This core is locked during the flashing process.' },
+        { error: new Error('This core is locked during the flashing process.') },
       );
       return Promise.reject();
     }
@@ -250,7 +251,7 @@ class SparkCore extends EventEmitter {
           logger.log('Describe', { coreID: this._coreId });
         }
 
-        try{
+        try {
           await this._ensureWeHaveIntrospectionData();
           this.sendApiResponse(
             sender,
@@ -286,20 +287,21 @@ class SparkCore extends EventEmitter {
             message.name,
             message.type,
           );
+
           const response = {
             cmd: 'VarReturn',
             name: message.name,
-            result: result,
+            result,
           };
           this.sendApiResponse(
             sender,
             response,
           );
           return result;
-        } catch (exception) {
+        } catch (error) {
           const response = {
             cmd: 'VarReturn',
-            error: exception,
+            error,
             name: message.name,
           };
           this.sendApiResponse(
@@ -325,7 +327,7 @@ class SparkCore extends EventEmitter {
             name: message.name,
             result: result.getPayload().toString(),
           },
-        )
+        );
         break;
       }
 
@@ -333,7 +335,8 @@ class SparkCore extends EventEmitter {
         if (settings.logApiMessages) {
           logger.log('FunCall', { coreID: this._coreId });
         }
-        try{
+
+        try {
           const result = await this._callFunction(
             message.name,
             message.args,
@@ -341,17 +344,17 @@ class SparkCore extends EventEmitter {
           const sendResult = {
             cmd: 'FnReturn',
             name: message.name,
-            result: result,
+            result,
           };
           this.sendApiResponse(
             sender,
             sendResult,
           );
           return sendResult;
-        } catch (exception) {
+        } catch (error) {
           const sendResult = {
             cmd: 'FnReturn',
-            error: exception,
+            error,
             name: message.name,
           };
           this.sendApiResponse(
@@ -411,12 +414,12 @@ class SparkCore extends EventEmitter {
           logger.log('SignalCore', { coreID: this._coreId });
         }
 
-        var showSignal = message.args && message.args.signal;
+        const showSignal = message.args && message.args.signal;
         const result = await this._raiseYourHand(showSignal);
         this.sendApiResponse(
           sender,
-          {cmd: 'RaiseHandReturn', result},
-        )
+          { cmd: 'RaiseHandReturn', result },
+        );
         break;
       }
 
@@ -426,8 +429,8 @@ class SparkCore extends EventEmitter {
         }
         const result = {
           cmd: 'Pong',
-          lastPing: this._lastCorePing,
           connected: this._socket !== null,
+          lastPing: this._lastCorePing,
         };
         this.sendApiResponse(
           sender,
@@ -438,7 +441,10 @@ class SparkCore extends EventEmitter {
       }
 
       default: {
-        this.sendApiResponse(sender, {error: 'unknown message' });
+        this.sendApiResponse(
+          sender,
+          { error: new Error('unknown message') },
+        );
       }
     }
   };
@@ -448,70 +454,70 @@ class SparkCore extends EventEmitter {
    * @param data
    */
   routeMessage = (data: Buffer): void => {
-      const message = Messages.unwrap(data);
-      if (!message) {
-        logger.error(
-          'routeMessage got a NULL coap message ',
-          { coreID: this.getHexCoreID() },
-        );
-        return;
-      }
+    const message = Messages.unwrap(data);
+    if (!message) {
+      logger.error(
+        'routeMessage got a NULL coap message ',
+        { coreID: this.getHexCoreID() },
+      );
+      return;
+    }
 
-      //should be adequate
-      const messageCode = message.getCode();
-      let requestType = '';
-      if (
-        messageCode > Message.Code.EMPTY &&
-        messageCode <= Message.Code.DELETE
-      ) {
-        //probably a request
-        requestType = Messages.getRequestType(message);
-      }
+    //should be adequate
+    const messageCode = message.getCode();
+    let requestType = '';
+    if (
+      messageCode > Message.Code.EMPTY &&
+      messageCode <= Message.Code.DELETE
+    ) {
+      //probably a request
+      requestType = Messages.getRequestType(message);
+    }
 
+    if (!requestType) {
+      requestType = this._getResponseType(message.getTokenString());
+    }
+
+    if (message.isAcknowledgement()) {
       if (!requestType) {
-        requestType = this._getResponseType(message.getTokenString());
+        //no type, can't route it.
+        requestType = 'PingAck';
       }
+      this.emit(('msg_' + requestType).toLowerCase(), message);
+      return;
+    }
 
-      if (message.isAcknowledgement()) {
-        if (!requestType) {
-            //no type, can't route it.
-            requestType = 'PingAck';
-        }
-        this.emit(('msg_' + requestType).toLowerCase(), message);
+
+    this._incrementRecieveCounter();
+    if (message.isEmpty() && message.isConfirmable()) {
+      this._lastCorePing = new Date();
+      //var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
+      //logger.log('core ping @ ', delta, ' seconds ', { coreID: this.getHexCoreID() });
+      this.sendReply('PingAck', message.getId());
+      return;
+    }
+
+    if (!message || message.getId() !== this._recieveCounter) {
+      logger.log(
+        'got counter ',
+        message.getId(),
+        ' expecting ',
+        this._recieveCounter,
+        { coreID: this.getHexCoreID() },
+      );
+
+      if (requestType === 'Ignored') {
+        //don't ignore an ignore...
+        this.disconnect('Got an Ignore');
         return;
       }
 
+      //this.sendMessage('Ignored', null, {}, null, null);
+      this.disconnect('Bad Counter');
+      return;
+    }
 
-      this._incrementRecieveCounter();
-      if (message.isEmpty() && message.isConfirmable()) {
-        this._lastCorePing = new Date();
-        //var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
-        //logger.log('core ping @ ', delta, ' seconds ', { coreID: this.getHexCoreID() });
-        this.sendReply('PingAck', message.getId());
-        return;
-      }
-
-      if (!message || message.getId() !== this._recieveCounter) {
-        logger.log(
-          'got counter ',
-          message.getId(),
-          ' expecting ',
-          this._recieveCounter,
-          { coreID: this.getHexCoreID() },
-        );
-
-        if (requestType === 'Ignored') {
-          //don't ignore an ignore...
-          this.disconnect('Got an Ignore');
-          return;
-        }
-
-        //this.sendMessage('Ignored', null, {}, null, null);
-        this.disconnect('Bad Counter');
-        return;
-      }
-
-      this.emit(('msg_' + (requestType || '')).toLowerCase(), message);
+    this.emit(('msg_' + (requestType || '')).toLowerCase(), message);
   };
 
   sendReply = (
@@ -714,7 +720,7 @@ class SparkCore extends EventEmitter {
     const key = utilities.toHexString(sendToken);
 
     if (this._tokens[key]) {
-      throw 'Token ${name} ${token} ${key} already in use';
+      throw new Error(`Token ${name} ${this._tokens[key]} ${key} already in use`);
     }
 
     this._tokens[key] = name;
@@ -757,7 +763,7 @@ class SparkCore extends EventEmitter {
   ): Promise<*> => {
     await this._ensureWeHaveIntrospectionData();
     if (!this._hasParticleVariable(name)) {
-      throw 'Variable not found';
+      throw new Error('Variable not found');
     }
 
     const messageToken = this.sendMessage(
@@ -792,13 +798,13 @@ class SparkCore extends EventEmitter {
     try {
       const buffer = await this._transformArguments(name, args);
       if (!buffer) {
-        throw `Unknown Function ${name}`
+        throw new Error(`Unknown Function ${name}`);
       }
 
       if (settings.showVerboseDeviceLogs) {
         logger.log(
           'sending function call to the core',
-          { coreID: this._coreId, name: name },
+          { coreID: this._coreId, name },
         );
       }
 
@@ -813,14 +819,18 @@ class SparkCore extends EventEmitter {
 
       const token = this.sendMessage(
         'FunctionCall',
-        { name: name, args: buffer, _writeCoapUri: writeUrl },
+        {
+          _writeCoapUri: writeUrl,
+          args: buffer,
+          name,
+        },
         null,
       );
 
       const message = await this.listenFor('FunctionReturn', null, token);
       return this._transformFunctionResult(name, message);
-    } catch (exception) {
-      throw exception;
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -843,77 +853,85 @@ class SparkCore extends EventEmitter {
   };
 
   flashCore = (binary: ?Buffer, sender: string): void => {
-      if (!binary || (binary.length === 0)) {
+    if (!binary || (binary.length === 0)) {
+      logger.log(
+        'flash failed! - file is empty! ',
+        { coreID: this.getHexCoreID() },
+      );
+      this.sendApiResponse(
+        sender,
+        {
+          cmd: 'Event',
+          error: new Error('Update failed - File was too small!'),
+          name: 'Update',
+        },
+      );
+      return;
+    }
+
+    if (binary && binary.length > MAX_BINARY_SIZE) {
+      logger.log(
+        `flash failed! - file is too BIG ${binary.length}`,
+        { coreID: this.getHexCoreID() },
+      );
+      this.sendApiResponse(
+        sender,
+        {
+          cmd: 'Event',
+          error: new Error('Update failed - File was too big!'),
+          name: 'Update',
+        },
+      );
+      return;
+    }
+
+    const flasher = new Flasher(this);
+    flasher.startFlashBuffer(
+      binary,
+      (): void => {
+        logger.log('flash core finished! - sending api event', { coreID: this.getHexCoreID() });
+
+        global.server.publishSpecialEvent('spark/flash/status', 'success', this.getHexCoreID());
+        this.sendApiResponse(sender, { cmd: 'Event', name: 'Update', message: 'Update done' });
+      },
+      (message: Message): void => {
         logger.log(
-          'flash failed! - file is empty! ',
-          { coreID: this.getHexCoreID() },
+          'flash core failed! - sending api event',
+          { coreID: this.getHexCoreID(), error: message },
+        );
+        global.server.publishSpecialEvent(
+          'spark/flash/status',
+          'failed',
+          this.getHexCoreID(),
         );
         this.sendApiResponse(
           sender,
           {
             cmd: 'Event',
+            error: new Error('Update failed'),
             name: 'Update',
-            message: 'Update failed - File was too small!',
           },
         );
-        return
-      }
-
-      if (binary && binary.length > MAX_BINARY_SIZE) {
+      },
+      (): void => {
         logger.log(
-          'flash failed! - file is too BIG ' + binary.length,
+          'flash core started! - sending api event',
           { coreID: this.getHexCoreID() },
+        );
+        global.server.publishSpecialEvent(
+          'spark/flash/status',
+          'started',
+          this.getHexCoreID(),
         );
         this.sendApiResponse(
           sender,
           {
             cmd: 'Event',
+            message: 'Update started',
             name: 'Update',
-            message: 'Update failed - File was too big!',
           },
         );
-        return;
-      }
-
-      const flasher = new Flasher(this);
-      flasher.startFlashBuffer(
-        binary,
-        (): void => {
-          logger.log('flash core finished! - sending api event', { coreID: this.getHexCoreID() });
-
-          global.server.publishSpecialEvent('spark/flash/status','success',this.getHexCoreID());
-          this.sendApiResponse(sender, { cmd: 'Event', name: 'Update', message: 'Update done' });
-        },
-        (message: Message): void => {
-          logger.log(
-            'flash core failed! - sending api event',
-            { coreID: this.getHexCoreID(), error: message },
-          );
-          global.server.publishSpecialEvent(
-            'spark/flash/status',
-            'failed',
-            this.getHexCoreID(),
-          );
-          this.sendApiResponse(
-            sender,
-            { cmd: 'Event', name: 'Update', message: 'Update failed' },
-          );
-        },
-        (): void => {
-          logger.log(
-            'flash core started! - sending api event',
-            { coreID: this.getHexCoreID() },
-          );
-          global.server.publishSpecialEvent(
-            'spark/flash/status',
-            'started',
-            this.getHexCoreID(),
-          );
-          this.sendApiResponse(
-            sender,
-            { cmd: 'Event', name: 'Update', message: 'Update started' },
-          );
-        });
+      });
   };
 
   _isSocketAvailable = (
@@ -927,9 +945,9 @@ class SparkCore extends EventEmitter {
     logger.error(
       'This client has an exclusive lock',
       {
-        coreID: this.getHexCoreID(),
         cache_key: this._connectionKey,
-        messageName: messageName,
+        coreID: this.getHexCoreID(),
+        messageName,
       },
     );
 
@@ -941,7 +959,7 @@ class SparkCore extends EventEmitter {
       logger.error('already owned', { coreID: this.getHexCoreID() });
       return false;
     }
-    //only permit the owning object to send messages.
+    // only permit the owning object to send messages.
     this._owningFlasher = flasher;
     return true;
   };
@@ -987,10 +1005,10 @@ class SparkCore extends EventEmitter {
         data = message.getPayload();
         result = Messages.fromBinary(data, variableType);
       }
-    } catch (exception) {
+    } catch (error) {
       logger.error(
         '_transformVariableResult - error transforming response ' +
-          exception
+        error,
       );
     }
 
@@ -1016,10 +1034,10 @@ class SparkCore extends EventEmitter {
       if (message && message.getPayload) {
         result = Messages.fromBinary(message.getPayload(), variableType);
       }
-    } catch (exception) {
+    } catch (error) {
       logger.error(
         '_transformFunctionResult - error transforming response ' +
-          exception,
+        error,
       );
     }
 
@@ -1114,8 +1132,8 @@ class SparkCore extends EventEmitter {
       }
 
       this._deviceFunctionState = functionState;
-    } catch (exception) {
-      throw exception;
+    } catch (error) {
+      throw error;
     }
   };
 
@@ -1144,12 +1162,12 @@ class SparkCore extends EventEmitter {
 
     //name: '/E/TestEvent', trim the '/e/' or '/E/' off the start of the uri
     const eventData = {
-      name: message.getUriPath().substr(3),
-      is_public: isPublic,
-      ttl: message.getMaxAge(),
       data: message.getPayload().toString(),
+      is_public: isPublic,
+      name: message.getUriPath().substr(3),
+      published_at: moment().toISOString(),
       published_by: this.getHexCoreID(),
-      published_at: moment().toISOString()
+      ttl: message.getMaxAge(),
     };
 
     //snap obj.ttl to the right value.
@@ -1167,21 +1185,21 @@ class SparkCore extends EventEmitter {
     const coreId = this.getHexCoreID();
 
     if (lowername.indexOf('spark/device/claim/code') === 0) {
-    	const claimCode = message.getPayload().toString();
+      const claimCode = message.getPayload().toString();
 
-    	const coreAttributes = global.server.getCoreAttributes(coreId);
+      const coreAttributes = global.server.getCoreAttributes(coreId);
 
-    	if (coreAttributes.claimCode !== claimCode) {
-	        global.server.setCoreAttribute(coreId, 'claimCode', claimCode);
-      	//claim device
-      	if (global.api) {
-      		global.api.linkDevice(coreId, claimCode, this._particleProductId);
-      	}
+      if (coreAttributes.claimCode !== claimCode) {
+        global.server.setCoreAttribute(coreId, 'claimCode', claimCode);
+        // claim device
+        if (global.api) {
+          global.api.linkDevice(coreId, claimCode, this._particleProductId);
+        }
       }
     }
 
     if (lowername.indexOf('spark/device/system/version') === 0) {
-    	global.server.setCoreAttribute(
+      global.server.setCoreAttribute(
         coreId,
         'spark_system_version',
         message.getPayload().toString(),
@@ -1189,8 +1207,8 @@ class SparkCore extends EventEmitter {
     }
 
     if (lowername.indexOf('spark/device/safemode') === 0) {
-    	const token = this.sendMessage('Describe');
-    	const systemMessage = await this.listenFor(
+      const token = this.sendMessage('Describe');
+      const systemMessage = await this.listenFor(
         'DescribeReturn',
         null,
         token,
@@ -1203,26 +1221,25 @@ class SparkCore extends EventEmitter {
     }
 
     if (lowername.indexOf('spark') === 0) {
-      //allow some kinds of message through.
-      var eat_message = true;
+      // allow some kinds of message through.
+      var eatMessage = true;
 
-      //if we do let these through, make them private.
+      // if we do let these through, make them private.
       isPublic = false;
 
-      //TODO:
-      //if the message is 'cc3000-radio-version', save to the core_state collection for this core?
+      // TODO:
+      // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
       if (lowername === 'spark/cc3000-patch-version') {
         // set_cc3000_version(this._coreId, obj.data);
         // eat_message = false;
       }
 
-      if (eat_message) {
-        //short-circuit
+      if (eatMessage) {
+        // short-circuit
         this.sendReply('EventAck', message.getId());
         return;
       }
     }
-
 
     try {
       if (!global.publisher) {
@@ -1240,19 +1257,19 @@ class SparkCore extends EventEmitter {
       );
 
       if (!result) {
-        //this core is over its limit, and that message was not sent.
-        //this.sendReply('EventSlowdown', msg.getId());
+        // this core is over its limit, and that message was not sent.
+        // this.sendReply('EventSlowdown', msg.getId());
       }
 
-      if(message.isConfirmable()) {
-        //console.log('Event confirmable');
-        this.sendReply( 'EventAck', message.getId() );
+      if (message.isConfirmable()) {
+        // console.log('Event confirmable');
+        this.sendReply('EventAck', message.getId());
       } else {
-        //console.log('Event non confirmable');
+        // console.log('Event non confirmable');
       }
-    } catch (exception) {
+    } catch (error) {
       logger.error(
-        '_onCoreSentEvent: failed writing to socket - ' + exception,
+        '_onCoreSentEvent: failed writing to socket - ' + error,
       );
     }
   };
@@ -1278,35 +1295,35 @@ class SparkCore extends EventEmitter {
     this.onCoreSubscribe(message, true);
   };
   onCoreSubscribe = (message: Message, isPublic: boolean): void => {
-      const name = message.getUriPath().substr(3);
+    const name = message.getUriPath().substr(3);
 
-      //var body = resp.getPayload().toString();
-      //logger.log('Got subscribe request from core, path was \'' + name + '\'');
-      //uri -> /e/?u    --> firehose for all my devices
-      //uri -> /e/ (deviceid in body)   --> allowed
-      //uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-      //uri -> /e/event_name?u    --> all my devices
-      //uri -> /e/event_name?u (deviceid)    --> deviceid?
+    //var body = resp.getPayload().toString();
+    //logger.log('Got subscribe request from core, path was \'' + name + '\'');
+    //uri -> /e/?u    --> firehose for all my devices
+    //uri -> /e/ (deviceid in body)   --> allowed
+    //uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+    //uri -> /e/event_name?u    --> all my devices
+    //uri -> /e/event_name?u (deviceid)    --> deviceid?
 
-      if (!name) {
-        //no firehose for cores
-        this.sendReply('SubscribeFail', message.getId());
-        return;
-      }
+    if (!name) {
+      //no firehose for cores
+      this.sendReply('SubscribeFail', message.getId());
+      return;
+    }
 
-      const query = message.getUriQuery();
-      const payload = message.getPayload();
-      const myDevices = query && query.indexOf('u') >= 0;
-      const userid = myDevices ? (this._userId || '').toLowerCase() : null;
-      const deviceID = payload ? payload.toString() : null;
+    const query = message.getUriQuery();
+    const payload = message.getPayload();
+    const myDevices = query && query.indexOf('u') >= 0;
+    const userid = myDevices ? (this._userId || '').toLowerCase() : null;
+    const deviceID = payload ? payload.toString() : null;
 
-      //TODO: filter by a particular deviceID
+    //TODO: filter by a particular deviceID
 
-      this.sendReply('SubscribeAck', message.getId());
+    this.sendReply('SubscribeAck', message.getId());
 
-      //modify our filter on the appropriate socket (create the socket if we haven't yet) to let messages through
-      //this.eventsSocket.subscribe(isPublic, name, userid);
-      global.publisher.subscribe(name, userid,deviceID,this,this.onCoreEvent);
+    //modify our filter on the appropriate socket (create the socket if we haven't yet) to let messages through
+    //this.eventsSocket.subscribe(isPublic, name, userid);
+    global.publisher.subscribe(name, userid, deviceID, this, this.onCoreEvent);
   };
 
   _onCorePublicHeard = (
