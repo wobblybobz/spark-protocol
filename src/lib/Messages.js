@@ -97,7 +97,7 @@ class Messages {
   };
 
   statusIsOkay = (message: Message): boolean => {
-      return message.getCode() < Message.Code.BAD_REQUEST;
+    return message.getCode() < Message.Code.BAD_REQUEST;
   };
 
   isNonTypeMessage = (messageName: string): boolean => {

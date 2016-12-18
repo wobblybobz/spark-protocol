@@ -66,11 +66,11 @@ class Flasher {
 	_fileStream: ?FlashStream = null;
 	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
-	_numChunksMissed: number = 0;
 	_stage: FlashingStage = 'prepare';
 	_startTime: ?Date;
 	_timeoutsByName: Map<string, number> = new Map();
 	_waitForChunksTimer: ?number = null;
+	_missedChunks: Set<number> = new Set();
 
 	//
 	// OTA tweaks
@@ -82,7 +82,6 @@ class Flasher {
 	_onError: ?(error: string) => void = null;
 	_onSuccess: ?() => void = null;
 	_onStarted: ?Function = null;
-	_chunkReceivedHandler: ?Function = null;
 
 	constructor(client: SparkCore) {
 		this._client = client;
@@ -220,7 +219,7 @@ class Flasher {
 		this._lastCrc = null;
 
 		//start listening for missed chunks before the update fully begins
-		this._client.on('msg_chunkmissed', this.onChunkMissed.bind(this));
+		this._client.on('msg_chunkmissed', message => this.onChunkMissed(message));
 	}
 
 	getBufferStream = (buffer: Buffer): FlashStream => {
@@ -257,15 +256,6 @@ class Flasher {
 			if (fileStream) {
 				fileStream.close();
 				this._fileStream = null;
-			}
-
-			//release our listeners?
-			if (this._chunkReceivedHandler) {
-				this._client.removeListener(
-					'ChunkReceived',
-					this._chunkReceivedHandler,
-				);
-				this._chunkReceivedHandler = null;
 			}
 
 			//cleanup when we're done...
@@ -366,7 +356,6 @@ class Flasher {
 				/*uri*/ null,
 				/*token*/ null,
 			).then((message: ?Message): ?Message => {
-				console.log('UPDATE ABORT!!!!!!')
 				this.clearWatch('UpdateReady');
 				let failReason = '';
 				if (message && message.getPayloadLength() > 0) {
@@ -380,7 +369,7 @@ class Flasher {
 
 		let version = 0;
 		if (message && message.getPayloadLength() > 0) {
-			// version = messages.fromBinary(message.getPayload(), 'byte');
+			//version = messages.fromBinary(message.getPayload(), 'byte');
 		}
 		this._protocolVersion = version;
 		this._startStep('send_file');
@@ -402,26 +391,52 @@ class Flasher {
 		//UpdateDone — sent by Server to indicate all firmware chunks have been sent
 		this.failWatch('CompleteTransfer', 600, this.failed);
 
-		if (this._protocolVersion > 0) {
+		const isFastOTA = this._protocolVersion > 0;
+		if (isFastOTA) {
 			logger.log(
-				'flasher - experimental sendAllChunks!! - ',
+				'Starting FastOTA update',
 				{coreID: this._client.getHexCoreID()},
 			);
-			await this._sendAllChunks();
-		}	else {
-			//get it started.
+		}
+
+		this.readNextChunk();
+		while (this._chunk) {
+			this.sendChunk(this._chunkIndex);
 			this.readNextChunk();
-			this.sendChunk();
-			const result = await this._client.listenFor(
+
+			// We don't need to wait for the response if using FastOTA.
+			if (!isFastOTA) {
+				continue;
+			}
+
+			const message = await this._client.listenFor(
 				'ChunkReceived',
 				null,
 				null,
 			);
 
-			await this.onChunkResponse(result);
-			this.failWatch('CompleteTransfer', 600, this.failed);
+			if (!messages.statusIsOkay(message)) {
+				throw new Error('\'ChunkReceived\' failed.');
+			}
 		}
+
+		// Handle missed chunks
+		await this._resendChunks();
+
+		// cleanup
+		await this.onAllChunksDone();
 	}
+
+	_resendChunks = (): void => {
+		let allChunksRecieved = this._missedChunks.size > 0;
+
+		if (!allChunksRecieved) {
+			const missedChunks = Array.from(this._missedChunks.entries());
+			this._missedChunks.clear();
+
+
+		}
+	};
 
 	readNextChunk = (): void => {
 		if (!this._fileStream) {
@@ -482,54 +497,9 @@ class Flasher {
 		);
 	}
 
-	onChunkResponse = async (message: Buffer): Promise<*> => {
-		if (this._protocolVersion > 0) {
-			// skip normal handling of this during fast ota.
-			return;
-		}
-
-		//did the device say the CRCs matched?
-		if (messages.statusIsOkay(message)) {
-			this.readNextChunk();
-		}
-
-		if (!this._chunk) {
-			await this.onAllChunksDone();
-		}	else {
-			this.sendChunk();
-			const result = await this._client.listenFor(
-				'ChunkReceived',
-				null,
-				null,
-			);
-			await this.onChunkResponse(result);
-		}
-	}
-
-	_sendAllChunks = async (): Promise<void> => {
-		this.readNextChunk();
-		while (this._chunk) {
-			this.sendChunk(this._chunkIndex);
-			this.readNextChunk();
-		}
-		// this is fast ota, let's let them re-request every single chunk at least
-		// once. Then they'll get an extra ten misses.
-		this._numChunksMissed = -1 * this._chunkIndex;
-
-		//TODO: wait like 5-6 seconds, and 5-6 seconds after the last chunkmissed?
-		await this.onAllChunksDone();
-	};
-
 	onAllChunksDone = async (): Promise<*> => {
 		logger.log('on response, no chunk, transfer done!');
-		if (this._chunkReceivedHandler) {
-			this._client.removeListener(
-				'ChunkReceived',
-				this._chunkReceivedHandler,
-			);
-		}
 
-		this._chunkReceivedHandler = null;
 		this.clearWatch('CompleteTransfer');
 
 		if (
@@ -579,11 +549,6 @@ class Flasher {
 	 * @private
 	 */
 	_waitForMissedChunksDone = (): void => {
-		if (this._chunkReceivedHandler) {
-			this._client.removeListener('ChunkReceived', this._chunkReceivedHandler);
-		}
-		this._chunkReceivedHandler = null;
-
 		this.clearWatch('CompleteTransfer');
 		this._startStep('teardown');
 	}
@@ -602,8 +567,7 @@ class Flasher {
 	onChunkMissed = (message: Message): void => {
 		this._waitForMissedChunks();
 
-		this._numChunksMissed++;
-		if (this._numChunksMissed > MAX_MISSED_CHUNKS) {
+		if (this._missedChunks.size > MAX_MISSED_CHUNKS) {
 			logger.error(
 				'flasher - chunk missed - core over limit, killing! ',
 				this.getLogInfo(),
@@ -630,14 +594,12 @@ class Flasher {
 			this,
 		);
 
-
 		//the payload should include one or more chunk indexes
 		const payload = message.getPayload();
 		var bufferReader = new buffers.BufferReader(payload);
 		for(let ii = 0; ii < payload.length; ii += 2) {
 			try {
-				var index = bufferReader.shiftUInt16();
-				this._resendChunk(index);
+				this._missedChunks.add(bufferReader.shiftUInt16());
 			} catch (exception) {
 				logger.error('onChunkMissed error reading payload ' + exception);
 			}
