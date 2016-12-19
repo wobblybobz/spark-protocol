@@ -382,30 +382,26 @@ class SparkCore extends EventEmitter {
         }
 
         // Responsibility for sanitizing app names lies with API Service
-        // This includes only allowing apps whose binaries are deployed and thus exist
-        fs.readFile(
-          `known_firmware/${message.app}_${settings.environment}.bin`,
-          (error, buffer) => {
-            if (!error) {
-              this.flashCore(buffer, sender);
-              return;
-            }
+        // This includes only allowing apps whose binaries are deployed and
+        // thus exist
 
-            logger.log(
-              'Error flashing known firmware',
-              { coreID: this._coreId, error },
-            );
-            this.sendApiResponse(
-              sender,
-              {
-                cmd: 'Event',
-                message: 'Update failed - ' + JSON.stringify(error),
-                name: 'Update',
-              },
-            );
-          },
-        );
-        break;
+        // TODO: this should use a repository to fetch these binary files
+        try {
+          const buffer = fs.readFileSync(
+            `known_firmware/${message.app}_${settings.environment}.bin`,
+          );
+          return await this.flashCore(message.args.data, sender);
+        } catch (error) {
+          logger.log(
+            'Error flashing known firmware',
+            { coreID: this._coreId, error },
+          );
+          return  {
+            cmd: 'Event',
+            message: 'Update failed - ' + JSON.stringify(error),
+            name: 'Update',
+          };
+        }
       }
 
       case 'RaiseHand': {
@@ -613,7 +609,8 @@ class SparkCore extends EventEmitter {
    * Adds a listener to our secure message stream
    * @param name the message type we're waiting on
    * @param uri - a particular function / variable?
-   * @param token - what message does this go with? (should come from sendMessage)
+   * @param token - what message does this go with? (should come from
+   *  sendMessage)
    */
   listenFor = async (
     name: string,
@@ -719,7 +716,9 @@ class SparkCore extends EventEmitter {
     const key = utilities.toHexString(sendToken);
 
     if (this._tokens[key]) {
-      throw new Error(`Token ${name} ${this._tokens[key]} ${key} already in use`);
+      throw new Error(
+        `Token ${name} ${this._tokens[key]} ${key} already in use`,
+      );
     }
 
     this._tokens[key] = name;
@@ -785,8 +784,9 @@ class SparkCore extends EventEmitter {
     const payload = Messages.toBinary(data);
     const token = this.sendMessage('VariableRequest', { name: name }, payload);
 
-    //are we expecting a response?
-    //watches the messages coming back in, listens for a message of this type with
+    // are we expecting a response?
+    // watches the messages coming back in, listens for a message of this type
+    // with
     return await this.listenFor('VariableValue', null, token);
   };
 
@@ -908,10 +908,20 @@ class SparkCore extends EventEmitter {
       );
 
       flasher.startFlashBuffer(binary);
-      logger.log('flash core finished! - sending api event', { coreID: this.getHexCoreID() });
+      logger.log(
+        'flash core finished! - sending api event',
+        { coreID: this.getHexCoreID() },
+      );
 
-      global.server.publishSpecialEvent('spark/flash/status', 'success', this.getHexCoreID());
-      this.sendApiResponse(sender, { cmd: 'Event', name: 'Update', message: 'Update done' });
+      global.server.publishSpecialEvent(
+        'spark/flash/status',
+        'success',
+        this.getHexCoreID(),
+      );
+      this.sendApiResponse(
+        sender,
+        { cmd: 'Event', name: 'Update', message: 'Update done' },
+      );
       return result;
     } catch (error) {
       logger.log(
@@ -1003,7 +1013,8 @@ class SparkCore extends EventEmitter {
     let data = null;
     try {
       if (message && message.getPayload) {
-        //leaving raw payload in response message for now, so we don't shock our users.
+        // leaving raw payload in response message for now, so we don't shock
+        // our users.
         data = message.getPayload();
         result = Messages.fromBinary(data, variableType);
       }
@@ -1074,7 +1085,6 @@ class SparkCore extends EventEmitter {
         oldProtocolFunctionState &&
         oldProtocolFunctionState.some(fn => fn.toLowerCase() === name)
       ) {
-        //logger.log('_transformArguments - using old format', { coreID: this.getHexCoreID() });
         //current / simplified function format (one string arg, int return type)
         functionState = {
           returns: 'int',
@@ -1086,17 +1096,15 @@ class SparkCore extends EventEmitter {
     }
 
     if (!functionState || !functionState.args) {
-        //logger.error('_transformArguments: core doesn't know fn: ', { coreID: this.getHexCoreID(), name: name, state: this._deviceFunctionState });
         return null;
     }
 
-    //  'HelloWorld': { returns: 'string', args: [ {'name': 'string'}, {'adjective': 'string'}  ]} };
     return Messages.buildArguments(args, functionState.args);
   };
 
   /**
-   * Checks our cache to see if we have the function state, otherwise requests it from the core,
-   * listens for it, and resolves our deferred on success
+   * Checks our cache to see if we have the function state, otherwise requests
+   * it from the core, listens for it, and resolves our deferred on success
    * @returns {*}
    */
   _ensureWeHaveIntrospectionData = async (): Promise<*> => {
@@ -1173,14 +1181,12 @@ class SparkCore extends EventEmitter {
     };
 
     //snap obj.ttl to the right value.
-    eventData.ttl = (eventData.ttl > 0) ? eventData.ttl : 60;
+    eventData.ttl = eventData.ttl > 0 ? eventData.ttl : 60;
 
     //snap data to not incorrectly default to an empty string.
     if (message.getPayloadLength() === 0) {
       eventData.data = null;
     }
-
-//logger.log(JSON.stringify(obj));
 
     //if the event name starts with spark (upper or lower), then eat it.
     const lowername = eventData.name.toLowerCase();
@@ -1188,7 +1194,6 @@ class SparkCore extends EventEmitter {
 
     if (lowername.indexOf('spark/device/claim/code') === 0) {
       const claimCode = message.getPayload().toString();
-
       const coreAttributes = global.server.getCoreAttributes(coreId);
 
       if (coreAttributes.claimCode !== claimCode) {
