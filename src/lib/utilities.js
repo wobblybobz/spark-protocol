@@ -84,22 +84,12 @@ var utilities = {
         return true;
     },
 
-    promiseStreamFile: function (fileName: string): Promise<ReadStream> {
-      return new Promise((resolve, reject) => {
-        try {
-          fs.exists(fileName, (exists): void => {
-            if (!exists) {
-              logger.error('File: ' + fileName + ' doesn\'t exist.');
-              reject();
-            } else {
-              resolve(fs.createReadStream(fileName));
-            }
-          });
-        } catch (exception) {
-          logger.error('promiseStreamFile: ' + exception);
-          reject('promiseStreamFile said ' + exception);
-        }
-      });
+    readBuffer: function (fileName: string): Buffer {
+      if (!fs.existsSync(fileName)) {
+        throw Error('File does not exist', fileName);
+      }
+
+      return fs.readFileSync(fileName);
     },
 
     toHexString: function (value: number) {

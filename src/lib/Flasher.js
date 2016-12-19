@@ -51,11 +51,6 @@ const CHUNK_SIZE = 256;
 const MAX_CHUNK_SIZE = 594;
 const MAX_MISSED_CHUNKS = 10;
 
-type FlashStream = {
-	close(): void,
-	read(size?: number): ?(string | Buffer),
-};
-
 class Flasher {
 	_chunk: ?Buffer = null;
 	_chunkSize: number = CHUNK_SIZE;
@@ -63,7 +58,7 @@ class Flasher {
 	_client: SparkCore;
 	_fileBuffer: ?Buffer = null;
 	_fileName: ?string = null;
-	_fileStream: ?FlashStream = null;
+	_fileStream: ?BufferStream = null;
 	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
 	_stage: FlashingStage = 'prepare';
@@ -203,16 +198,14 @@ class Flasher {
 				this._chunkIndex = -1;
 				this._startStep('begin_update');
 			}
+		} else if (this._fileName) {
+			this._fileStream = new BufferStream(
+				utilities.readBuffer(this._fileName),
+			);
+			this._chunkIndex = -1;
+			this._startStep('send_file');
 		} else {
-			utilities.promiseStreamFile(nullthrows(this._fileName))
-				.then(
-					(readStream: ReadStream): void => {
-						this._fileStream = readStream;
-						this._chunkIndex = -1;
-						this._startStep('send_file');
-					},
-					this.failed,
-				);
+			throw Error('Filename nor buffer were set for flashing');
 		}
 
 		this._chunk = null;
@@ -222,7 +215,7 @@ class Flasher {
 		this._client.on('msg_chunkmissed', message => this.onChunkMissed(message));
 	}
 
-	getBufferStream = (buffer: Buffer): FlashStream => {
+	getBufferStream = (buffer: Buffer): BufferStream => {
 		if (buffer.length === 0) {
 			throw new Error('Flasher: file buffer was empty.');
 		}
@@ -274,6 +267,7 @@ class Flasher {
 		const tryBeginUpdate = () => {
 			var sentStatus = true;
 			if (maxTries > 0) {
+
 				this.failWatch('UpdateReady', resendDelay, tryBeginUpdate);
 
 				//(MDM Proposal) Optional payload to enable fast OTA and file placement:
@@ -306,7 +300,6 @@ class Flasher {
 				bufferBuilder.pushUInt32(fileSize);
 				bufferBuilder.pushUInt8(destFlag);
 				bufferBuilder.pushUInt32(destAddr);
-
 
 				//UpdateBegin — sent by Server to initiate an OTA firmware update
 				sentStatus = this._client.sendMessage(
@@ -369,7 +362,7 @@ class Flasher {
 
 		let version = 0;
 		if (message && message.getPayloadLength() > 0) {
-			//version = messages.fromBinary(message.getPayload(), 'byte');
+			version = messages.fromBinary(message.getPayload(), 'byte');
 		}
 		this._protocolVersion = version;
 		this._startStep('send_file');
@@ -391,8 +384,8 @@ class Flasher {
 		//UpdateDone — sent by Server to indicate all firmware chunks have been sent
 		this.failWatch('CompleteTransfer', 600, this.failed);
 
-		const isFastOTA = this._protocolVersion > 0;
-		if (isFastOTA) {
+		const canUseFastOTA = this._fastOtaEnabled && this._protocolVersion > 0;
+		if (canUseFastOTA) {
 			logger.log(
 				'Starting FastOTA update',
 				{coreID: this._client.getHexCoreID()},
@@ -405,7 +398,7 @@ class Flasher {
 			this.readNextChunk();
 
 			// We don't need to wait for the response if using FastOTA.
-			if (!isFastOTA) {
+			if (canUseFastOTA) {
 				continue;
 			}
 
@@ -420,22 +413,51 @@ class Flasher {
 			}
 		}
 
+		if (canUseFastOTA) {
+			// Wait a whle for the error messages to come in for FastOTA
+			await this._waitForMissedChunks();
+		}
+
 		// Handle missed chunks
-		await this._resendChunks();
+		let counter = 0;
+		while (this._missedChunks.size > 0 && counter < 3) {
+			await this._resendChunks();
+			await this._waitForMissedChunks();
+			counter++;
+		}
 
 		// cleanup
 		await this.onAllChunksDone();
 	}
 
-	_resendChunks = (): void => {
-		let allChunksRecieved = this._missedChunks.size > 0;
+	_resendChunks = async (): Promise<void> => {
+		const missedChunks = Array.from(this._missedChunks);
+		this._missedChunks.clear();
 
-		if (!allChunksRecieved) {
-			const missedChunks = Array.from(this._missedChunks.entries());
-			this._missedChunks.clear();
+		const canUseFastOTA = this._fastOtaEnabled && this._protocolVersion > 0;
+		await Promise.all(missedChunks.map(async (chunkIndex) => {
+			const offset = chunkIndex * this._chunkSize;
+			nullthrows(this._fileStream).seek(offset);
+			this._chunkIndex = chunkIndex;
 
+			this.readNextChunk();
+			this.sendChunk(chunkIndex);
 
-		}
+			// We don't need to wait for the response if using FastOTA.
+			if (!canUseFastOTA) {
+				return;
+			}
+
+			const message = await this._client.listenFor(
+				'ChunkReceived',
+				null,
+				null,
+			);
+
+			if (!messages.statusIsOkay(message)) {
+				throw new Error('\'ChunkReceived\' failed.');
+			}
+		}));
 	};
 
 	readNextChunk = (): void => {
@@ -444,7 +466,7 @@ class Flasher {
 		}
 
 		let chunk = this._chunk = this._fileStream
-			? (this._fileStream.read(this._chunkSize): any)
+			? this._fileStream.read(this._chunkSize)
 			: null;
 
 		//workaround for https://github.com/spark/core-firmware/issues/238
@@ -460,7 +482,7 @@ class Flasher {
 	}
 
 	sendChunk = async (chunkIndex: ?number = 0): Promise<*> => {
-		const includeIndex = this._protocolVersion > 0;
+		const includeIndex = this._fastOtaEnabled && this._protocolVersion > 0;
 
 		if (!this._chunk) {
 			await this.onAllChunksDone();
@@ -508,19 +530,8 @@ class Flasher {
 			logger.log('Flasher - failed sending updateDone message');
 		}
 
-		if (this._protocolVersion > 0) {
-			// fast ota, lets stick around until 10 seconds after the last chunkmissed
-			// message
-			this._waitForMissedChunks(true);
-			const result = await this._client.listenFor(
-				'ChunkReceived',
-				null,
-				null,
-			);
-		} else {
-			this.clearWatch('CompleteTransfer');
-			this._startStep('teardown');
-		}
+		this.clearWatch('CompleteTransfer');
+		this._startStep('teardown');
 	}
 
 	/**
@@ -528,20 +539,19 @@ class Flasher {
 	 * chunkmissed message.
 	 * @private
 	 */
-	_waitForMissedChunks = (): void => {
+	_waitForMissedChunks = async (): Promise<void> => {
 		if (this._protocolVersion <= 0) {
 			//this doesn't apply to normal slow ota
 			return;
 		}
 
-		if (this._waitForChunksTimer) {
-			clearTimeout(this._waitForChunksTimer);
-		}
-
-		this._waitForChunksTimer = setTimeout(
-			() => this._waitForMissedChunksDone,
-			60 * 1000,
-		);
+		return new Promise((resolve, reject) => setTimeout(
+			() => {
+				console.log('finished waiting');
+				resolve();
+			},
+			5 * 1000,
+		));
 	}
 
 	/**
@@ -565,8 +575,6 @@ class Flasher {
 	}
 
 	onChunkMissed = (message: Message): void => {
-		this._waitForMissedChunks();
-
 		if (this._missedChunks.size > MAX_MISSED_CHUNKS) {
 			logger.error(
 				'flasher - chunk missed - core over limit, killing! ',
@@ -604,6 +612,8 @@ class Flasher {
 				logger.error('onChunkMissed error reading payload ' + exception);
 			}
 		}
+
+		console.log(Array.from(this._missedChunks));
 	}
 
 	_resendChunk = (index?: number): void => {
@@ -623,7 +633,7 @@ class Flasher {
 		const offset = index * this._chunkSize;
 		// Super hacky but I don't feel like figuring out when a filestream is a
 		// buffer stream and when it's a ReadStream.
-		((fileStream: any): BufferStream).seek(offset);
+		fileStream.seek(offset);
 		this._chunkIndex = index;
 
 		//re-send

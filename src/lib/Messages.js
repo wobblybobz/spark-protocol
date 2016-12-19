@@ -334,7 +334,10 @@ class Messages {
     }
 
     switch (typeName) {
-      case 'uint16':
+      case 'uint16': {
+        bufferBuilder.pushUInt16(value);
+        break;
+      }
       case 'uint32':
       case 'crc': {
         bufferBuilder.pushUInt32(value);

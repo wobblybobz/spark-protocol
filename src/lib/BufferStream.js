@@ -32,7 +32,7 @@ class BufferStream {
     this._index = index;
   }
 
-  read = (size?: number): ?(string | Buffer) => {
+  read = (size?: number): ?Buffer => {
     if (!this._buffer) {
       return null;
     }
