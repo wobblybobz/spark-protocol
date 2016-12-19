@@ -370,8 +370,7 @@ class SparkCore extends EventEmitter {
           logger.log('FlashCore', { coreID: this._coreId });
         }
 
-        this.flashCore(message.args.data, sender);
-        break;
+        return await this.flashCore(message.args.data, sender);
       }
 
       case 'FlashKnown': {
@@ -852,21 +851,22 @@ class SparkCore extends EventEmitter {
     );
   };
 
-  flashCore = (binary: ?Buffer, sender: string): void => {
+  flashCore = (binary: ?Buffer, sender: string): Object => {
     if (!binary || (binary.length === 0)) {
       logger.log(
         'flash failed! - file is empty! ',
         { coreID: this.getHexCoreID() },
       );
+      const result = {
+        cmd: 'Event',
+        error: new Error('Update failed - File was too small!'),
+        name: 'Update',
+      };
       this.sendApiResponse(
         sender,
-        {
-          cmd: 'Event',
-          error: new Error('Update failed - File was too small!'),
-          name: 'Update',
-        },
+        result,
       );
-      return;
+      return result;
     }
 
     if (binary && binary.length > MAX_BINARY_SIZE) {
@@ -874,64 +874,66 @@ class SparkCore extends EventEmitter {
         `flash failed! - file is too BIG ${binary.length}`,
         { coreID: this.getHexCoreID() },
       );
+      const result = {
+        cmd: 'Event',
+        error: new Error('Update failed - File was too big!'),
+        name: 'Update',
+      };
       this.sendApiResponse(
         sender,
-        {
-          cmd: 'Event',
-          error: new Error('Update failed - File was too big!'),
-          name: 'Update',
-        },
+        result,
       );
-      return;
+      return result;
     }
 
     const flasher = new Flasher(this);
-    flasher.startFlashBuffer(
-      binary,
-      (): void => {
-        logger.log('flash core finished! - sending api event', { coreID: this.getHexCoreID() });
+    try {
+      logger.log(
+        'flash core started! - sending api event',
+        { coreID: this.getHexCoreID() },
+      );
+      global.server.publishSpecialEvent(
+        'spark/flash/status',
+        'started',
+        this.getHexCoreID(),
+      );
+      const result = {
+        cmd: 'Event',
+        message: 'Update started',
+        name: 'Update',
+      };
+      this.sendApiResponse(
+        sender,
+        result,
+      );
 
-        global.server.publishSpecialEvent('spark/flash/status', 'success', this.getHexCoreID());
-        this.sendApiResponse(sender, { cmd: 'Event', name: 'Update', message: 'Update done' });
-      },
-      (message: Message): void => {
-        logger.log(
-          'flash core failed! - sending api event',
-          { coreID: this.getHexCoreID(), error: message },
-        );
-        global.server.publishSpecialEvent(
-          'spark/flash/status',
-          'failed',
-          this.getHexCoreID(),
-        );
-        this.sendApiResponse(
-          sender,
-          {
-            cmd: 'Event',
-            error: new Error('Update failed'),
-            name: 'Update',
-          },
-        );
-      },
-      (): void => {
-        logger.log(
-          'flash core started! - sending api event',
-          { coreID: this.getHexCoreID() },
-        );
-        global.server.publishSpecialEvent(
-          'spark/flash/status',
-          'started',
-          this.getHexCoreID(),
-        );
-        this.sendApiResponse(
-          sender,
-          {
-            cmd: 'Event',
-            message: 'Update started',
-            name: 'Update',
-          },
-        );
-      });
+      flasher.startFlashBuffer(binary);
+      logger.log('flash core finished! - sending api event', { coreID: this.getHexCoreID() });
+
+      global.server.publishSpecialEvent('spark/flash/status', 'success', this.getHexCoreID());
+      this.sendApiResponse(sender, { cmd: 'Event', name: 'Update', message: 'Update done' });
+      return result;
+    } catch (error) {
+      logger.log(
+        'flash core failed! - sending api event',
+        { coreID: this.getHexCoreID(), error },
+      );
+      global.server.publishSpecialEvent(
+        'spark/flash/status',
+        'failed',
+        this.getHexCoreID(),
+      );
+      const result = {
+        cmd: 'Event',
+        error: new Error('Update failed'),
+        name: 'Update',
+      };
+      this.sendApiResponse(
+        sender,
+        result,
+      );
+      return result;
+    }
   };
 
   _isSocketAvailable = (

@@ -40,13 +40,6 @@ import nullthrows from 'nullthrows';
 //UpdateDone — sent by Server to indicate all firmware chunks have been sent
 //
 
-type FlashingStage =
-	'begin_update' |
-	'done' |
-	'prepare' |
-	'send_file' |
-	'teardown';
-
 const CHUNK_SIZE = 256;
 const MAX_CHUNK_SIZE = 594;
 const MAX_MISSED_CHUNKS = 10;
@@ -56,15 +49,10 @@ class Flasher {
 	_chunkSize: number = CHUNK_SIZE;
 	_chunkIndex: number;
 	_client: SparkCore;
-	_fileBuffer: ?Buffer = null;
-	_fileName: ?string = null;
 	_fileStream: ?BufferStream = null;
 	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
-	_stage: FlashingStage = 'prepare';
 	_startTime: ?Date;
-	_timeoutsByName: Map<string, number> = new Map();
-	_waitForChunksTimer: ?number = null;
 	_missedChunks: Set<number> = new Set();
 
 	//
@@ -73,304 +61,174 @@ class Flasher {
 	_fastOtaEnabled: boolean = true;
 	_ignoreMissedChunks: boolean = false;
 
-	// callbacks
-	_onError: ?(error: string) => void = null;
-	_onSuccess: ?() => void = null;
-	_onStarted: ?Function = null;
-
 	constructor(client: SparkCore) {
 		this._client = client;
 	}
 
-	startFlashFile = (
-		filename: string,
-		onSuccess: Function,
-		onError: Function,
-	): void => {
-		this._fileName = filename;
-		this._onSuccess = onSuccess;
-		this._onError = onError;
-
-		this._startTime = new Date();
-
-		if (this.claimConnection()) {
-			this._startStep('prepare');
-		}
-	}
-
-	_startStep = (stage: FlashingStage): void => {
-		process.nextTick(async () => {
-			try {
-				this._stage = stage;
-				switch (stage) {
-					case 'prepare': {
-						this.prepare();
-						break;
-					}
-
-					case 'begin_update': {
-						await this.beginUpdate();
-						break;
-					}
-
-					case 'send_file': {
-						await this.sendFile();
-						break;
-					}
-
-					case 'teardown': {
-						this.teardown();
-						break;
-					}
-
-					case 'done': {
-						break;
-					}
-
-					default: {
-						logger.log('Flasher, what stage was this? ' + this._stage);
-						break;
-					}
-				}
-			} catch (exception) {
-				console.log('EXXX', exception);
-			}
-		});
-	};
-
-	startFlashBuffer = (
+	startFlashBuffer = async (
 		buffer: Buffer,
-		onSuccess: () => void,
-		onError: (error: string) => void,
-		onStarted: Function,
-	): void => {
-		this._fileBuffer = buffer;
-		this._onSuccess = onSuccess;
-		this._onError = onError;
-		this._onStarted = onStarted;
+	): Promise<void> => {
+    try {
+      if (!this._claimConnection()) {
+  			return;
+  		}
 
-		if (this.claimConnection()) {
-			this._startStep('prepare');
-		}
+  		this._startTime = new Date();
+
+  		this._prepare(buffer);
+      await this._beginUpdate(buffer);
+      await Promise.race([
+        // Fail after 60 of trying to flash
+        new Promise((resolve, reject) => setTimeout(
+          () => reject('Update timed out'),
+          60 * 1000,
+        )),
+        this._sendFile(),
+      ]);
+
+  		// cleanup
+  		await this._onAllChunksDone();
+      this._cleanup();
+    } catch (error) {
+      this._cleanup();
+      throw error;
+    }
 	};
 
-	flashBuffer = async (buffer: Buffer): Promise<*> => {
-		const stream = this.getBufferStream(buffer);
-	};
-
-	setChunkSize = (size: ?number): void => {
-		this._chunkSize = size || CHUNK_SIZE;
-	}
-
-	claimConnection = (): boolean => {
-		//suspend all other messages to the core
-		if (!this._client.takeOwnership(this)) {
-			this.failed('Flasher: Unable to take ownership');
-			return false;
-		}
-
-		return true;
-	}
-
-	failed = (message: ?string): void => {
-		if (message) {
-			logger.error('Flasher failed ' + message);
-		}
-
-		this.cleanup();
-		this._onError && this._onError(message || '');
-	}
-
-	prepare = (): void => {
+	_prepare = (fileBuffer: ?Buffer): void => {
 		//make sure we have a file,
 		//  open a stream to our file
-		let fileBuffer = this._fileBuffer;
-		if (fileBuffer) {
-			if (fileBuffer.length === 0) {
-				this.failed('Flasher: this.fileBuffer was empty.');
-			} else {
-				if (!Buffer.isBuffer(fileBuffer)) {
-					this._fileBuffer = Buffer.from(fileBuffer);
-					fileBuffer = this._fileBuffer;
-				}
-
-				this._fileStream = new BufferStream(fileBuffer);
-				this._chunkIndex = -1;
-				this._startStep('begin_update');
-			}
-		} else if (this._fileName) {
-			this._fileStream = new BufferStream(
-				utilities.readBuffer(this._fileName),
-			);
-			this._chunkIndex = -1;
-			this._startStep('send_file');
+		if (!fileBuffer || fileBuffer.length === 0) {
+			throw new Error('Flasher: this.fileBuffer was empty.');
 		} else {
-			throw Error('Filename nor buffer were set for flashing');
+			this._fileStream = new BufferStream(fileBuffer);
 		}
 
 		this._chunk = null;
 		this._lastCrc = null;
 
+    this._chunkIndex = -1;
+
 		//start listening for missed chunks before the update fully begins
-		this._client.on('msg_chunkmissed', message => this.onChunkMissed(message));
+		this._client.on('msg_chunkmissed', message => this._onChunkMissed(message));
 	}
 
-	getBufferStream = (buffer: Buffer): BufferStream => {
-		if (buffer.length === 0) {
-			throw new Error('Flasher: file buffer was empty.');
+	_claimConnection = (): boolean => {
+		//suspend all other messages to the core
+		if (!this._client.takeOwnership(this)) {
+			throw new Error('Flasher: Unable to take ownership');
 		}
 
-		if (!Buffer.isBuffer(buffer)) {
-			buffer = Buffer.from(buffer);
-		}
-
-		return new BufferStream(buffer);
+		return true;
 	}
 
-	teardown = (): void => {
-		this.cleanup();
-
-		//we succeeded, short-circuit the error function so we don't count more errors than appropriate.
-		this._onError = (error) => {
-			logger.log('Flasher - already succeeded, not an error: ' + error);
-		};
-
-		const onSuccess = this._onSuccess;
-		onSuccess && process.nextTick(() => onSuccess());
-	}
-
-	cleanup = (): void => {
-		try {
-			//resume all other messages to the core
-			this._client.releaseOwnership(this);
-
-			//release our file handle
-			const fileStream = this._fileStream;
-			if (fileStream) {
-				fileStream.close();
-				this._fileStream = null;
-			}
-
-			//cleanup when we're done...
-			this.clearWatch('UpdateReady');
-			this.clearWatch('CompleteTransfer');
-		} catch (exception) {
-			logger.error('Flasher: error during cleanup ' + exception);
-		}
-	}
-
-	beginUpdate = async (): Promise<any> => {
+	_beginUpdate = async (buffer: Buffer): Promise<*> => {
 		let maxTries = 3;
-		// NOTE: this is 6 because it's double the ChunkMissed 3 second delay
-		const resendDelay = 6;
 
-		const tryBeginUpdate = () => {
-			var sentStatus = true;
-			if (maxTries > 0) {
+		const tryBeginUpdate = async () => {
+      if (maxTries < 0) {
+        throw new Error('Failed waiting on UpdateReady - out of retries ');
+      }
 
-				this.failWatch('UpdateReady', resendDelay, tryBeginUpdate);
-
-				//(MDM Proposal) Optional payload to enable fast OTA and file placement:
-				//u8  flags    0x01 - Fast OTA available - when set the server can
-				//  provide fast OTA transfer
-				//u16 chunk size	Each chunk will be this size apart from the last which
-				//  may be smaller.
-				//u32 file size		The total size of the file.
-				//u8 destination 	Where to store the file
-				//	0x00 Firmware update
-				//	0x01 External Flash
-				//	0x02 User Memory Function
-				//u32 destination address (0 for firmware update, otherwise the address
-				//  of external flash or user memory.)
-
-				let flags = 0;	//fast ota available
-				const chunkSize = this._chunkSize;
-				const fileSize = nullthrows(this._fileBuffer).length;
-				const destFlag = 0;   //TODO: reserved for later
-				const destAddr = 0;   //TODO: reserved for later
-
-				if (this._fastOtaEnabled) {
-					logger.log('fast ota enabled! ', this.getLogInfo());
-					flags = 1;
-				}
-
-				var bufferBuilder = new buffers.BufferBuilder();
-				bufferBuilder.pushUInt8(flags);
-				bufferBuilder.pushUInt16(chunkSize);
-				bufferBuilder.pushUInt32(fileSize);
-				bufferBuilder.pushUInt8(destFlag);
-				bufferBuilder.pushUInt32(destAddr);
-
-				//UpdateBegin — sent by Server to initiate an OTA firmware update
-				sentStatus = this._client.sendMessage(
-					'UpdateBegin',
-					null,
-					bufferBuilder.toBuffer(),
-					this,
-				);
-				maxTries--;
-			}	else if (maxTries===0) {
-				 //give us one last LONG wait, for really really slow connections.
-				 this.failWatch('UpdateReady', 90, tryBeginUpdate);
-				 sentStatus = this._client.sendMessage(
-					 'UpdateBegin',
-					 null,
-					 null,
-					 this,
-				 );
-				 maxTries--;
-			}	else {
-				this.failed('Failed waiting on UpdateReady - out of retries ');
-			}
+      // NOTE: this is 6 because it's double the ChunkMissed 3 second delay
+      // The 90 second delay is crazy but try it just in case.
+      let delay = maxTries > 0 ? 6 : 90;
+      const sentStatus = this._sendBeginUpdateMessage(buffer);
+      maxTries--;
 
 			// did we fail to send out the UpdateBegin message?
 			if (sentStatus === false) {
-				this.clearWatch('UpdateReady');
-				this.failed('UpdateBegin failed - sendMessage failed');
+				throw new Error('UpdateBegin failed - sendMessage failed');
 			}
+
+      // Wait for UpdateReady — sent by Core to indicate readiness to receive
+  		// firmware chunks
+  		const message = await Promise.race([
+  			this._client.listenFor(
+  				'UpdateReady',
+  				/*uri*/ null,
+  				/*token*/ null,
+  			),
+  			this._client.listenFor(
+  				'UpdateAbort',
+  				/*uri*/ null,
+  				/*token*/ null,
+  			).then((message: ?Message): ?Message => {
+  				let failReason = '';
+  				if (message && message.getPayloadLength() > 0) {
+  					failReason = messages.fromBinary(message.getPayload(), 'byte');
+  				}
+
+  				throw new Error('aborted ' + failReason);
+  			}),
+        // Try to update multiple times
+        new Promise((resolve, reject) => setTimeout(
+          () => {
+            tryBeginUpdate();
+            resolve();
+          },
+          delay * 1000,
+        )),
+  		]);
+
+      // Message will be null if the message isn't read by the device and we are
+      // retrying
+      if (!message) {
+        return;
+      }
+
+  		let version = 0;
+  		if (message && message.getPayloadLength() > 0) {
+  			version = messages.fromBinary(message.getPayload(), 'byte');
+  		}
+  		this._protocolVersion = version;
 		};
 
-		tryBeginUpdate();
-
-		// Wait for UpdateReady — sent by Core to indicate readiness to receive
-		// firmware chunks
-		const message = await Promise.race([
-			this._client.listenFor(
-				'UpdateReady',
-				/*uri*/ null,
-				/*token*/ null,
-			).then((message: ?Message): ?Message => {
-				this.clearWatch('UpdateReady');
-				this._client.removeAllListeners('msg_updateabort');
-				return message;
-			}),
-			this._client.listenFor(
-				'UpdateAbort',
-				/*uri*/ null,
-				/*token*/ null,
-			).then((message: ?Message): ?Message => {
-				this.clearWatch('UpdateReady');
-				let failReason = '';
-				if (message && message.getPayloadLength() > 0) {
-					failReason = messages.fromBinary(message.getPayload(), 'byte');
-				}
-
-				this.failed('aborted ' + failReason);
-				return message;
-			}),
-		]);
-
-		let version = 0;
-		if (message && message.getPayloadLength() > 0) {
-			version = messages.fromBinary(message.getPayload(), 'byte');
-		}
-		this._protocolVersion = version;
-		this._startStep('send_file');
-		const onStarted = this._onStarted;
-		onStarted && process.nextTick((): void => onStarted());
+		await tryBeginUpdate();
 	}
 
-	sendFile = async (): Promise<*> => {
+  _sendBeginUpdateMessage = (fileBuffer: Buffer): boolean => {
+    //(MDM Proposal) Optional payload to enable fast OTA and file placement:
+    //u8  flags    0x01 - Fast OTA available - when set the server can
+    //  provide fast OTA transfer
+    //u16 chunk size	Each chunk will be this size apart from the last which
+    //  may be smaller.
+    //u32 file size		The total size of the file.
+    //u8 destination 	Where to store the file
+    //	0x00 Firmware update
+    //	0x01 External Flash
+    //	0x02 User Memory Function
+    //u32 destination address (0 for firmware update, otherwise the address
+    //  of external flash or user memory.)
+
+    let flags = 0;	//fast ota available
+    const chunkSize = this._chunkSize;
+    const fileSize = fileBuffer.length;
+    const destFlag = 0;   //TODO: reserved for later
+    const destAddr = 0;   //TODO: reserved for later
+
+    if (this._fastOtaEnabled) {
+      logger.log('fast ota enabled! ', this._getLogInfo());
+      flags = 1;
+    }
+
+    var bufferBuilder = new buffers.BufferBuilder();
+    bufferBuilder.pushUInt8(flags);
+    bufferBuilder.pushUInt16(chunkSize);
+    bufferBuilder.pushUInt32(fileSize);
+    bufferBuilder.pushUInt8(destFlag);
+    bufferBuilder.pushUInt32(destAddr);
+
+    //UpdateBegin — sent by Server to initiate an OTA firmware update
+    return !!this._client.sendMessage(
+      'UpdateBegin',
+      null,
+      bufferBuilder.toBuffer(),
+      this,
+    );
+  }
+
+	_sendFile = async (): Promise<*> => {
 		this._chunk = null;
 		this._lastCrc = null;
 
@@ -382,7 +240,6 @@ class Flasher {
 
 		//send when ready:
 		//UpdateDone — sent by Server to indicate all firmware chunks have been sent
-		this.failWatch('CompleteTransfer', 600, this.failed);
 
 		const canUseFastOTA = this._fastOtaEnabled && this._protocolVersion > 0;
 		if (canUseFastOTA) {
@@ -392,10 +249,10 @@ class Flasher {
 			);
 		}
 
-		this.readNextChunk();
+		this._readNextChunk();
 		while (this._chunk) {
-			this.sendChunk(this._chunkIndex);
-			this.readNextChunk();
+			this._sendChunk(this._chunkIndex);
+			this._readNextChunk();
 
 			// We don't need to wait for the response if using FastOTA.
 			if (canUseFastOTA) {
@@ -425,9 +282,6 @@ class Flasher {
 			await this._waitForMissedChunks();
 			counter++;
 		}
-
-		// cleanup
-		await this.onAllChunksDone();
 	}
 
 	_resendChunks = async (): Promise<void> => {
@@ -440,8 +294,8 @@ class Flasher {
 			nullthrows(this._fileStream).seek(offset);
 			this._chunkIndex = chunkIndex;
 
-			this.readNextChunk();
-			this.sendChunk(chunkIndex);
+			this._readNextChunk();
+			this._sendChunk(chunkIndex);
 
 			// We don't need to wait for the response if using FastOTA.
 			if (!canUseFastOTA) {
@@ -460,7 +314,7 @@ class Flasher {
 		}));
 	};
 
-	readNextChunk = (): void => {
+	_readNextChunk = (): void => {
 		if (!this._fileStream) {
 			logger.error('Asked to read a chunk after the update was finished');
 		}
@@ -481,57 +335,62 @@ class Flasher {
 		this._lastCrc = chunk ? crc32.unsigned(chunk) : null;
 	}
 
-	sendChunk = async (chunkIndex: ?number = 0): Promise<*> => {
-		const includeIndex = this._fastOtaEnabled && this._protocolVersion > 0;
-
-		if (!this._chunk) {
-			await this.onAllChunksDone();
-			return;
-		}
+	_sendChunk = async (chunkIndex: ?number = 0): Promise<*> => {
 		const encodedCrc = messages.toBinary(
 			nullthrows(this._lastCrc),
 			'crc',
 		);
 
+    const writeCoapUri = (message: Message): Message => {
+      message.addOption(
+        new Option(Message.Option.URI_PATH, new Buffer('c')),
+      );
+      message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
+      if (this._fastOtaEnabled && this._protocolVersion > 0) {
+        const indexBinary = messages.toBinary(
+          chunkIndex,
+          'uint16',
+        );
+        message.addOption(
+          new Option(Message.Option.URI_QUERY, indexBinary),
+        );
+      }
+      return message;
+    };
+
 		this._client.sendMessage(
 			'Chunk',
 			{
 				crc: encodedCrc,
-				_writeCoapUri: (message: Message): Message => {
-					message.addOption(
-						new Option(Message.Option.URI_PATH, new Buffer('c')),
-					);
-					message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
-					if (includeIndex) {
-						const indexBinary = messages.toBinary(
-							chunkIndex,
-							'uint16',
-						);
-						message.addOption(
-							new Option(Message.Option.URI_QUERY, indexBinary),
-						);
-					}
-					return message;
-				},
+				_writeCoapUri: writeCoapUri,
 			},
 			this._chunk,
 			this,
 		);
 	}
 
-	onAllChunksDone = async (): Promise<*> => {
-		logger.log('on response, no chunk, transfer done!');
-
-		this.clearWatch('CompleteTransfer');
-
+	_onAllChunksDone = async (): Promise<*> => {
 		if (
 			!this._client.sendMessage('UpdateDone', null, null, this)
 		) {
-			logger.log('Flasher - failed sending updateDone message');
+			throw new Error('Flasher - failed sending updateDone message');
 		}
+	}
 
-		this.clearWatch('CompleteTransfer');
-		this._startStep('teardown');
+  _cleanup = (): void => {
+		try {
+			//resume all other messages to the core
+			this._client.releaseOwnership(this);
+
+			//release our file handle
+			const fileStream = this._fileStream;
+			if (fileStream) {
+				fileStream.close();
+				this._fileStream = null;
+			}
+		} catch (exception) {
+			throw new Error('Flasher: error during cleanup ' + exception);
+		}
 	}
 
 	/**
@@ -550,20 +409,11 @@ class Flasher {
 				console.log('finished waiting');
 				resolve();
 			},
-			5 * 1000,
+			3 * 1000,
 		));
 	}
 
-	/**
-	 * fast ota - done sticking around for missing chunks
-	 * @private
-	 */
-	_waitForMissedChunksDone = (): void => {
-		this.clearWatch('CompleteTransfer');
-		this._startStep('teardown');
-	}
-
-	getLogInfo = (): {cache_key?: string, coreID: string} => {
+	_getLogInfo = (): {cache_key?: string, coreID: string} => {
 		if (this._client) {
 			return {
 				cache_key: this._client._connectionKey || undefined,
@@ -574,24 +424,22 @@ class Flasher {
 		}
 	}
 
-	onChunkMissed = (message: Message): void => {
+	_onChunkMissed = (message: Message): void => {
 		if (this._missedChunks.size > MAX_MISSED_CHUNKS) {
-			logger.error(
-				'flasher - chunk missed - core over limit, killing! ',
-				this.getLogInfo(),
-			);
-			this.failed();
-			return;
+			const json = JSON.stringify(this._getLogInfo());
+			throw new Error(
+        'flasher - chunk missed - core over limit, killing! ' + json,
+      );
 		}
 
 		// if we're not doing a fast OTA, and ignore missed is turned on, then
 		// ignore this missed chunk.
 		if (!this._fastOtaEnabled && this._ignoreMissedChunks) {
-			logger.log('ignoring missed chunk ', this.getLogInfo());
+			logger.log('ignoring missed chunk ', this._getLogInfo());
 			return;
 		}
 
-		logger.log('flasher - chunk missed - recovering ', this.getLogInfo());
+		logger.log('flasher - chunk missed - recovering ', this._getLogInfo());
 
 		//kosher if I ack before I've read the payload?
 		this._client.sendReply(
@@ -612,62 +460,6 @@ class Flasher {
 				logger.error('onChunkMissed error reading payload ' + exception);
 			}
 		}
-
-		console.log(Array.from(this._missedChunks));
-	}
-
-	_resendChunk = (index?: number): void => {
-		if (typeof index === 'undefined') {
-			logger.error('flasher - Got ChunkMissed, index was undefined');
-			return;
-		}
-
-		const fileStream = this._fileStream;
-		if (!fileStream) {
-			return this.failed('ChunkMissed, fileStream was empty');
-		}
-
-		logger.log('flasher resending chunk ' + index);
-
-		//seek
-		const offset = index * this._chunkSize;
-		// Super hacky but I don't feel like figuring out when a filestream is a
-		// buffer stream and when it's a ReadStream.
-		fileStream.seek(offset);
-		this._chunkIndex = index;
-
-		//re-send
-		this.readNextChunk();
-		this.sendChunk(index);
-	}
-
-	/**
-	 * Helper for managing a set of named timers and failure callbacks
-	 * @param name
-	 * @param seconds
-	 * @param callback
-	 */
-	failWatch = (name: string, seconds: number, callback: ?Function): void => {
-		if (!seconds) {
-			clearTimeout(this._timeoutsByName.get(name));
-			this._timeoutsByName.delete(name);
-		}	else {
-			this._timeoutsByName.set(
-				name,
-				setTimeout(
-					(): void => {
-						if (callback) {
-							callback('failed waiting on ' + name);
-						}
-					},
-					seconds * 1000,
-				),
-			);
-		}
-	}
-
-	clearWatch = (name: string): void => {
-		this.failWatch(name, 0, null);
 	}
 }
 
