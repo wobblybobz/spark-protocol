@@ -53,6 +53,15 @@ class FileManager {
     return fs.readFileSync(filePath, 'utf8');
   }
 
+  getFileBuffer(fileName: string): ?Buffer {
+    const filePath = path.join(this._path, fileName);
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
+
+    return fs.readFileSync(filePath);
+  }
+
   writeFile(fileName: string, data: string): void {
 		fs.writeFileSync(
       path.join(this._path, fileName),

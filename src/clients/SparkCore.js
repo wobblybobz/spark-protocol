@@ -373,37 +373,6 @@ class SparkCore extends EventEmitter {
         return await this.flashCore(message.args.data, sender);
       }
 
-      case 'FlashKnown': {
-        if (settings.logApiMessages) {
-          logger.log(
-            'FlashKnown',
-            { app: message.app, coreID: this._coreId },
-          );
-        }
-
-        // Responsibility for sanitizing app names lies with API Service
-        // This includes only allowing apps whose binaries are deployed and
-        // thus exist
-
-        // TODO: this should use a repository to fetch these binary files
-        try {
-          const buffer = fs.readFileSync(
-            `known_firmware/${message.app}_${settings.environment}.bin`,
-          );
-          return await this.flashCore(message.args.data, sender);
-        } catch (error) {
-          logger.log(
-            'Error flashing known firmware',
-            { coreID: this._coreId, error },
-          );
-          return  {
-            cmd: 'Event',
-            message: 'Update failed - ' + JSON.stringify(error),
-            name: 'Update',
-          };
-        }
-      }
-
       case 'RaiseHand': {
         if (settings.logApiMessages) {
           logger.log('SignalCore', { coreID: this._coreId });
