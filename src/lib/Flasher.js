@@ -164,6 +164,10 @@ class Flasher {
         // Try to update multiple times
         new Promise((resolve, reject) => setTimeout(
           () => {
+						if (maxTries <= 0) {
+							return;
+						}
+						
             tryBeginUpdate();
             resolve();
           },
@@ -176,6 +180,8 @@ class Flasher {
       if (!message) {
         return;
       }
+
+			maxTries = 0;
 
   		let version = 0;
   		if (message && message.getPayloadLength() > 0) {
