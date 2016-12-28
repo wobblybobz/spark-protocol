@@ -11,6 +11,18 @@ export type DeviceAttributes = {
   timestamp: Date,
 };
 
+export type Event = EventData & {
+  publishedAt: Date,
+};
+
+export type EventData = {
+  data: ?Object,
+  deviceID?: ?string,
+  isPublic: boolean,
+  name: string,
+  ttl: number,
+};
+
 export type Repository<TModel> = {
   create: (model: TModel) => Promise<TModel>,
   deleteById: (id: string) => Promise<void>,
