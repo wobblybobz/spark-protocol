@@ -54,24 +54,22 @@ class EventPublisher extends EventEmitter {
 
   publish = (
     eventData: EventData,
-  ): Promise<void> => new Promise((resolve: () => void) => {
+  ): void => {
     process.nextTick(() => {
       const event: Event = {
         ...eventData,
         publishedAt: moment().toISOString(),
       };
 
-      // TODO I guess this is incorrect - to emit 2-4 events with different names
-      // at the same time
       this.emit(eventData.name, event);
-      if(eventData.deviceID) {
+      if (eventData.deviceID) {
         this.emit(eventData.deviceID, event);
         this.emit(`${eventData.deviceID}/${eventData.name}`, event);
       }
       this.emit("*all*", event);
-      resolve();
     });
-  });
+  };
+
 
   subscribe = (
     name: ?string,
