@@ -55,19 +55,17 @@ class EventPublisher extends EventEmitter {
   publish = (
     eventData: EventData,
   ): void => {
-    process.nextTick(() => {
-      const event: Event = {
-        ...eventData,
-        publishedAt: moment().toISOString(),
-      };
+    const event: Event = {
+      ...eventData,
+      publishedAt: moment().toISOString(),
+    };
 
-      this.emit(eventData.name, event);
-      if (eventData.deviceID) {
-        this.emit(eventData.deviceID, event);
-        this.emit(`${eventData.deviceID}/${eventData.name}`, event);
-      }
-      this.emit("*all*", event);
-    });
+    this.emit(eventData.name, event);
+    if (eventData.deviceID) {
+      this.emit(eventData.deviceID, event);
+      this.emit(`${eventData.deviceID}/${eventData.name}`, event);
+    }
+    this.emit("*all*", event);
   };
 
 
