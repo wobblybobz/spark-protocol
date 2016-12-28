@@ -18,119 +18,84 @@
 *
 */
 
+import type { Event, EventData } from '../types';
 
 import EventEmitter from 'events';
+import moment from 'moment';
 import logger from './logger';
 import nullthrows from 'nullthrows';
+import uuid from './uuid';
+
+const getEventName = (name: ?string, deviceID: ?string): string => {
+  let eventName = '';
+  if (deviceID) {
+    eventName = deviceID;
+    if (name) {
+      eventName += '/' + name;
+    }
+  } else if (name){
+    eventName = name;
+  }
+
+  if (!eventName) {
+    return "*all*";
+  }
+
+  return eventName;
+};
+
+type Subscription = {
+  eventName: string,
+  eventHandler: (event: Event) => void,
+}
 
 class EventPublisher extends EventEmitter {
-  _eventHandlerByKey: Map<string, Function> = new Map();
-
-  getEventKey(name: ?string, userId: string, coreId: ?string): string {
-    let eventKey = userId;
-    if (coreId) {
-        eventKey += '_' + coreId;
-    }
-    if (name) {
-        eventKey += '_' + name;
-    }
-
-    return eventKey;
-  }
-
-  getEventName(name: ?string, coreId: ?string){
-    let eventName = '';
-    if (coreId) {
-        eventName = coreId;
-        if (name) {
-          eventName += '/' + name;
-        }
-    } else if (name){
-        eventName = name;
-    }
-
-    if (!eventName) {
-        return "*all*";
-    }
-
-    return eventName;
-  }
+  _subscriptionsByID: Map<string, Subscription> = new Map();
 
   publish = (
-    isPublic: boolean,
-    name: string,
-    userId: ?string,
-    data: string,
-    ttl: number,
-    publishedAt: Date,
-    coreId: string,
-  ): void => {
-    const params = [isPublic, name, userId, data, ttl, publishedAt, coreId];
+    eventData: EventData,
+  ): Promise<void> => new Promise((resolve: () => void) => {
     process.nextTick(() => {
-      this.emit(name, ...params);
-      this.emit(coreId, ...params);
-      this.emit(coreId + '/' + name, ...params);
-      this.emit("*all*", ...params);
-    });
-  };
-
-  subscribe = (
-    name: string,
-    userId: string,
-    coreId: string,
-    obj: Object,
-    eventHandler?: () => void,
-  ): void => {
-    const eventKey = this.getEventKey(name, userId, coreId);
-    if (this._eventHandlerByKey.has(eventKey)) {
-      return;
-    }
-
-    const eventName = this.getEventName(name, coreId);
-    const handler = eventHandler
-      ? eventHandler
-      : (
-        isPublic: boolean,
-        name: string,
-        userId: string,
-        data: Object,
-        ttl: number,
-        publishedAt: Date,
-        coreId: string
-      ): void => {
-        const emitName = isPublic ? "public" : "private";
-        if (typeof(obj.emit)==='function') {
-          obj.emit(emitName, name, data, ttl, publishedAt, coreId);
-        }
+      const event: Event = {
+        ...eventData,
+        publishedAt: moment().toISOString(),
       };
 
-    this._eventHandlerByKey.set(eventKey, handler);
-    this.on(eventName, handler);
-  }
+      // TODO I guess this is incorrect - to emit 2-4 events with different names
+      // at the same time
+      this.emit(eventData.name, event);
+      if(eventData.deviceID) {
+        this.emit(eventData.deviceID, event);
+        this.emit(`${eventData.deviceID}/${eventData.name}`, event);
+      }
+      this.emit("*all*", event);
+      resolve();
+    });
+  });
 
-  unsubscribe = (name: string, userId: string, coreId: string, obj: Object): void => {
-    const eventKey = this.getEventKey(name, userId, coreId);
-    if(!eventKey) {
-      return;
-    }
+  subscribe = (
+    name: ?string,
+    eventHandler: (event: Event) => void,
+    deviceID: ?string,
+  ): void => {
+    const subscriptionID = uuid();
+    const eventName = getEventName(name, deviceID);
 
-    if (!this._eventHandlerByKey.has(eventKey)) {
-      return;
-    }
+    this._subscriptionsByID.set(subscriptionID, { eventName, eventHandler });
+    this.on(eventName, eventHandler);
 
-    const handler = nullthrows(this._eventHandlerByKey.get(eventKey));
-    this.removeListener(eventKey, handler);
-    this._eventHandlerByKey.delete(eventKey);
-  }
+    return subscriptionID;
+  };
 
-  close = (): void => {
-    try {
-      this.removeAllListeners();
-    }
-    catch (exception) {
-      logger.error("EventPublisher: error thrown during close " + exception);
-    }
-  }
+  unsubscribe = (subscriptionID: string): void => {
+    const {
+      eventName,
+      eventHandler,
+    } = nullthrows(this._subscriptionsByID.get(subscriptionID));
+
+    this.removeListener(eventName, eventHandler);
+    this._subscriptionsByID.delete(subscriptionID);
+  };
 }
 
 export default EventPublisher;

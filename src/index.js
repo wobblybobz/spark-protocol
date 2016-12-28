@@ -13,10 +13,14 @@
 *
 *	You should have received a copy of the GNU Lesser General Public
 *	License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+*	 @flow
+*
 */
 
 import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
 import DeviceKeyFileRepository from './repository/DeviceKeyFileRepository';
+import EventPublisher from './lib/EventPublisher';
 import DeviceServer from './server/DeviceServer_v2';
 import FileManager from './repository/FileManager';
 import JSONFileManager from './repository/JSONFileManager';
@@ -28,6 +32,7 @@ export {
   DeviceAttributeFileRepository,
   DeviceKeyFileRepository,
   DeviceServer,
+  EventPublisher,
   FileManager,
   JSONFileManager,
   ServerConfigFileRepository,
