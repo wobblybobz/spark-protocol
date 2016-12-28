@@ -180,12 +180,16 @@ class DeviceServer {
     device: SparkCore,
   ): Promise<void> => {
     const deviceID = device.getHexCoreID();
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+
     const eventData = {
       data: message.getPayloadLength() === 0 ? null : message.getPayload().toString(),
       deviceID,
       isPublic,
       name: message.getUriPath().substr(3),
       ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
+      userID: deviceAttributes.ownerID,
     };
 
 
@@ -193,7 +197,6 @@ class DeviceServer {
 
     if (lowerEventName.match('spark/device/claim/code')) {
       const claimCode = message.getPayload().toString();
-      const deviceAttributes = await this._deviceAttributeRepository.getById(deviceID);
 
       if (deviceAttributes.claimCode !== claimCode) {
         await this._deviceAttributeRepository.update({
@@ -209,7 +212,6 @@ class DeviceServer {
 
     if (lowerEventName.match('spark/device/system/version')) {
       const deviceSystemVersion = message.getPayload().toString();
-      const deviceAttributes = await this._deviceAttributeRepository.getById(deviceID);
 
       await this._deviceAttributeRepository.update({
         ...deviceAttributes,
