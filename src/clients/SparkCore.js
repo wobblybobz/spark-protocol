@@ -197,10 +197,6 @@ class SparkCore extends EventEmitter {
 
     // TODO move to server
     this.on(
-      'msg_Subscribe'.toLowerCase(),
-      message => this.onCorePublicSubscribe(message),
-    );
-    this.on(
       'msg_GetTime'.toLowerCase(),
       message => this._onCoreGetTime(message),
     );
@@ -1127,63 +1123,6 @@ class SparkCore extends EventEmitter {
       binaryValue,
       message.getToken(),
     );
-  };
-
-  // TODO move to server
-  onCorePublicSubscribe = (message: Message): void => {
-    this.onCoreSubscribe(message, true);
-  };
-  onCoreSubscribe = (message: Message, isPublic: boolean): void => {
-    const name = message.getUriPath().substr(3);
-
-    //var body = resp.getPayload().toString();
-    //logger.log('Got subscribe request from core, path was \'' + name + '\'');
-    //uri -> /e/?u    --> firehose for all my devices
-    //uri -> /e/ (deviceid in body)   --> allowed
-    //uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-    //uri -> /e/event_name?u    --> all my devices
-    //uri -> /e/event_name?u (deviceid)    --> deviceid?
-
-    if (!name) {
-      //no firehose for cores
-      this.sendReply('SubscribeFail', message.getId());
-      return;
-    }
-
-    const query = message.getUriQuery();
-    const payload = message.getPayload();
-    const myDevices = query && query.indexOf('u') >= 0;
-    const userid = myDevices ? (this._userId || '').toLowerCase() : null;
-    const deviceID = payload ? payload.toString() : null;
-
-    //TODO: filter by a particular deviceID
-
-    this.sendReply('SubscribeAck', message.getId());
-
-    //modify our filter on the appropriate socket (create the socket if we haven't yet) to let messages through
-    //this.eventsSocket.subscribe(isPublic, name, userid);
-
-    global.publisher.subscribe(name, this.onCoreEvent, deviceID);
-  };
-
-  // TODO these two unused methods currently, why?
-  _onCorePublicHeard = (
-    name: string,
-    data: Object,
-    ttl: number,
-    publishedAt: Date,
-    coreId: string,
-  ): void => {
-    this.sendCoreEvent(true, name, data, ttl, publishedAt, coreId);
-  };
-  _onCorePrivateHeard = (
-    name: string,
-    data: Object,
-    ttl: number,
-    publishedAt: Date,
-    coreId: string,
-  ): void => {
-    this.sendCoreEvent(false, name, data, ttl, publishedAt, coreId);
   };
 
   onCoreEvent = (event: Event) => {

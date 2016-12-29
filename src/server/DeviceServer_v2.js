@@ -102,6 +102,14 @@ class DeviceServer {
           );
 
           device.on(
+            // TODO figure out is this message for subscriptions on public events or
+            // public + private
+            'msg_Subscribe'.toLowerCase(),
+            (message: Message): void =>
+              this._onDeviceSubscribe(message, device),
+          );
+
+          device.on(
             'msg_PrivateEvent'.toLowerCase(),
             (message: Message): void =>
               this._onDeviceSentMessage(
@@ -163,6 +171,8 @@ class DeviceServer {
 
     if (this._devicesById.has(deviceID)) {
       this._devicesById.delete(deviceID);
+      this._eventPublisher.unsubscribeBySubscriberID(deviceID);
+
       this.publishSpecialEvent('particle/status', 'offline', deviceID);
       logger.log(`Session ended for device with ID: ${deviceID}`);
     }
@@ -255,6 +265,54 @@ class DeviceServer {
     }
 
     await this._eventPublisher.publish(eventData);
+  };
+
+  _onDeviceSubscribe = async (
+    message: Message,
+    device: SparkCore,
+  ): Promise<void> => {
+    const deviceID = device.getHexCoreID();
+    // uri -> /e/?u    --> firehose for all my devices
+    // uri -> /e/ (deviceid in body)   --> allowed
+    // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+    // uri -> /e/event_name?u    --> all my devices
+    // uri -> /e/event_name?u (deviceid)    --> deviceid?
+    const messageName = message.getUriPath().substr(3);
+
+    if (!messageName) {
+      device.sendReply('SubscribeFail', message.getId());
+      return;
+    }
+
+    const query = message.getUriQuery();
+    const fromMyDevicesOnly = query && !!query.match('u');
+
+    logger.log(
+      `Got subscribe request from device with ID ${deviceID} ` +
+      `on event: '${messageName}' ` +
+      `from my devices only: ${fromMyDevicesOnly || false}`,
+    );
+
+    if (fromMyDevicesOnly) {
+      const deviceAttributes =
+        await this._deviceAttributeRepository.getById(deviceID);
+
+      this._eventPublisher.subscribe(
+        messageName,
+        device.onCoreEvent,
+        { userID: deviceAttributes.ownerID },
+        deviceID,
+      );
+    } else {
+      this._eventPublisher.subscribe(
+        messageName,
+        device.onCoreEvent,
+        /* filterOptions */null,
+        deviceID,
+      );
+    }
+
+    device.sendReply('SubscribeAck', message.getId());
   };
 
   async publishSpecialEvent(
