@@ -1,5 +1,3 @@
-'use strict';
-
 /*
 *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 *
@@ -20,18 +18,20 @@
 *
 */
 
+import type { Socket } from 'net';
+import type { Message } from 'h5.coap';
 import type {
   DeviceAttributes,
   Repository,
   ServerConfigRepository,
 } from '../types';
+import type EventPublisher from '../lib/EventPublisher';
 
 import net from 'net';
 import nullthrows from 'nullthrows';
 import SparkCore from '../clients/SparkCore';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
-import EventPublisher from '../lib/EventPublisher';
 import logger from '../lib/logger';
 import settings from '../settings';
 
@@ -54,33 +54,28 @@ class DeviceServer {
   _devicesById: Map<string, SparkCore> = new Map();
   _eventPublisher: EventPublisher;
 
-  constructor(deviceServerConfig: DeviceServerConfig) {
+  constructor(deviceServerConfig: DeviceServerConfig, eventPublisher: EventPublisher) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = this._config.deviceAttributeRepository;
     // TODO: Remove this once the event system has been reworked
-    global.publisher = this._eventPublisher = new EventPublisher();
+    global.publisher = this._eventPublisher = eventPublisher;
     settings.coreKeysDir =
       deviceServerConfig.coreKeysDir || settings.coreKeysDir;
   }
 
-  start(): void {
-    const server = net.createServer(socket => {
-      process.nextTick(() => {
+  start() {
+    const server = net.createServer((socket: Socket) => {
+      process.nextTick(async (): Promise<void> => {
         try {
-          var key = "_" + connectionIdCounter++;
-          logger.log(
-            `Connection from: ${socket.remoteAddress} - ` +
-              `Connection ID: ${connectionIdCounter}`,
-          );
+          // eslint-disable-next-line no-plusplus
+          const connectionKey = `_${connectionIdCounter++}`;
 
-          // TODO: This is really shitty. Refactor `SparkCore` and clean this up
-          var core = new SparkCore(socket);
-          core.startupProtocol();
-          core._connectionKey = key;
+          const device = new SparkCore(socket);
+          device._connectionKey = connectionKey;
 
-          core.on('ready', async () => {
-            logger.log("Device online!");
-            const deviceID = core.getHexCoreID();
+          device.on('ready', async (): Promise<void> => {
+            logger.log('Device online!');
+            const deviceID = device.getHexCoreID();
 
             if (this._devicesById.has(deviceID)) {
               const existingConnection = this._devicesById.get(deviceID);
@@ -89,15 +84,15 @@ class DeviceServer {
               );
             }
 
-            this._devicesById.set(deviceID, core);
+            this._devicesById.set(deviceID, device);
             const existingAttributes =
               await this._deviceAttributeRepository.getById(deviceID);
             const deviceAttributes = {
               ...existingAttributes,
-              deviceID: deviceID,
-              ip: core.getRemoteIPAddress(),
-              particleProductId: core._particleProductId,
-              productFirmwareVersion: core._productFirmwareVersion,
+              deviceID,
+              ip: device.getRemoteIPAddress(),
+              particleProductId: device._particleProductId,
+              productFirmwareVersion: device._productFirmwareVersion,
             };
 
             this._deviceAttributeRepository.update(
@@ -107,25 +102,52 @@ class DeviceServer {
             this.publishSpecialEvent('particle/status', 'online', deviceID);
           });
 
-          core.on('disconnect', (message) => {
-            const deviceID = core.getHexCoreID();
+          device.on('disconnect', () => {
+            const deviceID = device.getHexCoreID();
             const coreInDevicesByID =
               nullthrows(this._devicesById.get(deviceID));
-            if (core._connectionKey === coreInDevicesByID._connectionKey) {
+            if (device._connectionKey === coreInDevicesByID._connectionKey) {
               this._devicesById.delete(deviceID);
               this.publishSpecialEvent('particle/status', 'offline', deviceID);
             }
-            logger.log("Session ended for " + (core._connectionKey || ''));
+            logger.log(`Session ended for ${device._connectionKey || ''}`);
           });
-        } catch (exception) {
-          logger.error("Device startup failed " + exception);
+
+          device.on(
+            'msg_PrivateEvent'.toLowerCase(),
+            (message: Message): void =>
+              this._onDeviceSentMessage(
+                message,
+                /* isPublic */false,
+                device,
+              ),
+          );
+
+          device.on(
+            'msg_PublicEvent'.toLowerCase(),
+            (message: Message): void =>
+              this._onDeviceSentMessage(
+                message,
+                /* isPublic */true,
+                device,
+              ),
+          );
+
+          await device.startupProtocol();
+
+          logger.log(
+            `Connection from: ${device.getRemoteIPAddress()} - ` +
+            `Connection ID: ${connectionIdCounter}`,
+          );
+        } catch (error) {
+          logger.error(`Device startup failed: ${error.message}`);
         }
       });
     });
 
-    server.on('error', function () {
-      logger.error("something blew up ", arguments);
-    });
+    server.on('error', (error: Error): void =>
+      logger.error(`something blew up ${error.message}`),
+    );
 
     // Create the keys if they don't exist
     this._config.serverConfigRepository.setupKeys();
@@ -135,7 +157,7 @@ class DeviceServer {
     //
     //  Load our server key
     //
-    console.info("Loading server key from " + this._config.serverKeyFile);
+    logger.log(`Loading server key from ${this._config.serverKeyFile}`);
     CryptoLib.loadServerKeys(
       this._config.serverKeyFile,
       this._config.serverKeyPassFile,
@@ -145,25 +167,114 @@ class DeviceServer {
     //
     //  Wait for the keys to be ready, then start accepting connections
     //
-    const serverConfig = {
-      port: this._config.port,
-    };
+    const serverPort = this._config.port;
     server.listen(
-      serverConfig,
-      () => logger.log('Server started', serverConfig),
+      serverPort,
+      (): void => logger.log(`Server started on port: ${serverPort}`),
     );
   }
 
-  publishSpecialEvent(eventName: string, data: string, coreId: string): void {
-    this._eventPublisher.publish(
-      /* isPublic */ false,
-      eventName,
-      /* userId */ null,
+  _onDeviceSentMessage = async (
+    message: Message,
+    isPublic: boolean,
+    device: SparkCore,
+  ): Promise<void> => {
+    const deviceID = device.getHexCoreID();
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+
+    const eventData = {
+      data: message.getPayloadLength() === 0 ? null : message.getPayload().toString(),
+      deviceID,
+      isPublic,
+      name: message.getUriPath().substr(3),
+      ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
+      userID: deviceAttributes.ownerID,
+    };
+
+
+    const lowerEventName = eventData.name.toLowerCase();
+
+    if (lowerEventName.match('spark/device/claim/code')) {
+      const claimCode = message.getPayload().toString();
+
+      if (deviceAttributes.claimCode !== claimCode) {
+        await this._deviceAttributeRepository.update({
+          ...deviceAttributes,
+          claimCode,
+        });
+        // todo figure this out
+        if (global.api) {
+          global.api.linkDevice(deviceID, claimCode, this._particleProductId);
+        }
+      }
+    }
+
+    if (lowerEventName.match('spark/device/system/version')) {
+      const deviceSystemVersion = message.getPayload().toString();
+
+      await this._deviceAttributeRepository.update({
+        ...deviceAttributes,
+        // TODO should it be this key?:
+        spark_system_version: deviceSystemVersion,
+      });
+    }
+
+    // TODO figure this out
+    if (lowerEventName.indexOf('spark/device/safemode') === 0) {
+      const token = device.sendMessage('Describe');
+      const systemMessage = await device.listenFor(
+        'DescribeReturn',
+        null,
+        token,
+      );
+
+      if (global.api) {
+        global.api.safeMode(
+          deviceID,
+          systemMessage.getPayload().toString(),
+        );
+      }
+    }
+
+    // TODO implement this eat message more clean
+    // if the event name starts with spark (upper or lower), then eat it.
+    if (lowerEventName.match('spark')) {
+      // allow some kinds of message through.
+      let eatMessage = true;
+
+      // if we do let these through, make them private.
+      const isEventPublic = false;
+
+      // TODO: (old code todo)
+      // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
+      if (lowerEventName === 'spark/cc3000-patch-version') {
+        // set_cc3000_version(this._coreId, obj.data);
+        // eat_message = false;
+      }
+
+      if (eatMessage) {
+        // short-circuit
+        device.sendReply('EventAck', message.getId());
+        return;
+      }
+    }
+
+    await this._eventPublisher.publish(eventData);
+  };
+
+  async publishSpecialEvent(
+    eventName: string,
+    data: string,
+    deviceID: string,
+  ): Promise<void> {
+    await this._eventPublisher.publish({
       data,
-      /* ttl */ 60,
-      new Date(),
-      coreId,
-    );
+      deviceID,
+      isPublic: false,
+      name: eventName,
+      ttl: 60,
+    });
   }
 
   _createCore(): void {

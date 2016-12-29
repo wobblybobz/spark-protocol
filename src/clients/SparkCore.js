@@ -95,25 +95,25 @@ class SparkCore extends EventEmitter {
   /**
    * configure our socket and start the handshake
    */
-  startupProtocol = () => {
+  startupProtocol = async (): Promise<void> => {
     this._socket.setNoDelay(true);
     this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); // every 15 second(s)
     this._socket.setTimeout(SOCKET_TIMEOUT);
 
     this._socket.on(
       'error',
-      error => this.disconnect(`socket error ${error}`),
+      (error: Error): void => this.disconnect(`socket error ${error.message}`),
     );
     this._socket.on(
       'close',
-      error => this.disconnect(`socket close ${error}`),
+      (error: Error): void => this.disconnect(`socket close ${error.message}`),
     );
     this._socket.on(
       'timeout',
-      error => this.disconnect(`socket timeout ${error}`),
+      (error: Error): void => this.disconnect(`socket timeout ${error.message}`),
     );
 
-    this.handshake();
+    await this.handshake();
   };
 
   handshake = async (): Promise<*> => {
@@ -197,14 +197,7 @@ class SparkCore extends EventEmitter {
       },
     );
 
-    this.on(
-      'msg_PrivateEvent'.toLowerCase(),
-      message => this._onCorePrivateEvent(message),
-    );
-    this.on(
-      'msg_PublicEvent'.toLowerCase(),
-      message => this._onCorePublicEvent(message),
-    );
+    // TODO move to server
     this.on(
       'msg_Subscribe'.toLowerCase(),
       message => this.onCorePublicSubscribe(message),
@@ -564,7 +557,7 @@ class SparkCore extends EventEmitter {
     if (!this._cipherStream) {
       logger.error(
         'Client - sendMessage before READY',
-        { coreID: this.getHexCoreID() },
+        { messageName, coreID: this.getHexCoreID() },
       );
       return -1;
     }
@@ -861,6 +854,7 @@ class SparkCore extends EventEmitter {
         'flash core started! - sending api event',
         { coreID: this.getHexCoreID() },
       );
+      // TODO implement another way
       global.server.publishSpecialEvent(
         'spark/flash/status',
         'started',
@@ -881,7 +875,7 @@ class SparkCore extends EventEmitter {
         'flash core finished! - sending api event',
         { coreID: this.getHexCoreID() },
       );
-
+      // TODO implement another way
       global.server.publishSpecialEvent(
         'spark/flash/status',
         'success',
@@ -897,6 +891,7 @@ class SparkCore extends EventEmitter {
         'flash core failed! - sending api event',
         { coreID: this.getHexCoreID(), error },
       );
+      // TODO implement another way
       global.server.publishSpecialEvent(
         'spark/flash/status',
         'failed',
@@ -1116,140 +1111,10 @@ class SparkCore extends EventEmitter {
     }
   };
 
+
   //-------------
   // Core Events / Spark.publish / Spark.subscribe
   //-------------
-
-  _onCorePrivateEvent = (message: Message): void => {
-    this._onCoreSentEvent(message, false);
-  };
-  _onCorePublicEvent = (message: Message): void => {
-    this._onCoreSentEvent(message, true);
-  };
-
-  _onCoreSentEvent = async (
-    message: Message,
-    isPublic: boolean,
-  ): Promise<*> => {
-    if (!message) {
-      logger.error('CORE EVENT - msg obj was empty?!');
-      return;
-    }
-
-    //TODO: if the core is publishing messages too fast:
-    //this.sendReply('EventSlowdown', msg.getId());
-
-    //name: '/E/TestEvent', trim the '/e/' or '/E/' off the start of the uri
-    const eventData = {
-      data: message.getPayload().toString(),
-      is_public: isPublic,
-      name: message.getUriPath().substr(3),
-      published_at: moment().toISOString(),
-      published_by: this.getHexCoreID(),
-      ttl: message.getMaxAge(),
-    };
-
-    //snap obj.ttl to the right value.
-    eventData.ttl = eventData.ttl > 0 ? eventData.ttl : 60;
-
-    //snap data to not incorrectly default to an empty string.
-    if (message.getPayloadLength() === 0) {
-      eventData.data = null;
-    }
-
-    //if the event name starts with spark (upper or lower), then eat it.
-    const lowername = eventData.name.toLowerCase();
-    const coreId = this.getHexCoreID();
-
-    if (lowername.indexOf('spark/device/claim/code') === 0) {
-      const claimCode = message.getPayload().toString();
-      const coreAttributes = global.server.getCoreAttributes(coreId);
-
-      if (coreAttributes.claimCode !== claimCode) {
-        global.server.setCoreAttribute(coreId, 'claimCode', claimCode);
-        // claim device
-        if (global.api) {
-          global.api.linkDevice(coreId, claimCode, this._particleProductId);
-        }
-      }
-    }
-
-    if (lowername.indexOf('spark/device/system/version') === 0) {
-      global.server.setCoreAttribute(
-        coreId,
-        'spark_system_version',
-        message.getPayload().toString(),
-      );
-    }
-
-    if (lowername.indexOf('spark/device/safemode') === 0) {
-      const token = this.sendMessage('Describe');
-      const systemMessage = await this.listenFor(
-        'DescribeReturn',
-        null,
-        token,
-      );
-
-      global.api && global.api.safeMode(
-        coreId,
-        systemMessage.getPayload().toString(),
-      );
-    }
-
-    if (lowername.indexOf('spark') === 0) {
-      // allow some kinds of message through.
-      var eatMessage = true;
-
-      // if we do let these through, make them private.
-      isPublic = false;
-
-      // TODO:
-      // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
-      if (lowername === 'spark/cc3000-patch-version') {
-        // set_cc3000_version(this._coreId, obj.data);
-        // eat_message = false;
-      }
-
-      if (eatMessage) {
-        // short-circuit
-        this.sendReply('EventAck', message.getId());
-        return;
-      }
-    }
-
-    try {
-      if (!global.publisher) {
-        return;
-      }
-
-      const result = global.publisher.publish(
-        isPublic,
-        eventData.name,
-        this._userId,
-        eventData.data,
-        eventData.ttl,
-        eventData.published_at,
-        this.getHexCoreID(),
-      );
-
-      if (!result) {
-        // this core is over its limit, and that message was not sent.
-        // this.sendReply('EventSlowdown', msg.getId());
-      }
-
-      if (message.isConfirmable()) {
-        // console.log('Event confirmable');
-        this.sendReply('EventAck', message.getId());
-      } else {
-        // console.log('Event non confirmable');
-      }
-    } catch (error) {
-      logger.error(
-        '_onCoreSentEvent: failed writing to socket - ' + error,
-      );
-    }
-  };
-
   /**
    * The core asked us for the time!
    * @param msg
@@ -1267,6 +1132,7 @@ class SparkCore extends EventEmitter {
     );
   };
 
+  // TODO move to server
   onCorePublicSubscribe = (message: Message): void => {
     this.onCoreSubscribe(message, true);
   };
@@ -1299,9 +1165,11 @@ class SparkCore extends EventEmitter {
 
     //modify our filter on the appropriate socket (create the socket if we haven't yet) to let messages through
     //this.eventsSocket.subscribe(isPublic, name, userid);
-    global.publisher.subscribe(name, userid, deviceID, this, this.onCoreEvent);
+
+    global.publisher.subscribe(name, this.onCoreEvent, deviceID);
   };
 
+  // TODO these two unused methods currently, why?
   _onCorePublicHeard = (
     name: string,
     data: Object,
@@ -1320,60 +1188,42 @@ class SparkCore extends EventEmitter {
   ): void => {
     this.sendCoreEvent(false, name, data, ttl, publishedAt, coreId);
   };
-  // isPublic, name, userid, data, ttl, published_at, coreid);
-  onCoreEvent = (
-    isPublic: boolean,
-    name: string,
-    userid: string,
-    data: Object,
-    ttl: number,
-    published_at: Date,
-    coreid: string,
-  ): void => {
-    this.sendCoreEvent(isPublic, name, data, ttl, published_at, coreid);
-  };
 
-  /**
-   * sends a received event down to a core
-   * @param isPublic
-   * @param name
-   * @param data
-   * @param ttl
-   * @param published_at
-   */
-  sendCoreEvent = (
-    isPublic: boolean,
-    name: string,
-    data: Object,
-    ttl: number,
-    published_at: Date,
-    coreid: string,
-  ): void => {
+  onCoreEvent = (event: Event) => {
+    this.sendCoreEvent(event);
+  };
+  // TODO rework and figure out how to implement subscription with `MY_DEVICES`
+  // right way
+  sendCoreEvent = (event: Event) => {
+    const { data, isPublic, name, publishedAt, ttl } = event;
+
     const rawFunction = (message: Message): void => {
       try {
-        message.setMaxAge(parseInt((ttl && (ttl >= 0)) ? ttl : 60));
-        if (published_at) {
-          message.setTimestamp(moment(published_at).toDate());
+        message.setMaxAge((ttl >= 0) ? ttl : 60);
+        if (publishedAt) {
+          message.setTimestamp(moment(publishedAt).toDate());
         }
-      } catch (exception) {
-        logger.error('onCoreHeard - ' + exception);
+      } catch (error) {
+        logger.error(`onCoreHeard - ${error.message}`);
       }
 
       return message;
     };
 
     const messageName = isPublic ? 'PublicEvent' : 'PrivateEvent';
-    const userID = (this._userId || '').toLowerCase() + '/';
-    name = name ? name.toString() : name;
-    if (name && name.indexOf && (name.indexOf(userID)===0)) {
-      name = name.substring(userID.length);
-    }
+    // const userID = (this._userId || '').toLowerCase() + '/';
+    // name = name ? name.toString() : name;
+    // if (name && name.indexOf && (name.indexOf(userID)===0)) {
+    //   name = name.substring(userID.length);
+    // }
 
-    data = data ? data.toString() : data;
     this.sendMessage(
       messageName,
-      { event_name: name, _raw: rawFunction },
-      data,
+      {
+        _raw: rawFunction,
+        event_name: name.toString(),
+      },
+      data && data.toString(),
     );
   };
 
@@ -1389,8 +1239,8 @@ class SparkCore extends EventEmitter {
     );
   };
 
-  HasSparkFunction = (name: string): boolean => {
-    //has state, and... the function is an object, or it's in the function array
+  _hasSparkFunction = (name: string): boolean => {
+    // has state, and... the function is an object, or it's in the function array
     const lowercaseName = name.toLowerCase();
     return !!(
       this._deviceFunctionState &&
@@ -1406,47 +1256,49 @@ class SparkCore extends EventEmitter {
     );
   };
 
-  getHexCoreID = ():string => {
-    return this._coreId ? this._coreId.toString('hex') : 'unknown';
-  };
+  getHexCoreID = (): string =>
+    this._coreId
+      ? this._coreId.toString('hex')
+      : 'unknown';
 
-  getRemoteIPAddress = (): string => {
-    return this._socket.remoteAddress
+
+  getRemoteIPAddress = (): string =>
+    this._socket.remoteAddress
       ? this._socket.remoteAddress.toString()
       : 'unknown';
-  };
 
-  disconnect = (message: string):void => {
-    message = message || '';
+
+  disconnect = (message: ?string = '') => {
+    // eslint-disable-next-line no-plusplus
     this._disconnectCounter++;
 
     if (this._disconnectCounter > 1) {
-      //don't multi-disconnect
+      // don't multi-disconnect
       return;
     }
 
     try {
       const logInfo = {
-        coreID: this.getHexCoreID(),
         cache_key: this._connectionKey,
+        coreID: this.getHexCoreID(),
         duration: this._connectionStartTime
          ? ((new Date()) - this._connectionStartTime) / 1000.0
          : undefined,
       };
 
       logger.log(
-        this._disconnectCounter + ': Core disconnected: ' + message,
-        logInfo,
+        `${this._disconnectCounter} : Core disconnected: ${message || ''}`,
+         logInfo,
       );
-    } catch (exception) {
-      logger.error('Disconnect log error ' + exception);
+    } catch (error) {
+      logger.error(`Disconnect log error ${error}`);
     }
 
     try {
       this._socket.end();
       this._socket.destroy();
-    } catch (exception) {
-      logger.error('Disconnect TCPSocket error: ' + exception);
+    } catch (error) {
+      logger.error(`Disconnect TCPSocket error: ${error}`);
     }
 
     if (this._decipherStream) {
@@ -1469,13 +1321,13 @@ class SparkCore extends EventEmitter {
 
     this.emit('disconnect', message);
 
-    //obv, don't do this before emitting disconnect.
+    // obv, don't do this before emitting disconnect.
     try {
       this.removeAllListeners();
-    } catch (ex) {
-      logger.error('Problem removing listeners ', ex);
+    } catch (error) {
+      logger.error(`Problem removing listeners ${error}`);
     }
   }
-};
+}
 
 export default SparkCore;

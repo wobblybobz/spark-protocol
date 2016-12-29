@@ -18,119 +18,80 @@
 *
 */
 
+import type { Event, EventData } from '../types';
 
 import EventEmitter from 'events';
+import moment from 'moment';
 import logger from './logger';
 import nullthrows from 'nullthrows';
+import uuid from './uuid';
+
+const getEventName = (name: ?string, deviceID: ?string): string => {
+  let eventName = '';
+  if (deviceID) {
+    eventName = deviceID;
+    if (name) {
+      eventName += '/' + name;
+    }
+  } else if (name){
+    eventName = name;
+  }
+
+  if (!eventName) {
+    return "*all*";
+  }
+
+  return eventName;
+};
+
+type Subscription = {
+  eventName: string,
+  eventHandler: (event: Event) => void,
+}
 
 class EventPublisher extends EventEmitter {
-  _eventHandlerByKey: Map<string, Function> = new Map();
-
-  getEventKey(name: ?string, userId: string, coreId: ?string): string {
-    let eventKey = userId;
-    if (coreId) {
-        eventKey += '_' + coreId;
-    }
-    if (name) {
-        eventKey += '_' + name;
-    }
-
-    return eventKey;
-  }
-
-  getEventName(name: ?string, coreId: ?string){
-    let eventName = '';
-    if (coreId) {
-        eventName = coreId;
-        if (name) {
-          eventName += '/' + name;
-        }
-    } else if (name){
-        eventName = name;
-    }
-
-    if (!eventName) {
-        return "*all*";
-    }
-
-    return eventName;
-  }
+  _subscriptionsByID: Map<string, Subscription> = new Map();
 
   publish = (
-    isPublic: boolean,
-    name: string,
-    userId: ?string,
-    data: string,
-    ttl: number,
-    publishedAt: Date,
-    coreId: string,
+    eventData: EventData,
   ): void => {
-    const params = [isPublic, name, userId, data, ttl, publishedAt, coreId];
-    process.nextTick(() => {
-      this.emit(name, ...params);
-      this.emit(coreId, ...params);
-      this.emit(coreId + '/' + name, ...params);
-      this.emit("*all*", ...params);
-    });
+    const event: Event = {
+      ...eventData,
+      publishedAt: moment().toISOString(),
+    };
+
+    this.emit(eventData.name, event);
+    if (eventData.deviceID) {
+      this.emit(eventData.deviceID, event);
+      this.emit(`${eventData.deviceID}/${eventData.name}`, event);
+    }
+    this.emit("*all*", event);
   };
 
+
   subscribe = (
-    name: string,
-    userId: string,
-    coreId: string,
-    obj: Object,
-    eventHandler?: () => void,
+    name: ?string,
+    eventHandler: (event: Event) => void,
+    deviceID: ?string,
   ): void => {
-    const eventKey = this.getEventKey(name, userId, coreId);
-    if (this._eventHandlerByKey.has(eventKey)) {
-      return;
-    }
+    const subscriptionID = uuid();
+    const eventName = getEventName(name, deviceID);
 
-    const eventName = this.getEventName(name, coreId);
-    const handler = eventHandler
-      ? eventHandler
-      : (
-        isPublic: boolean,
-        name: string,
-        userId: string,
-        data: Object,
-        ttl: number,
-        publishedAt: Date,
-        coreId: string
-      ): void => {
-        const emitName = isPublic ? "public" : "private";
-        if (typeof(obj.emit)==='function') {
-          obj.emit(emitName, name, data, ttl, publishedAt, coreId);
-        }
-      };
+    this._subscriptionsByID.set(subscriptionID, { eventName, eventHandler });
+    this.on(eventName, eventHandler);
 
-    this._eventHandlerByKey.set(eventKey, handler);
-    this.on(eventName, handler);
-  }
+    return subscriptionID;
+  };
 
-  unsubscribe = (name: string, userId: string, coreId: string, obj: Object): void => {
-    const eventKey = this.getEventKey(name, userId, coreId);
-    if(!eventKey) {
-      return;
-    }
+  unsubscribe = (subscriptionID: string): void => {
+    const {
+      eventName,
+      eventHandler,
+    } = nullthrows(this._subscriptionsByID.get(subscriptionID));
 
-    if (!this._eventHandlerByKey.has(eventKey)) {
-      return;
-    }
-
-    const handler = nullthrows(this._eventHandlerByKey.get(eventKey));
-    this.removeListener(eventKey, handler);
-    this._eventHandlerByKey.delete(eventKey);
-  }
-
-  close = (): void => {
-    try {
-      this.removeAllListeners();
-    }
-    catch (exception) {
-      logger.error("EventPublisher: error thrown during close " + exception);
-    }
-  }
+    this.removeListener(eventName, eventHandler);
+    this._subscriptionsByID.delete(subscriptionID);
+  };
 }
 
 export default EventPublisher;
