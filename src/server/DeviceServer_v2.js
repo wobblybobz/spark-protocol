@@ -47,6 +47,7 @@ type DeviceServerConfig = {|
   serverKeyPassEnvVar: ?string,
 |};
 
+let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
@@ -66,7 +67,9 @@ class DeviceServer {
     const server = net.createServer((socket: Socket) => {
       process.nextTick(async (): Promise<void> => {
         try {
-          const device = new SparkCore(socket);
+          // eslint-disable-next-line no-plusplus
+          const connectionKey = `_${connectionIdCounter++}`;
+          const device = new SparkCore(socket, connectionKey);
 
           device.on('ready', async (): Promise<void> => {
             logger.log('Device online!');
@@ -98,7 +101,7 @@ class DeviceServer {
           });
 
           device.on('disconnect', (): void =>
-            this._onDeviceDisconnect(device),
+            this._onDeviceDisconnect(device, connectionKey),
           );
 
           device.on(
@@ -130,7 +133,11 @@ class DeviceServer {
           );
 
           await device.startupProtocol();
-          logger.log(`Connection from: ${device.getRemoteIPAddress()}`);
+
+          logger.log(
+            `Connection from: ${device.getRemoteIPAddress()} - ` +
+            `Connection ID: ${connectionIdCounter}`,
+          );
         } catch (error) {
           logger.error(`Device startup failed: ${error.message}`);
         }
@@ -166,7 +173,7 @@ class DeviceServer {
     );
   }
 
-  _onDeviceDisconnect = (device: SparkCore) => {
+  _onDeviceDisconnect = (device: SparkCore, connectionKey: string) => {
     const deviceID = device.getHexCoreID();
 
     if (this._devicesById.has(deviceID)) {
@@ -174,7 +181,7 @@ class DeviceServer {
       this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
       this.publishSpecialEvent('particle/status', 'offline', deviceID);
-      logger.log(`Session ended for device with ID: ${deviceID}`);
+      logger.log(`Session ended for device with ID: ${deviceID} with connectionKey: ${connectionKey}`);
     }
   };
 

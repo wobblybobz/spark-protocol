@@ -68,6 +68,7 @@ const MAX_BINARY_SIZE = 108000; // According to the forums this is the max size.
  */
 class SparkCore extends EventEmitter {
   _cipherStream: ?Duplex = null;
+  _connectionKey: ?string = null;
   _connectionStartTime: ?Date = null;
   _coreId: string;
   _decipherStream: ?Duplex = null;
@@ -85,9 +86,10 @@ class SparkCore extends EventEmitter {
   _tokens: {[key: string]: string} = {};
   _userId: string;
 
-  constructor(socket: Socket) {
+  constructor(socket: Socket, connectionKey: string) {
     super();
 
+    this._connectionKey = connectionKey;
     this._socket = socket;
   }
 
@@ -187,6 +189,7 @@ class SparkCore extends EventEmitter {
     logger.log(
       'On Device Ready:\r\n',
       {
+        cache_key: this._connectionKey,
         deviceID: this.getHexCoreID(),
         firmwareVersion: this._productFirmwareVersion,
         ip: this.getRemoteIPAddress(),
@@ -915,6 +918,7 @@ class SparkCore extends EventEmitter {
     logger.error(
       'This client has an exclusive lock',
       {
+        cache_key: this._connectionKey,
         deviceID: this.getHexCoreID(),
         messageName,
       },
@@ -1215,6 +1219,7 @@ class SparkCore extends EventEmitter {
 
     try {
       const logInfo = {
+        cache_key: this._connectionKey,
         deviceID: this.getHexCoreID(),
         duration: this._connectionStartTime
          ? ((new Date()) - this._connectionStartTime) / 1000.0
