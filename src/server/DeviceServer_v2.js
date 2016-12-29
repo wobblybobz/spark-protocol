@@ -29,10 +29,12 @@ import type EventPublisher from '../lib/EventPublisher';
 
 import net from 'net';
 import nullthrows from 'nullthrows';
+import moment from 'moment';
 import SparkCore from '../clients/SparkCore';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
 import logger from '../lib/logger';
+import Messages from '../lib/Messages';
 import settings from '../settings';
 
 type DeviceServerConfig = {|
@@ -132,6 +134,12 @@ class DeviceServer {
               ),
           );
 
+          device.on(
+            'msg_GetTime'.toLowerCase(),
+            (message: Message): void =>
+              this._onDeviceGetTime(message, device),
+          );
+
           await device.startupProtocol();
 
           logger.log(
@@ -183,6 +191,18 @@ class DeviceServer {
       this.publishSpecialEvent('particle/status', 'offline', deviceID);
       logger.log(`Session ended for device with ID: ${deviceID} with connectionKey: ${connectionKey}`);
     }
+  };
+
+  _onDeviceGetTime = (message: Message, device: SparkCore) => {
+    const timeStamp = moment().utc().unix();
+    const binaryValue = Messages.toBinary(timeStamp, 'uint32');
+
+    device.sendReply(
+      'GetTimeReturn',
+      message.getId(),
+      binaryValue,
+      message.getToken(),
+    );
   };
 
   _onDeviceSentMessage = async (

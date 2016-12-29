@@ -198,12 +198,6 @@ class SparkCore extends EventEmitter {
       },
     );
 
-    // TODO move to server
-    this.on(
-      'msg_GetTime'.toLowerCase(),
-      message => this._onCoreGetTime(message),
-    );
-
     this.emit('ready');
   };
 
@@ -1112,23 +1106,6 @@ class SparkCore extends EventEmitter {
   //-------------
   // Core Events / Spark.publish / Spark.subscribe
   //-------------
-  /**
-   * The core asked us for the time!
-   * @param msg
-   */
-  _onCoreGetTime = (message: Message): void => {
-    //moment#unix outputs a Unix timestamp (the number of seconds since the Unix Epoch).
-    const stamp = moment().utc().unix();
-    const binaryValue = Messages.toBinary(stamp, 'uint32');
-
-    this.sendReply(
-      'GetTimeReturn',
-      message.getId(),
-      binaryValue,
-      message.getToken(),
-    );
-  };
-
   onCoreEvent = (event: Event) => {
     this.sendCoreEvent(event);
   };
