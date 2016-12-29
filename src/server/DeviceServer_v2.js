@@ -47,7 +47,6 @@ type DeviceServerConfig = {|
   serverKeyPassEnvVar: ?string,
 |};
 
-let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
@@ -67,11 +66,7 @@ class DeviceServer {
     const server = net.createServer((socket: Socket) => {
       process.nextTick(async (): Promise<void> => {
         try {
-          // eslint-disable-next-line no-plusplus
-          const connectionKey = `_${connectionIdCounter++}`;
-
           const device = new SparkCore(socket);
-          device._connectionKey = connectionKey;
 
           device.on('ready', async (): Promise<void> => {
             logger.log('Device online!');
@@ -102,16 +97,9 @@ class DeviceServer {
             this.publishSpecialEvent('particle/status', 'online', deviceID);
           });
 
-          device.on('disconnect', () => {
-            const deviceID = device.getHexCoreID();
-            const coreInDevicesByID =
-              nullthrows(this._devicesById.get(deviceID));
-            if (device._connectionKey === coreInDevicesByID._connectionKey) {
-              this._devicesById.delete(deviceID);
-              this.publishSpecialEvent('particle/status', 'offline', deviceID);
-            }
-            logger.log(`Session ended for ${device._connectionKey || ''}`);
-          });
+          device.on('disconnect', (): void =>
+            this._onDeviceDisconnect(device),
+          );
 
           device.on(
             'msg_PrivateEvent'.toLowerCase(),
@@ -134,11 +122,7 @@ class DeviceServer {
           );
 
           await device.startupProtocol();
-
-          logger.log(
-            `Connection from: ${device.getRemoteIPAddress()} - ` +
-            `Connection ID: ${connectionIdCounter}`,
-          );
+          logger.log(`Connection from: ${device.getRemoteIPAddress()}`);
         } catch (error) {
           logger.error(`Device startup failed: ${error.message}`);
         }
@@ -173,6 +157,16 @@ class DeviceServer {
       (): void => logger.log(`Server started on port: ${serverPort}`),
     );
   }
+
+  _onDeviceDisconnect = (device: SparkCore) => {
+    const deviceID = device.getHexCoreID();
+
+    if (this._devicesById.has(deviceID)) {
+      this._devicesById.delete(deviceID);
+      this.publishSpecialEvent('particle/status', 'offline', deviceID);
+      logger.log(`Session ended for device with ID: ${deviceID}`);
+    }
+  };
 
   _onDeviceSentMessage = async (
     message: Message,
