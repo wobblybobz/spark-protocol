@@ -292,15 +292,15 @@ class DeviceServer {
     }
 
     const query = message.getUriQuery();
-    const fromMyDevicesOnly = query && !!query.match('u');
+    const isFromMyDevices = query && !!query.match('u');
 
     logger.log(
       `Got subscribe request from device with ID ${deviceID} ` +
       `on event: '${messageName}' ` +
-      `from my devices only: ${fromMyDevicesOnly || false}`,
+      `from my devices only: ${isFromMyDevices || false}`,
     );
 
-    if (fromMyDevicesOnly) {
+    if (isFromMyDevices) {
       const deviceAttributes =
         await this._deviceAttributeRepository.getById(deviceID);
 
