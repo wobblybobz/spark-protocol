@@ -384,6 +384,9 @@ class DeviceServer {
     device.sendReply('SubscribeAck', message.getId());
   };
 
+  getDevice = (deviceID: string): ?SparkCore =>
+    this._devicesById.get(deviceID);
+
   async publishSpecialEvent(
     eventName: string,
     data: string,
@@ -396,56 +399,6 @@ class DeviceServer {
       name: eventName,
       ttl: 60,
     });
-  }
-
-  _createCore(): void {
-    console.log('_createCore');
-  }
-
-  init() {
-    console.log('init');
-  }
-
-  addCoreKey(coreID: string, publicKey: Object) {
-    console.log('addCoreKey');
-  }
-
-  loadCoreData() {
-    console.log('loadCoreData');
-  }
-
-  saveCoreData(coreID: string, attribs: Object) {
-    console.log('saveCoreData');
-  }
-
-  getDevice = (deviceID: string): ?SparkCore =>
-    this._devicesById.get(deviceID);
-
-  getCoreAttributes(coreID: string) {
-    return this._config.deviceAttributeRepository.getById(coreID);
-  }
-  setCoreAttribute(coreID: string, name: string, value: mixed) {
-    console.log('getCoreAttributes');
-  }
-  getCoreByName(name: string) {
-    console.log('getCoreByName');
-  }
-
-  /**
-   * return all the cores we know exist
-   * @returns {null}
-   */
-  // TODO: Remove this function and have the callers use the repository.
-  getAllCoreIDs() {
-    console.log('getAllCoreIDs');
-  }
-
-  /**
-   * return all the cores that are connected
-   * @returns {null}
-   */
-  getAllCores() {
-    console.log('getAllCores');
   }
 }
 
