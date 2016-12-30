@@ -23,7 +23,6 @@ import type { Duplex } from 'stream';
 
 import EventEmitter from 'events';
 import moment from 'moment';
-import fs from 'fs';
 
 import { Message } from 'h5.coap';
 
@@ -38,11 +37,15 @@ import { BufferReader } from 'h5.buffers';
 import nullthrows from 'nullthrows';
 
 // Hello — sent first by Core then by Server immediately after handshake, never again
-// Ignored — sent by either side to respond to a message with a bad counter value. The receiver of an Ignored message can optionally decide to resend a previous message if the indicated bad counter value matches a recently sent message.
+// Ignored — sent by either side to respond to a message with a bad counter value.
+// The receiver of an Ignored message can optionally decide to resend a previous message
+// if the indicated bad counter value matches a recently sent message.
 
 // package flasher
 // Chunk — sent by Server to send chunks of a firmware binary to Core
-// ChunkReceived — sent by Core to respond to each chunk, indicating the CRC of the received chunk data.  if Server receives CRC that does not match the chunk just sent, that chunk is sent again
+// ChunkReceived — sent by Core to respond to each chunk,
+// indicating the CRC of the received chunk data.
+// if Server receives CRC that does not match the chunk just sent, that chunk is sent again
 // UpdateBegin — sent by Server to initiate an OTA firmware update
 // UpdateReady — sent by Core to indicate readiness to receive firmware chunks
 // UpdateDone — sent by Server to indicate all firmware chunks have been sent
@@ -93,7 +96,6 @@ class SparkCore extends EventEmitter {
   _sendToken: number = 0;
   _socket: Socket;
   _tokens: {[key: string]: string} = {};
-  _userId: string;
 
   constructor(socket: Socket, connectionKey: string) {
     super();
@@ -160,7 +162,7 @@ class SparkCore extends EventEmitter {
     }
   };
 
-  _getHello = (chunk: Buffer): void => {
+  _getHello = (chunk: Buffer) => {
     const message = Messages.unwrap(chunk);
     if (!message) {
       throw new Error('failed to parse hello');
@@ -183,7 +185,7 @@ class SparkCore extends EventEmitter {
     }
   };
 
-  _sendHello = (cipherStream: Duplex, decipherStream: Duplex): void => {
+  _sendHello = (cipherStream: Duplex, decipherStream: Duplex) => {
     this._cipherStream = cipherStream;
     this._decipherStream = decipherStream;
 
@@ -410,7 +412,7 @@ class SparkCore extends EventEmitter {
    * Deals with messages coming from the core over our secure connection
    * @param data
    */
-  routeMessage = (data: Buffer): void => {
+  routeMessage = (data: Buffer) => {
     const message = Messages.unwrap(data);
     if (!message) {
       logger.error(
@@ -420,14 +422,14 @@ class SparkCore extends EventEmitter {
       return;
     }
 
-    //should be adequate
+    // should be adequate
     const messageCode = message.getCode();
     let requestType = '';
     if (
       messageCode > Message.Code.EMPTY &&
       messageCode <= Message.Code.DELETE
     ) {
-      //probably a request
+      // probably a request
       requestType = Messages.getRequestType(message);
     }
 
@@ -437,7 +439,7 @@ class SparkCore extends EventEmitter {
 
     if (message.isAcknowledgement()) {
       if (!requestType) {
-        //no type, can't route it.
+        // no type, can't route it.
         requestType = 'PingAck';
       }
       this.emit(('msg_' + requestType).toLowerCase(), message);
@@ -445,11 +447,11 @@ class SparkCore extends EventEmitter {
     }
 
 
-    this._incrementRecieveCounter();
+    this._incrementReceiveCounter();
     if (message.isEmpty() && message.isConfirmable()) {
       this._lastCorePing = new Date();
-      //var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
-      //logger.log('core ping @ ', delta, ' seconds ', { coreID: this.getHexCoreID() });
+      // var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
+      // logger.log('core ping @ ', delta, ' seconds ', { coreID: this.getHexCoreID() });
       this.sendReply('PingAck', message.getId());
       return;
     }
@@ -464,12 +466,12 @@ class SparkCore extends EventEmitter {
       );
 
       if (requestType === 'Ignored') {
-        //don't ignore an ignore...
+        // don't ignore an ignore...
         this.disconnect('Got an Ignore');
         return;
       }
 
-      //this.sendMessage('Ignored', null, {}, null, null);
+      // this.sendMessage('Ignored', null, {}, null, null);
       this.disconnect('Bad Counter');
       return;
     }
@@ -483,16 +485,16 @@ class SparkCore extends EventEmitter {
     data: ?Buffer,
     token: ?number,
     requester: ?Object,
-  ): void => {
+  ) => {
     if (!this._isSocketAvailable(requester || null, messageName)) {
       logger.error('This client has an exclusive lock.');
       return;
     }
 
-    //if my reply is an acknowledgement to a confirmable message
-    //then I need to re-use the message id...
+    // if my reply is an acknowledgement to a confirmable message
+    // then I need to re-use the message id...
 
-    //set our counter
+    // set our counter
     if (id < 0) {
       this._incrementSendCounter();
       id = this._sendCounter;
@@ -509,11 +511,11 @@ class SparkCore extends EventEmitter {
     }
 
     if (!this._cipherStream) {
-        logger.error(
-          'Device - sendReply before READY',
-          { coreID: this.getHexCoreID() },
-        );
-        return;
+      logger.error(
+        'Device - sendReply before READY',
+        { coreID: this.getHexCoreID() },
+      );
+      return;
     }
     this._cipherStream.write(message);
   };
@@ -531,12 +533,12 @@ class SparkCore extends EventEmitter {
       return -1;
     }
 
-    //increment our counter
+    // increment our counter
     this._incrementSendCounter();
 
     let token = null;
     if (!Messages.isNonTypeMessage(messageName)) {
-      this._incrementSendToken()
+      this._incrementSendToken();
       this._useToken(messageName, this._sendToken);
       token = this._sendToken;
     }
@@ -585,14 +587,15 @@ class SparkCore extends EventEmitter {
     const eventName = 'msg_' + name.toLowerCase();
 
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
+      const timeout = setTimeout(
+        () => {
           cleanUpListeners();
           reject('Request timed out');
         },
         KEEP_ALIVE_TIMEOUT,
       );
 
-      //adds a one time event
+      // adds a one time event
       const handler = (message: Message): void => {
         clearTimeout(timeout);
         if (uri && message.getUriPath().indexOf(uri) !== 0) {
@@ -633,7 +636,7 @@ class SparkCore extends EventEmitter {
       const cleanUpListeners = () => {
         this.removeListener(eventName, handler);
         this.removeListener('disconnect', disconnectHandler);
-      }
+      };
 
       this.on(eventName, handler);
       this.on('disconnect', disconnectHandler);
@@ -651,18 +654,18 @@ class SparkCore extends EventEmitter {
    * Gets or wraps
    * @returns {null}
    */
-  _incrementSendCounter = (): void => {
+  _incrementSendCounter = () => {
     this._sendCounter = this._increment(this._sendCounter);
   };
 
-  _incrementRecieveCounter = (): void => {
+  _incrementReceiveCounter = () => {
     this._recieveCounter = this._increment(this._recieveCounter);
   };
 
   /**
    * increments or wraps our token value, and makes sure it isn't in use
    */
-  _incrementSendToken = () => {
+  _incrementSendToken = (): number => {
     this._sendToken = this._increment(this._sendToken);
     this._clearToken(this._sendToken);
     return this._sendToken;
@@ -672,9 +675,9 @@ class SparkCore extends EventEmitter {
    * Associates a particular token with a message we're sending, so we know
    * what we're getting back when we get an ACK
    * @param name
-   * @param token
+   * @param sendToken
    */
-  _useToken = (name: string, sendToken: number): void => {
+  _useToken = (name: string, sendToken: number) => {
     const key = utilities.toHexString(sendToken);
 
     if (this._tokens[key]) {
@@ -688,7 +691,7 @@ class SparkCore extends EventEmitter {
 
   /**
    * Clears the association with a particular token
-   * @param token
+   * @param sendToken
    */
   _clearToken = (sendToken: number): void => {
     const key = utilities.toHexString(sendToken);
@@ -700,7 +703,7 @@ class SparkCore extends EventEmitter {
 
   _getResponseType = (tokenString: string): ?string => {
     const request = this._tokens[tokenString];
-    //logger.log('respType for key ', tokenStr, ' is ', request);
+    // logger.log('respType for key ', tokenStr, ' is ', request);
 
     if (!request) {
       return '';
@@ -727,7 +730,7 @@ class SparkCore extends EventEmitter {
     }
 
     const messageToken = this.sendMessage(
-      'VariableRequest', { name: name },
+      'VariableRequest', { name },
     );
     const message = await this.listenFor(
       'VariableValue',
@@ -742,9 +745,9 @@ class SparkCore extends EventEmitter {
     data: Buffer,
     ..._:void[]
   ): Promise<*> => {
-    /*TODO: data type! */
+    // TODO: data type!
     const payload = Messages.toBinary(data);
-    const token = this.sendMessage('VariableRequest', { name: name }, payload);
+    const token = this.sendMessage('VariableRequest', { name }, payload);
 
     // are we expecting a response?
     // watches the messages coming back in, listens for a message of this type
@@ -770,7 +773,7 @@ class SparkCore extends EventEmitter {
       }
 
       const writeUrl = (message: Message): Message => {
-        message.setUri('f/' + name);
+        message.setUri(`f/${name}`);
         if (buffer) {
           message.setUriQuery(buffer.toString());
         }
@@ -950,7 +953,7 @@ class SparkCore extends EventEmitter {
   /**
    *
    * @param name
-   * @param msg
+   * @param message
    * @param callback-- callback expects (value, buf, err)
    * @returns {null}
    */
@@ -958,7 +961,7 @@ class SparkCore extends EventEmitter {
     name: string,
     message: Message,
   ): ?Buffer => {
-    //grab the variable type, if the core doesn't say, assume it's a 'string'
+    // grab the variable type, if the core doesn't say, assume it's a 'string'
     const variableFunctionState = this._deviceFunctionState
       ? this._deviceFunctionState.v
       : null;
