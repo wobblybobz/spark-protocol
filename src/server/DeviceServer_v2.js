@@ -29,10 +29,12 @@ import type EventPublisher from '../lib/EventPublisher';
 
 import net from 'net';
 import nullthrows from 'nullthrows';
+import moment from 'moment';
 import SparkCore from '../clients/SparkCore';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
 import logger from '../lib/logger';
+import Messages from '../lib/Messages';
 import settings from '../settings';
 
 type DeviceServerConfig = {|
@@ -69,9 +71,7 @@ class DeviceServer {
         try {
           // eslint-disable-next-line no-plusplus
           const connectionKey = `_${connectionIdCounter++}`;
-
-          const device = new SparkCore(socket);
-          device._connectionKey = connectionKey;
+          const device = new SparkCore(socket, connectionKey);
 
           device.on('ready', async (): Promise<void> => {
             logger.log('Device online!');
@@ -102,16 +102,17 @@ class DeviceServer {
             this.publishSpecialEvent('particle/status', 'online', deviceID);
           });
 
-          device.on('disconnect', () => {
-            const deviceID = device.getHexCoreID();
-            const coreInDevicesByID =
-              nullthrows(this._devicesById.get(deviceID));
-            if (device._connectionKey === coreInDevicesByID._connectionKey) {
-              this._devicesById.delete(deviceID);
-              this.publishSpecialEvent('particle/status', 'offline', deviceID);
-            }
-            logger.log(`Session ended for ${device._connectionKey || ''}`);
-          });
+          device.on('disconnect', (): void =>
+            this._onDeviceDisconnect(device, connectionKey),
+          );
+
+          device.on(
+            // TODO figure out is this message for subscriptions on public events or
+            // public + private
+            'msg_Subscribe'.toLowerCase(),
+            (message: Message): void =>
+              this._onDeviceSubscribe(message, device),
+          );
 
           device.on(
             'msg_PrivateEvent'.toLowerCase(),
@@ -131,6 +132,12 @@ class DeviceServer {
                 /* isPublic */true,
                 device,
               ),
+          );
+
+          device.on(
+            'msg_GetTime'.toLowerCase(),
+            (message: Message): void =>
+              this._onDeviceGetTime(message, device),
           );
 
           await device.startupProtocol();
@@ -173,6 +180,30 @@ class DeviceServer {
       (): void => logger.log(`Server started on port: ${serverPort}`),
     );
   }
+
+  _onDeviceDisconnect = (device: SparkCore, connectionKey: string) => {
+    const deviceID = device.getHexCoreID();
+
+    if (this._devicesById.has(deviceID)) {
+      this._devicesById.delete(deviceID);
+      this._eventPublisher.unsubscribeBySubscriberID(deviceID);
+
+      this.publishSpecialEvent('particle/status', 'offline', deviceID);
+      logger.log(`Session ended for device with ID: ${deviceID} with connectionKey: ${connectionKey}`);
+    }
+  };
+
+  _onDeviceGetTime = (message: Message, device: SparkCore) => {
+    const timeStamp = moment().utc().unix();
+    const binaryValue = Messages.toBinary(timeStamp, 'uint32');
+
+    device.sendReply(
+      'GetTimeReturn',
+      message.getId(),
+      binaryValue,
+      message.getToken(),
+    );
+  };
 
   _onDeviceSentMessage = async (
     message: Message,
@@ -261,6 +292,54 @@ class DeviceServer {
     }
 
     await this._eventPublisher.publish(eventData);
+  };
+
+  _onDeviceSubscribe = async (
+    message: Message,
+    device: SparkCore,
+  ): Promise<void> => {
+    const deviceID = device.getHexCoreID();
+    // uri -> /e/?u    --> firehose for all my devices
+    // uri -> /e/ (deviceid in body)   --> allowed
+    // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+    // uri -> /e/event_name?u    --> all my devices
+    // uri -> /e/event_name?u (deviceid)    --> deviceid?
+    const messageName = message.getUriPath().substr(3);
+
+    if (!messageName) {
+      device.sendReply('SubscribeFail', message.getId());
+      return;
+    }
+
+    const query = message.getUriQuery();
+    const isFromMyDevices = query && !!query.match('u');
+
+    logger.log(
+      `Got subscribe request from device with ID ${deviceID} ` +
+      `on event: '${messageName}' ` +
+      `from my devices only: ${isFromMyDevices || false}`,
+    );
+
+    if (isFromMyDevices) {
+      const deviceAttributes =
+        await this._deviceAttributeRepository.getById(deviceID);
+
+      this._eventPublisher.subscribe(
+        messageName,
+        device.onCoreEvent,
+        { userID: deviceAttributes.ownerID },
+        deviceID,
+      );
+    } else {
+      this._eventPublisher.subscribe(
+        messageName,
+        device.onCoreEvent,
+        /* filterOptions */null,
+        deviceID,
+      );
+    }
+
+    device.sendReply('SubscribeAck', message.getId());
   };
 
   async publishSpecialEvent(

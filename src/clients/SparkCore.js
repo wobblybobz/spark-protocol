@@ -86,9 +86,10 @@ class SparkCore extends EventEmitter {
   _tokens: {[key: string]: string} = {};
   _userId: string;
 
-  constructor(socket: Socket) {
+  constructor(socket: Socket, connectionKey: string) {
     super();
 
+    this._connectionKey = connectionKey;
     this._socket = socket;
   }
 
@@ -189,22 +190,12 @@ class SparkCore extends EventEmitter {
       'On Device Ready:\r\n',
       {
         cache_key: this._connectionKey,
-        coreID: this.getHexCoreID(),
-        firmware_version: this._productFirmwareVersion,
+        deviceID: this.getHexCoreID(),
+        firmwareVersion: this._productFirmwareVersion,
         ip: this.getRemoteIPAddress(),
-        platformId: this._platformId,
-        product_id: this._particleProductId,
+        platformID: this._platformId,
+        productID: this._particleProductId,
       },
-    );
-
-    // TODO move to server
-    this.on(
-      'msg_Subscribe'.toLowerCase(),
-      message => this.onCorePublicSubscribe(message),
-    );
-    this.on(
-      'msg_GetTime'.toLowerCase(),
-      message => this._onCoreGetTime(message),
     );
 
     this.emit('ready');
@@ -922,7 +913,7 @@ class SparkCore extends EventEmitter {
       'This client has an exclusive lock',
       {
         cache_key: this._connectionKey,
-        coreID: this.getHexCoreID(),
+        deviceID: this.getHexCoreID(),
         messageName,
       },
     );
@@ -1115,80 +1106,6 @@ class SparkCore extends EventEmitter {
   //-------------
   // Core Events / Spark.publish / Spark.subscribe
   //-------------
-  /**
-   * The core asked us for the time!
-   * @param msg
-   */
-  _onCoreGetTime = (message: Message): void => {
-    //moment#unix outputs a Unix timestamp (the number of seconds since the Unix Epoch).
-    const stamp = moment().utc().unix();
-    const binaryValue = Messages.toBinary(stamp, 'uint32');
-
-    this.sendReply(
-      'GetTimeReturn',
-      message.getId(),
-      binaryValue,
-      message.getToken(),
-    );
-  };
-
-  // TODO move to server
-  onCorePublicSubscribe = (message: Message): void => {
-    this.onCoreSubscribe(message, true);
-  };
-  onCoreSubscribe = (message: Message, isPublic: boolean): void => {
-    const name = message.getUriPath().substr(3);
-
-    //var body = resp.getPayload().toString();
-    //logger.log('Got subscribe request from core, path was \'' + name + '\'');
-    //uri -> /e/?u    --> firehose for all my devices
-    //uri -> /e/ (deviceid in body)   --> allowed
-    //uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-    //uri -> /e/event_name?u    --> all my devices
-    //uri -> /e/event_name?u (deviceid)    --> deviceid?
-
-    if (!name) {
-      //no firehose for cores
-      this.sendReply('SubscribeFail', message.getId());
-      return;
-    }
-
-    const query = message.getUriQuery();
-    const payload = message.getPayload();
-    const myDevices = query && query.indexOf('u') >= 0;
-    const userid = myDevices ? (this._userId || '').toLowerCase() : null;
-    const deviceID = payload ? payload.toString() : null;
-
-    //TODO: filter by a particular deviceID
-
-    this.sendReply('SubscribeAck', message.getId());
-
-    //modify our filter on the appropriate socket (create the socket if we haven't yet) to let messages through
-    //this.eventsSocket.subscribe(isPublic, name, userid);
-
-    global.publisher.subscribe(name, this.onCoreEvent, deviceID);
-  };
-
-  // TODO these two unused methods currently, why?
-  _onCorePublicHeard = (
-    name: string,
-    data: Object,
-    ttl: number,
-    publishedAt: Date,
-    coreId: string,
-  ): void => {
-    this.sendCoreEvent(true, name, data, ttl, publishedAt, coreId);
-  };
-  _onCorePrivateHeard = (
-    name: string,
-    data: Object,
-    ttl: number,
-    publishedAt: Date,
-    coreId: string,
-  ): void => {
-    this.sendCoreEvent(false, name, data, ttl, publishedAt, coreId);
-  };
-
   onCoreEvent = (event: Event) => {
     this.sendCoreEvent(event);
   };
@@ -1280,7 +1197,7 @@ class SparkCore extends EventEmitter {
     try {
       const logInfo = {
         cache_key: this._connectionKey,
-        coreID: this.getHexCoreID(),
+        deviceID: this.getHexCoreID(),
         duration: this._connectionStartTime
          ? ((new Date()) - this._connectionStartTime) / 1000.0
          : undefined,
