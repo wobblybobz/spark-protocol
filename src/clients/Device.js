@@ -85,9 +85,9 @@ export const DEVICE_MESSAGE_EVENTS_NAMES = {
 
 /**
  * Implementation of the Particle messaging protocol
- * @SparkCore
+ * @Device
  */
-class SparkCore extends EventEmitter {
+class Device extends EventEmitter {
   _cipherStream: ?Duplex = null;
   _connectionKey: ?string = null;
   _connectionStartTime: ?Date = null;
@@ -1261,4 +1261,4 @@ class SparkCore extends EventEmitter {
   }
 }
 
-export default SparkCore;
+export default Device;

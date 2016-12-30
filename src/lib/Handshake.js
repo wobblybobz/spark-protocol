@@ -18,9 +18,9 @@
 *
 */
 
-import type SparkCore from '../clients/SparkCore';
-import type {Socket} from 'net';
-import type {Duplex} from 'stream';
+import type Device from '../clients/Device';
+import type { Socket } from 'net';
+import type { Duplex } from 'stream';
 
 import CryptoLib from './ICrypto';
 import utilities from './utilities';
@@ -61,7 +61,7 @@ import nullthrows from 'nullthrows';
      * Server sends 384 bytes to Core: the ciphertext then the signature.
 
 
- 5.) Release control back to the SparkCore module
+ 5.) Release control back to the Device module
 
      * Core creates a protobufs Hello with counter set to the uint32 represented by the most significant 4 bytes of the IV, encrypts the protobufs Hello with AES, and sends the ciphertext to Server.
      * Server reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Core must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
@@ -70,6 +70,8 @@ import nullthrows from 'nullthrows';
      * Core reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Server must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
      */
 
+
+// TODO rename to device?
 type HandshakeStage =
   'done' |
   'get-core-key' |
@@ -86,7 +88,7 @@ const SESSION_BYTES = 40;
 const GLOBAL_TIMEOUT = 10;
 
 class Handshake {
-  _client: SparkCore;
+  _client: Device;
   _socket: Socket;
   _handshakeStage: HandshakeStage = 'send-nonce';
   _reject: ?Function;
@@ -94,7 +96,7 @@ class Handshake {
   _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
 
-  constructor(client: SparkCore) {
+  constructor(client: Device) {
     this._client = client;
     this._socket = client._socket;
   }
@@ -317,7 +319,7 @@ class Handshake {
   };
 
   // TODO - Remove this callback once it resolves. When the stream is passed
-  // into the SparkCore, it should be rebound there to listen for the keep-alive
+  // into the Device, it should be rebound there to listen for the keep-alive
   // pings.
   _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> => {
     return new Promise((resolve, reject) => {

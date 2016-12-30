@@ -24,10 +24,10 @@ import messages from './Messages';
 import logger from '../lib/logger';
 import utilities from '../lib/utilities';
 import BufferStream from './BufferStream';
-import SparkCore from '../clients/SparkCore';
+import Device from '../clients/Device';
 
 import buffers from 'h5.buffers';
-import {Message} from 'h5.coap';
+import { Message } from 'h5.coap';
 import Option from 'h5.coap/lib/Option';
 import crc32 from 'buffer-crc32';
 import nullthrows from 'nullthrows';
@@ -48,7 +48,7 @@ class Flasher {
 	_chunk: ?Buffer = null;
 	_chunkSize: number = CHUNK_SIZE;
 	_chunkIndex: number;
-	_client: SparkCore;
+	_client: Device;
 	_fileStream: ?BufferStream = null;
 	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
@@ -61,7 +61,7 @@ class Flasher {
 	_fastOtaEnabled: boolean = true;
 	_ignoreMissedChunks: boolean = false;
 
-	constructor(client: SparkCore) {
+	constructor(client: Device) {
 		this._client = client;
 	}
 

@@ -30,7 +30,7 @@ import type EventPublisher from '../lib/EventPublisher';
 import net from 'net';
 import nullthrows from 'nullthrows';
 import moment from 'moment';
-import SparkCore from '../clients/SparkCore';
+import Device from '../clients/Device';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
 import logger from '../lib/logger';
@@ -39,7 +39,7 @@ import settings from '../settings';
 import {
   DEVICE_EVENT_NAMES,
   DEVICE_MESSAGE_EVENTS_NAMES,
-} from '../clients/SparkCore';
+} from '../clients/Device';
 
 type DeviceServerConfig = {|
   coreKeysDir?: string,
@@ -57,7 +57,7 @@ let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
-  _devicesById: Map<string, SparkCore> = new Map();
+  _devicesById: Map<string, Device> = new Map();
   _eventPublisher: EventPublisher;
 
   constructor(
@@ -111,7 +111,7 @@ class DeviceServer {
     try {
       // eslint-disable-next-line no-plusplus
       const connectionKey = `_${connectionIdCounter++}`;
-      const device = new SparkCore(socket, connectionKey);
+      const device = new Device(socket, connectionKey);
 
       device.on(
         DEVICE_EVENT_NAMES.READY,
@@ -195,7 +195,7 @@ class DeviceServer {
     }
   };
 
-  _onDeviceDisconnect = (device: SparkCore, connectionKey: string) => {
+  _onDeviceDisconnect = (device: Device, connectionKey: string) => {
     const deviceID = device.getID();
 
     if (this._devicesById.has(deviceID)) {
@@ -207,7 +207,7 @@ class DeviceServer {
     }
   };
 
-  _onDeviceGetTime = (message: Message, device: SparkCore) => {
+  _onDeviceGetTime = (message: Message, device: Device) => {
     const timeStamp = moment().utc().unix();
     const binaryValue = Messages.toBinary(timeStamp, 'uint32');
 
@@ -219,7 +219,7 @@ class DeviceServer {
     );
   };
 
-  _onDeviceReady = async (device: SparkCore): Promise<void> => {
+  _onDeviceReady = async (device: Device): Promise<void> => {
     logger.log('Device online!');
     const deviceID = device.getID();
 
@@ -253,7 +253,7 @@ class DeviceServer {
   _onDeviceSentMessage = async (
     message: Message,
     isPublic: boolean,
-    device: SparkCore,
+    device: Device,
   ): Promise<void> => {
     const deviceID = device.getID();
     const deviceAttributes =
@@ -341,7 +341,7 @@ class DeviceServer {
 
   _onDeviceSubscribe = async (
     message: Message,
-    device: SparkCore,
+    device: Device,
   ): Promise<void> => {
     const deviceID = device.getID();
     // uri -> /e/?u    --> firehose for all my devices
@@ -387,7 +387,7 @@ class DeviceServer {
     device.sendReply('SubscribeAck', message.getId());
   };
 
-  getDevice = (deviceID: string): ?SparkCore =>
+  getDevice = (deviceID: string): ?Device =>
     this._devicesById.get(deviceID);
 
   async publishSpecialEvent(

@@ -25,7 +25,7 @@ import DeviceServer from './server/DeviceServer_v2';
 import FileManager from './repository/FileManager';
 import JSONFileManager from './repository/JSONFileManager';
 import ServerConfigFileRepository from './repository/ServerConfigFileRepository';
-import SparkCore from './clients/SparkCore';
+import Device from './clients/Device';
 import uuid from './lib/uuid';
 
 export {
@@ -36,6 +36,6 @@ export {
   FileManager,
   JSONFileManager,
   ServerConfigFileRepository,
-  SparkCore,
+  Device,
   uuid,
 };
