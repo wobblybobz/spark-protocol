@@ -36,7 +36,10 @@ import CryptoLib from '../lib/ICrypto';
 import logger from '../lib/logger';
 import Messages from '../lib/Messages';
 import settings from '../settings';
-import { DEVICE_EVENT_NAMES } from '../clients/SparkCore';
+import {
+  DEVICE_EVENT_NAMES,
+  DEVICE_MESSAGE_EVENTS_NAMES,
+} from '../clients/SparkCore';
 
 type DeviceServerConfig = {|
   coreKeysDir?: string,
@@ -123,13 +126,13 @@ class DeviceServer {
       device.on(
         // TODO figure out is this message for subscriptions on public events or
         // public + private
-        'msg_Subscribe'.toLowerCase(),
+        DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
         (message: Message): void =>
           this._onDeviceSubscribe(message, device),
       );
 
       device.on(
-        'msg_PrivateEvent'.toLowerCase(),
+        DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
         (message: Message): void =>
           this._onDeviceSentMessage(
             message,
@@ -139,7 +142,7 @@ class DeviceServer {
       );
 
       device.on(
-        'msg_PublicEvent'.toLowerCase(),
+        DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
         (message: Message): void =>
           this._onDeviceSentMessage(
             message,
@@ -149,7 +152,7 @@ class DeviceServer {
       );
 
       device.on(
-        'msg_GetTime'.toLowerCase(),
+        DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
         (message: Message): void =>
           this._onDeviceGetTime(message, device),
       );

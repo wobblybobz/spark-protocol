@@ -74,6 +74,15 @@ export const DEVICE_EVENT_NAMES = {
   READY: 'ready',
 };
 
+// this constants should be consistent with message names in
+// MessageSpecifications.js
+export const DEVICE_MESSAGE_EVENTS_NAMES = {
+  GET_TIME: 'GetTime',
+  PRIVATE_EVENT: 'PrivateEvent',
+  PUBLIC_EVENT: 'PublicEvent',
+  SUBSCRIBE: 'Subscribe',
+};
+
 /**
  * Implementation of the Particle messaging protocol
  * @SparkCore
@@ -412,6 +421,7 @@ class SparkCore extends EventEmitter {
    * Deals with messages coming from the core over our secure connection
    * @param data
    */
+  // TODO figure out and clean this method
   routeMessage = (data: Buffer) => {
     const message = Messages.unwrap(data);
     if (!message) {
@@ -442,7 +452,8 @@ class SparkCore extends EventEmitter {
         // no type, can't route it.
         requestType = 'PingAck';
       }
-      this.emit(('msg_' + requestType).toLowerCase(), message);
+
+      this.emit(requestType, message);
       return;
     }
 
@@ -476,7 +487,7 @@ class SparkCore extends EventEmitter {
       return;
     }
 
-    this.emit(('msg_' + (requestType || '')).toLowerCase(), message);
+    this.emit(requestType || '', message);
   };
 
   sendReply = (
@@ -577,14 +588,13 @@ class SparkCore extends EventEmitter {
    *  sendMessage)
    */
   listenFor = async (
-    name: string,
+    eventName: string,
     uri: ?string,
     token: ?number,
     ..._:void[]
   ): Promise<*> => {
     const tokenHex = token ? utilities.toHexString(token) : null;
     const beVerbose = settings.showVerboseDeviceLogs;
-    const eventName = 'msg_' + name.toLowerCase();
 
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(
