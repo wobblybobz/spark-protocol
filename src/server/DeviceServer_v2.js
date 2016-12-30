@@ -36,6 +36,7 @@ import CryptoLib from '../lib/ICrypto';
 import logger from '../lib/logger';
 import Messages from '../lib/Messages';
 import settings from '../settings';
+import { DEVICE_EVENT_NAMES } from '../clients/SparkCore';
 
 type DeviceServerConfig = {|
   coreKeysDir?: string,
@@ -109,37 +110,14 @@ class DeviceServer {
       const connectionKey = `_${connectionIdCounter++}`;
       const device = new SparkCore(socket, connectionKey);
 
-      device.on('ready', async (): Promise<void> => {
-        logger.log('Device online!');
-        const deviceID = device.getHexCoreID();
+      device.on(
+        DEVICE_EVENT_NAMES.READY,
+        (): void => this._onDeviceReady(device),
+      );
 
-        if (this._devicesById.has(deviceID)) {
-          const existingConnection = this._devicesById.get(deviceID);
-          nullthrows(existingConnection).disconnect(
-            'Device was already connected. Reconnecting.\r\n',
-          );
-        }
-
-        this._devicesById.set(deviceID, device);
-        const existingAttributes =
-          await this._deviceAttributeRepository.getById(deviceID);
-        const deviceAttributes = {
-          ...existingAttributes,
-          deviceID,
-          ip: device.getRemoteIPAddress(),
-          particleProductId: device._particleProductId,
-          productFirmwareVersion: device._productFirmwareVersion,
-        };
-
-        this._deviceAttributeRepository.update(
-          deviceAttributes,
-        );
-
-        this.publishSpecialEvent('particle/status', 'online', deviceID);
-      });
-
-      device.on('disconnect', (): void =>
-        this._onDeviceDisconnect(device, connectionKey),
+      device.on(
+        DEVICE_EVENT_NAMES.DISCONNECT,
+        (): void => this._onDeviceDisconnect(device, connectionKey),
       );
 
       device.on(
@@ -176,6 +154,33 @@ class DeviceServer {
           this._onDeviceGetTime(message, device),
       );
 
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_STARTED,
+        (): void => this.publishSpecialEvent(
+          'spark/flash/status',
+          'started',
+          device.getHexCoreID(),
+        ),
+      );
+
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_SUCCESS,
+        (): void => this.publishSpecialEvent(
+          'spark/flash/status',
+          'success',
+          device.getHexCoreID(),
+        ),
+      );
+
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_FAILED,
+        (): void => this.publishSpecialEvent(
+          'spark/flash/status',
+          'failed',
+          device.getHexCoreID(),
+        ),
+      );
+
       await device.startupProtocol();
 
       logger.log(
@@ -185,7 +190,6 @@ class DeviceServer {
     } catch (error) {
       logger.error(`Device startup failed: ${error.message}`);
     }
-
   };
 
   _onDeviceDisconnect = (device: SparkCore, connectionKey: string) => {
@@ -210,6 +214,37 @@ class DeviceServer {
       binaryValue,
       message.getToken(),
     );
+  };
+
+  _onDeviceReady = async (device: SparkCore): Promise<void> => {
+    logger.log('Device online!');
+    const deviceID = device.getHexCoreID();
+
+    if (this._devicesById.has(deviceID)) {
+      const existingConnection = this._devicesById.get(deviceID);
+      nullthrows(existingConnection).disconnect(
+        'Device was already connected. Reconnecting.\r\n',
+      );
+    }
+
+    this._devicesById.set(deviceID, device);
+
+    const existingAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+
+    const deviceAttributes = {
+      ...existingAttributes,
+      deviceID,
+      ip: device.getRemoteIPAddress(),
+      particleProductId: device._particleProductId,
+      productFirmwareVersion: device._productFirmwareVersion,
+    };
+
+    this._deviceAttributeRepository.update(
+      deviceAttributes,
+    );
+
+    this.publishSpecialEvent('particle/status', 'online', deviceID);
   };
 
   _onDeviceSentMessage = async (

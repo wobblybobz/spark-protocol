@@ -62,6 +62,15 @@ const KEEP_ALIVE_TIMEOUT = settings.keepaliveTimeout;
 const SOCKET_TIMEOUT = settings.socketTimeout;
 const MAX_BINARY_SIZE = 108000; // According to the forums this is the max size.
 
+
+export const DEVICE_EVENT_NAMES = {
+  DISCONNECT: 'disconnect',
+  FLASH_FAILED: 'flash/failed',
+  FLASH_STARTED: 'flash/started',
+  FLASH_SUCCESS: 'flash/success',
+  READY: 'ready',
+};
+
 /**
  * Implementation of the Particle messaging protocol
  * @SparkCore
@@ -183,7 +192,7 @@ class SparkCore extends EventEmitter {
     this.sendMessage('Hello', {}, null);
   };
 
-  ready = (): void => {
+  ready = () => {
     this._connectionStartTime = new Date();
 
     logger.log(
@@ -198,7 +207,7 @@ class SparkCore extends EventEmitter {
       },
     );
 
-    this.emit('ready');
+    this.emit(DEVICE_EVENT_NAMES.READY);
   };
 
 
@@ -842,15 +851,12 @@ class SparkCore extends EventEmitter {
     const flasher = new Flasher(this);
     try {
       logger.log(
-        'flash core started! - sending api event',
-        { coreID: this.getHexCoreID() },
+        'flash device started! - sending api event',
+        { deviceID: this.getHexCoreID() },
       );
-      // TODO implement another way
-      global.server.publishSpecialEvent(
-        'spark/flash/status',
-        'started',
-        this.getHexCoreID(),
-      );
+
+      this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
+
       const result = {
         cmd: 'Event',
         message: 'Update started',
@@ -862,32 +868,28 @@ class SparkCore extends EventEmitter {
       );
 
       flasher.startFlashBuffer(binary);
+
       logger.log(
-        'flash core finished! - sending api event',
-        { coreID: this.getHexCoreID() },
+        'flash device finished! - sending api event',
+        { deviceID: this.getHexCoreID() },
       );
-      // TODO implement another way
-      global.server.publishSpecialEvent(
-        'spark/flash/status',
-        'success',
-        this.getHexCoreID(),
-      );
+
+      this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
+
       this.sendApiResponse(
         sender,
         { cmd: 'Event', name: 'Update', message: 'Update done' },
       );
+
       return result;
     } catch (error) {
       logger.log(
-        'flash core failed! - sending api event',
-        { coreID: this.getHexCoreID(), error },
+        'flash device failed! - sending api event',
+        { deviceID: this.getHexCoreID(), error },
       );
-      // TODO implement another way
-      global.server.publishSpecialEvent(
-        'spark/flash/status',
-        'failed',
-        this.getHexCoreID(),
-      );
+
+      this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
+
       const result = {
         cmd: 'Event',
         error: new Error('Update failed'),
@@ -1236,7 +1238,7 @@ class SparkCore extends EventEmitter {
       }
     }
 
-    this.emit('disconnect', message);
+    this.emit(DEVICE_EVENT_NAMES.DISCONNECT, message);
 
     // obv, don't do this before emitting disconnect.
     try {
