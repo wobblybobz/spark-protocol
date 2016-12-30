@@ -56,7 +56,10 @@ class DeviceServer {
   _devicesById: Map<string, SparkCore> = new Map();
   _eventPublisher: EventPublisher;
 
-  constructor(deviceServerConfig: DeviceServerConfig, eventPublisher: EventPublisher) {
+  constructor(
+    deviceServerConfig: DeviceServerConfig,
+    eventPublisher: EventPublisher,
+  ) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = this._config.deviceAttributeRepository;
     // TODO: Remove this once the event system has been reworked
@@ -66,91 +69,10 @@ class DeviceServer {
   }
 
   start() {
-    const server = net.createServer((socket: Socket) => {
-      process.nextTick(async (): Promise<void> => {
-        try {
-          // eslint-disable-next-line no-plusplus
-          const connectionKey = `_${connectionIdCounter++}`;
-          const device = new SparkCore(socket, connectionKey);
-
-          device.on('ready', async (): Promise<void> => {
-            logger.log('Device online!');
-            const deviceID = device.getHexCoreID();
-
-            if (this._devicesById.has(deviceID)) {
-              const existingConnection = this._devicesById.get(deviceID);
-              nullthrows(existingConnection).disconnect(
-                'Device was already connected. Reconnecting.\r\n',
-              );
-            }
-
-            this._devicesById.set(deviceID, device);
-            const existingAttributes =
-              await this._deviceAttributeRepository.getById(deviceID);
-            const deviceAttributes = {
-              ...existingAttributes,
-              deviceID,
-              ip: device.getRemoteIPAddress(),
-              particleProductId: device._particleProductId,
-              productFirmwareVersion: device._productFirmwareVersion,
-            };
-
-            this._deviceAttributeRepository.update(
-              deviceAttributes,
-            );
-
-            this.publishSpecialEvent('particle/status', 'online', deviceID);
-          });
-
-          device.on('disconnect', (): void =>
-            this._onDeviceDisconnect(device, connectionKey),
-          );
-
-          device.on(
-            // TODO figure out is this message for subscriptions on public events or
-            // public + private
-            'msg_Subscribe'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceSubscribe(message, device),
-          );
-
-          device.on(
-            'msg_PrivateEvent'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceSentMessage(
-                message,
-                /* isPublic */false,
-                device,
-              ),
-          );
-
-          device.on(
-            'msg_PublicEvent'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceSentMessage(
-                message,
-                /* isPublic */true,
-                device,
-              ),
-          );
-
-          device.on(
-            'msg_GetTime'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceGetTime(message, device),
-          );
-
-          await device.startupProtocol();
-
-          logger.log(
-            `Connection from: ${device.getRemoteIPAddress()} - ` +
-            `Connection ID: ${connectionIdCounter}`,
-          );
-        } catch (error) {
-          logger.error(`Device startup failed: ${error.message}`);
-        }
-      });
-    });
+    const server = net.createServer(
+      (socket: Socket): void =>
+        process.nextTick((): void => this._onNewSocketConnection(socket)),
+    );
 
     server.on('error', (error: Error): void =>
       logger.error(`something blew up ${error.message}`),
@@ -180,6 +102,91 @@ class DeviceServer {
       (): void => logger.log(`Server started on port: ${serverPort}`),
     );
   }
+
+  _onNewSocketConnection = async (socket: Socket): Promise<void> => {
+    try {
+      // eslint-disable-next-line no-plusplus
+      const connectionKey = `_${connectionIdCounter++}`;
+      const device = new SparkCore(socket, connectionKey);
+
+      device.on('ready', async (): Promise<void> => {
+        logger.log('Device online!');
+        const deviceID = device.getHexCoreID();
+
+        if (this._devicesById.has(deviceID)) {
+          const existingConnection = this._devicesById.get(deviceID);
+          nullthrows(existingConnection).disconnect(
+            'Device was already connected. Reconnecting.\r\n',
+          );
+        }
+
+        this._devicesById.set(deviceID, device);
+        const existingAttributes =
+          await this._deviceAttributeRepository.getById(deviceID);
+        const deviceAttributes = {
+          ...existingAttributes,
+          deviceID,
+          ip: device.getRemoteIPAddress(),
+          particleProductId: device._particleProductId,
+          productFirmwareVersion: device._productFirmwareVersion,
+        };
+
+        this._deviceAttributeRepository.update(
+          deviceAttributes,
+        );
+
+        this.publishSpecialEvent('particle/status', 'online', deviceID);
+      });
+
+      device.on('disconnect', (): void =>
+        this._onDeviceDisconnect(device, connectionKey),
+      );
+
+      device.on(
+        // TODO figure out is this message for subscriptions on public events or
+        // public + private
+        'msg_Subscribe'.toLowerCase(),
+        (message: Message): void =>
+          this._onDeviceSubscribe(message, device),
+      );
+
+      device.on(
+        'msg_PrivateEvent'.toLowerCase(),
+        (message: Message): void =>
+          this._onDeviceSentMessage(
+            message,
+            /* isPublic */false,
+            device,
+          ),
+      );
+
+      device.on(
+        'msg_PublicEvent'.toLowerCase(),
+        (message: Message): void =>
+          this._onDeviceSentMessage(
+            message,
+            /* isPublic */true,
+            device,
+          ),
+      );
+
+      device.on(
+        'msg_GetTime'.toLowerCase(),
+        (message: Message): void =>
+          this._onDeviceGetTime(message, device),
+      );
+
+      await device.startupProtocol();
+
+      logger.log(
+        `Connection from: ${device.getRemoteIPAddress()} - ` +
+        `Connection ID: ${connectionIdCounter}`,
+      );
+    } catch (error) {
+      logger.error(`Device startup failed: ${error.message}`);
+    }
+
+  };
 
   _onDeviceDisconnect = (device: SparkCore, connectionKey: string) => {
     const deviceID = device.getHexCoreID();
