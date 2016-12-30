@@ -223,7 +223,7 @@ DeviceServer.prototype = {
                         _cores[key] = core;
                         core.on('ready', function () {
                             logger.log("Core online!");
-                            var coreid = this.getHexCoreID();
+                            var coreid = this.getID();
                             that._allCoresByID[coreid] = core;
                             that._attribsByID[coreid] = that._attribsByID[coreid] || {
                                 coreID: coreid,

@@ -9,7 +9,7 @@
 *   This program is distributed in the hope that it will be useful,
 *   but WITHOUT ANY WARRANTY; without even the implied warranty of
 *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
+*   Lesser General Public License for more .
 *
 *   You should have received a copy of the GNU Lesser General Public
 *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
@@ -91,10 +91,10 @@ class SparkCore extends EventEmitter {
   _cipherStream: ?Duplex = null;
   _connectionKey: ?string = null;
   _connectionStartTime: ?Date = null;
-  _coreId: string;
   _decipherStream: ?Duplex = null;
   _deviceFunctionState: ?Object = null;
   _disconnectCounter: number = 0;
+  _id: string = '';
   _lastCorePing: Date = new Date();
   _owningFlasher: ?Flasher;
   _particleProductId: number = 0;
@@ -144,21 +144,21 @@ class SparkCore extends EventEmitter {
     // '_decipherStream' and '_cipherStream'
     try {
       const {
-        coreId,
         cipherStream,
         decipherStream,
+        deviceID,
         handshakeBuffer,
         pendingBuffers,
         sessionKey,
       } = await handshake.start();
-      this._coreId = coreId;
+      this._id = deviceID;
 
       this._getHello(handshakeBuffer);
       this._sendHello(cipherStream, decipherStream);
 
       this.ready();
 
-      pendingBuffers.map(data => this.routeMessage(data));
+      pendingBuffers.map((data: Buffer): void => this.routeMessage(data));
       decipherStream.on('readable', () => {
         const chunk = ((decipherStream.read(): any): Buffer);
         if (!chunk) {
@@ -166,8 +166,8 @@ class SparkCore extends EventEmitter {
         }
         this.routeMessage(chunk);
       });
-    } catch (exception) {
-      this.disconnect(exception);
+    } catch (error) {
+      this.disconnect(error);
     }
   };
 
@@ -210,7 +210,7 @@ class SparkCore extends EventEmitter {
       'On Device Ready:\r\n',
       {
         cache_key: this._connectionKey,
-        deviceID: this.getHexCoreID(),
+        deviceID: this._id,
         firmwareVersion: this._productFirmwareVersion,
         ip: this.getRemoteIPAddress(),
         platformID: this._platformId,
@@ -252,7 +252,7 @@ class SparkCore extends EventEmitter {
     switch (message.cmd) {
       case 'Describe': {
         if (settings.logApiMessages) {
-          logger.log('Describe', { coreID: this._coreId });
+          logger.log('Describe', { deviceID: this._id });
         }
 
         try {
@@ -284,7 +284,7 @@ class SparkCore extends EventEmitter {
 
       case 'GetVar': {
         if (settings.logApiMessages) {
-          logger.log('GetVar', { coreID: this._coreId });
+          logger.log('GetVar', { deviceID: this._id });
         }
         try {
           const result = await this._getVariable(
@@ -317,7 +317,7 @@ class SparkCore extends EventEmitter {
       }
       case 'SetVar': {
         if (settings.logApiMessages) {
-          logger.log('SetVar', { coreID: this._coreId });
+          logger.log('SetVar', { deviceID: this._id });
         }
         const result = await this._setVariable(
           message.name,
@@ -337,7 +337,7 @@ class SparkCore extends EventEmitter {
 
       case 'CallFn': {
         if (settings.logApiMessages) {
-          logger.log('FunCall', { coreID: this._coreId });
+          logger.log('FunCall', { deviceID: this._id });
         }
 
         try {
@@ -371,7 +371,7 @@ class SparkCore extends EventEmitter {
 
       case 'UFlash': {
         if (settings.logApiMessages) {
-          logger.log('FlashCore', { coreID: this._coreId });
+          logger.log('FlashCore', { deviceID: this._id });
         }
 
         return await this.flashCore(message.args.data, sender);
@@ -379,7 +379,7 @@ class SparkCore extends EventEmitter {
 
       case 'RaiseHand': {
         if (settings.logApiMessages) {
-          logger.log('SignalCore', { coreID: this._coreId });
+          logger.log('SignalCore', { deviceID: this._id });
         }
 
         const showSignal = message.args && message.args.signal;
@@ -393,7 +393,7 @@ class SparkCore extends EventEmitter {
 
       case 'Ping': {
         if (settings.logApiMessages) {
-          logger.log('Pinged, replying', { coreID: this._coreId });
+          logger.log('Pinged, replying', { deviceID: this._id });
         }
         const result = {
           cmd: 'Pong',
@@ -427,7 +427,7 @@ class SparkCore extends EventEmitter {
     if (!message) {
       logger.error(
         'routeMessage got a NULL coap message ',
-        { coreID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
       return;
     }
@@ -462,7 +462,7 @@ class SparkCore extends EventEmitter {
     if (message.isEmpty() && message.isConfirmable()) {
       this._lastCorePing = new Date();
       // var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
-      // logger.log('core ping @ ', delta, ' seconds ', { coreID: this.getHexCoreID() });
+      // logger.log('core ping @ ', delta, ' seconds ', { deviceID: this._id });
       this.sendReply('PingAck', message.getId());
       return;
     }
@@ -473,7 +473,7 @@ class SparkCore extends EventEmitter {
         message.getId(),
         ' expecting ',
         this._recieveCounter,
-        { coreID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
 
       if (requestType === 'Ignored') {
@@ -516,7 +516,7 @@ class SparkCore extends EventEmitter {
     if (!message) {
       logger.error(
         'Device - could not unwrap message',
-        { coreID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
       return;
     }
@@ -524,7 +524,7 @@ class SparkCore extends EventEmitter {
     if (!this._cipherStream) {
       logger.error(
         'Device - sendReply before READY',
-        { coreID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
       return;
     }
@@ -570,7 +570,7 @@ class SparkCore extends EventEmitter {
     if (!this._cipherStream) {
       logger.error(
         'Client - sendMessage before READY',
-        { messageName, coreID: this.getHexCoreID() },
+        { deviceID: this._id, messageName },
       );
       return -1;
     }
@@ -614,7 +614,7 @@ class SparkCore extends EventEmitter {
               'uri filter did not match',
               uri,
               message.getUriPath(),
-              { coreID: this.getHexCoreID() },
+              { deviceID: this._id },
             );
           }
           reject();
@@ -627,7 +627,7 @@ class SparkCore extends EventEmitter {
               'Tokens did not match ',
                tokenHex,
                message.getTokenString(),
-               { coreID: this.getHexCoreID() },
+               { deviceID: this._id },
              );
           }
           reject();
@@ -778,7 +778,7 @@ class SparkCore extends EventEmitter {
       if (settings.showVerboseDeviceLogs) {
         logger.log(
           'sending function call to the core',
-          { coreID: this._coreId, name },
+          { deviceID: this._id, name },
         );
       }
 
@@ -830,7 +830,7 @@ class SparkCore extends EventEmitter {
     if (!binary || (binary.length === 0)) {
       logger.log(
         'flash failed! - file is empty! ',
-        { coreID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
       const result = {
         cmd: 'Event',
@@ -847,7 +847,7 @@ class SparkCore extends EventEmitter {
     if (binary && binary.length > MAX_BINARY_SIZE) {
       logger.log(
         `flash failed! - file is too BIG ${binary.length}`,
-        { coreID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
       const result = {
         cmd: 'Event',
@@ -865,7 +865,7 @@ class SparkCore extends EventEmitter {
     try {
       logger.log(
         'flash device started! - sending api event',
-        { deviceID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
@@ -884,7 +884,7 @@ class SparkCore extends EventEmitter {
 
       logger.log(
         'flash device finished! - sending api event',
-        { deviceID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
@@ -898,7 +898,7 @@ class SparkCore extends EventEmitter {
     } catch (error) {
       logger.log(
         'flash device failed! - sending api event',
-        { deviceID: this.getHexCoreID(), error },
+        { deviceID: this._id, error },
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
@@ -928,7 +928,7 @@ class SparkCore extends EventEmitter {
       'This client has an exclusive lock',
       {
         cache_key: this._connectionKey,
-        deviceID: this.getHexCoreID(),
+        deviceID: this._id,
         messageName,
       },
     );
@@ -938,7 +938,7 @@ class SparkCore extends EventEmitter {
 
   takeOwnership = (flasher: Flasher): boolean => {
     if (this._owningFlasher) {
-      logger.error('already owned', { coreID: this.getHexCoreID() });
+      logger.error('already owned', { deviceID: this._id });
       return false;
     }
     // only permit the owning object to send messages.
@@ -946,7 +946,7 @@ class SparkCore extends EventEmitter {
     return true;
   };
   releaseOwnership = (flasher: Flasher): void => {
-    logger.log('releasing flash ownership ', { coreID: this.getHexCoreID() });
+    logger.log('releasing flash ownership ', { coreID: this._id });
     if (this._owningFlasher === flasher) {
       this._owningFlasher = null;
     } else if (this._owningFlasher) {
@@ -954,7 +954,7 @@ class SparkCore extends EventEmitter {
         'cannot releaseOwnership, ',
         flasher,
         ' isn\'t the current owner ',
-        { coreID: this.getHexCoreID() },
+        { deviceID: this._id },
       );
     }
   };
@@ -1037,7 +1037,7 @@ class SparkCore extends EventEmitter {
     name: string,
     args: ?Object,
   ): Promise<?Buffer> => {
-    //logger.log('transform args', { coreID: this.getHexCoreID() });
+    //logger.log('transform args', { deviceID: this._id });
     if (!args) {
       return null;
     }
@@ -1188,12 +1188,11 @@ class SparkCore extends EventEmitter {
     );
   };
 
-  getHexCoreID = (): string =>
-    this._coreId
-      ? this._coreId.toString('hex')
-      : 'unknown';
+  // eslint-disable-next-line no-confusing-arrow
+  getID = (): string => this._id;
 
 
+  // eslint-disable-next-line no-confusing-arrow
   getRemoteIPAddress = (): string =>
     this._socket.remoteAddress
       ? this._socket.remoteAddress.toString()
@@ -1212,7 +1211,7 @@ class SparkCore extends EventEmitter {
     try {
       const logInfo = {
         cache_key: this._connectionKey,
-        deviceID: this.getHexCoreID(),
+        deviceID: this._id,
         duration: this._connectionStartTime
          ? ((new Date()) - this._connectionStartTime) / 1000.0
          : undefined,

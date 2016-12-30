@@ -162,7 +162,7 @@ class DeviceServer {
         (): void => this.publishSpecialEvent(
           'spark/flash/status',
           'started',
-          device.getHexCoreID(),
+          device.getID(),
         ),
       );
 
@@ -171,7 +171,7 @@ class DeviceServer {
         (): void => this.publishSpecialEvent(
           'spark/flash/status',
           'success',
-          device.getHexCoreID(),
+          device.getID(),
         ),
       );
 
@@ -180,7 +180,7 @@ class DeviceServer {
         (): void => this.publishSpecialEvent(
           'spark/flash/status',
           'failed',
-          device.getHexCoreID(),
+          device.getID(),
         ),
       );
 
@@ -196,7 +196,7 @@ class DeviceServer {
   };
 
   _onDeviceDisconnect = (device: SparkCore, connectionKey: string) => {
-    const deviceID = device.getHexCoreID();
+    const deviceID = device.getID();
 
     if (this._devicesById.has(deviceID)) {
       this._devicesById.delete(deviceID);
@@ -221,7 +221,7 @@ class DeviceServer {
 
   _onDeviceReady = async (device: SparkCore): Promise<void> => {
     logger.log('Device online!');
-    const deviceID = device.getHexCoreID();
+    const deviceID = device.getID();
 
     if (this._devicesById.has(deviceID)) {
       const existingConnection = this._devicesById.get(deviceID);
@@ -255,7 +255,7 @@ class DeviceServer {
     isPublic: boolean,
     device: SparkCore,
   ): Promise<void> => {
-    const deviceID = device.getHexCoreID();
+    const deviceID = device.getID();
     const deviceAttributes =
       await this._deviceAttributeRepository.getById(deviceID);
 
@@ -325,7 +325,7 @@ class DeviceServer {
       // TODO: (old code todo)
       // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
       if (lowerEventName === 'spark/cc3000-patch-version') {
-        // set_cc3000_version(this._coreId, obj.data);
+        // set_cc3000_version(this._id, obj.data);
         // eat_message = false;
       }
 
@@ -343,7 +343,7 @@ class DeviceServer {
     message: Message,
     device: SparkCore,
   ): Promise<void> => {
-    const deviceID = device.getHexCoreID();
+    const deviceID = device.getID();
     // uri -> /e/?u    --> firehose for all my devices
     // uri -> /e/ (deviceid in body)   --> allowed
     // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
