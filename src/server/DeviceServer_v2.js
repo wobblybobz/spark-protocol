@@ -62,9 +62,9 @@ class DeviceServer {
     eventPublisher: EventPublisher,
   ) {
     this._config = deviceServerConfig;
-    this._deviceAttributeRepository = this._config.deviceAttributeRepository;
-    // TODO: Remove this once the event system has been reworked
-    global.publisher = this._eventPublisher = eventPublisher;
+    this._deviceAttributeRepository =
+      deviceServerConfig.deviceAttributeRepository;
+    this._eventPublisher = eventPublisher;
     settings.coreKeysDir =
       deviceServerConfig.coreKeysDir || settings.coreKeysDir;
   }
