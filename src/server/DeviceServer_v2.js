@@ -418,9 +418,9 @@ class DeviceServer {
     console.log('saveCoreData');
   }
 
-  getCore(coreID: string) {
-    return this._devicesById.get(coreID);
-  }
+  getDevice = (deviceID: string): ?SparkCore =>
+    this._devicesById.get(deviceID);
+
   getCoreAttributes(coreID: string) {
     return this._config.deviceAttributeRepository.getById(coreID);
   }
