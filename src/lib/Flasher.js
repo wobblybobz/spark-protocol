@@ -24,10 +24,10 @@ import messages from './Messages';
 import logger from '../lib/logger';
 import utilities from '../lib/utilities';
 import BufferStream from './BufferStream';
-import SparkCore from '../clients/SparkCore';
+import Device from '../clients/Device';
 
 import buffers from 'h5.buffers';
-import {Message} from 'h5.coap';
+import { Message } from 'h5.coap';
 import Option from 'h5.coap/lib/Option';
 import crc32 from 'buffer-crc32';
 import nullthrows from 'nullthrows';
@@ -48,7 +48,7 @@ class Flasher {
 	_chunk: ?Buffer = null;
 	_chunkSize: number = CHUNK_SIZE;
 	_chunkIndex: number;
-	_client: SparkCore;
+	_client: Device;
 	_fileStream: ?BufferStream = null;
 	_lastCrc: ?string = null;
 	_protocolVersion: number = 0;
@@ -61,7 +61,7 @@ class Flasher {
 	_fastOtaEnabled: boolean = true;
 	_ignoreMissedChunks: boolean = false;
 
-	constructor(client: SparkCore) {
+	constructor(client: Device) {
 		this._client = client;
 	}
 
@@ -111,7 +111,7 @@ class Flasher {
 
 		//start listening for missed chunks before the update fully begins
 		this._client.on('msg_chunkmissed', message => this._onChunkMissed(message));
-	}
+	};
 
 	_claimConnection = (): boolean => {
 		//suspend all other messages to the core
@@ -120,7 +120,7 @@ class Flasher {
 		}
 
 		return true;
-	}
+	};
 
 	_beginUpdate = async (buffer: Buffer): Promise<*> => {
 		let maxTries = 3;
@@ -191,7 +191,7 @@ class Flasher {
 		};
 
 		await tryBeginUpdate();
-	}
+	};
 
   _sendBeginUpdateMessage = (fileBuffer: Buffer): boolean => {
     //(MDM Proposal) Optional payload to enable fast OTA and file placement:
@@ -251,7 +251,7 @@ class Flasher {
 		if (canUseFastOTA) {
 			logger.log(
 				'Starting FastOTA update',
-				{coreID: this._client.getHexCoreID()},
+				{ deviceID: this._client.getID() },
 			);
 		}
 
@@ -381,7 +381,7 @@ class Flasher {
 		) {
 			throw new Error('Flasher - failed sending updateDone message');
 		}
-	}
+	};
 
   _cleanup = (): void => {
 		try {
@@ -397,7 +397,7 @@ class Flasher {
 		} catch (exception) {
 			throw new Error('Flasher: error during cleanup ' + exception);
 		}
-	}
+	};
 
 	/**
 	 * delay the teardown until at least like 10 seconds after the last
@@ -417,24 +417,24 @@ class Flasher {
 			},
 			3 * 1000,
 		));
-	}
+	};
 
-	_getLogInfo = (): {cache_key?: string, coreID: string} => {
+	_getLogInfo = (): { cache_key?: string, deviceID: string } => {
 		if (this._client) {
 			return {
 				cache_key: this._client._connectionKey || undefined,
-				coreID: this._client.getHexCoreID(),
+				deviceID: this._client.getID(),
 			};
 		}	else {
-			return { coreID: 'unknown' };
+			return { deviceID: 'unknown' };
 		}
-	}
+	};
 
 	_onChunkMissed = (message: Message): void => {
 		if (this._missedChunks.size > MAX_MISSED_CHUNKS) {
 			const json = JSON.stringify(this._getLogInfo());
 			throw new Error(
-        'flasher - chunk missed - core over limit, killing! ' + json,
+        'flasher - chunk missed - device over limit, killing! ' + json,
       );
 		}
 

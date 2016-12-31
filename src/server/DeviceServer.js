@@ -17,7 +17,7 @@
 
 var settings = require('../settings.js');
 var CryptoLib = require('../lib/ICrypto.js');
-var SparkCore = require('../clients/SparkCore.js');
+var Device = require('../clients/Device.js');
 var EventPublisher = require('../lib/EventPublisher.js').default;
 var utilities = require('../lib/utilities.js');
 var logger = require('../lib/logger.js').default;
@@ -212,7 +212,7 @@ DeviceServer.prototype = {
                         var key = "_" + connId++;
                         logger.log("Connection from: " + socket.remoteAddress + ", connId: " + connId);
 
-                        var core = new SparkCore();
+                        var core = new Device();
                         core._socket = socket;
                         core.startupProtocol();
                         core._connectionKey = key;
@@ -223,7 +223,7 @@ DeviceServer.prototype = {
                         _cores[key] = core;
                         core.on('ready', function () {
                             logger.log("Core online!");
-                            var coreid = this.getHexCoreID();
+                            var coreid = this.getID();
                             that._allCoresByID[coreid] = core;
                             that._attribsByID[coreid] = that._attribsByID[coreid] || {
                                 coreID: coreid,

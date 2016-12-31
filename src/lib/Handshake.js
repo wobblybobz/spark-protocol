@@ -18,9 +18,9 @@
 *
 */
 
-import type SparkCore from '../clients/SparkCore';
-import type {Socket} from 'net';
-import type {Duplex} from 'stream';
+import type Device from '../clients/Device';
+import type { Socket } from 'net';
+import type { Duplex } from 'stream';
 
 import CryptoLib from './ICrypto';
 import utilities from './utilities';
@@ -61,7 +61,7 @@ import nullthrows from 'nullthrows';
      * Server sends 384 bytes to Core: the ciphertext then the signature.
 
 
- 5.) Release control back to the SparkCore module
+ 5.) Release control back to the Device module
 
      * Core creates a protobufs Hello with counter set to the uint32 represented by the most significant 4 bytes of the IV, encrypts the protobufs Hello with AES, and sends the ciphertext to Server.
      * Server reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Core must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
@@ -70,6 +70,8 @@ import nullthrows from 'nullthrows';
      * Core reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Server must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
      */
 
+
+// TODO rename to device?
 type HandshakeStage =
   'done' |
   'get-core-key' |
@@ -86,15 +88,15 @@ const SESSION_BYTES = 40;
 const GLOBAL_TIMEOUT = 10;
 
 class Handshake {
-  _client: SparkCore;
+  _client: Device;
   _socket: Socket;
   _handshakeStage: HandshakeStage = 'send-nonce';
   _reject: ?Function;
-  _coreId: string = '';
+  _deviceID: string = '';
   _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
 
-  constructor(client: SparkCore) {
+  constructor(client: Device) {
     this._client = client;
     this._socket = client._socket;
   }
@@ -110,7 +112,7 @@ class Handshake {
         ip: this._socket && this._socket.remoteAddress
           ? this._socket.remoteAddress.toString()
           : 'unknown',
-        coreId: this._coreId ? this._coreId.toString('hex') : null,
+        deviceID: this._deviceID ? this._deviceID.toString('hex') : null,
       };
 
       logger.error('Handshake failed: ', message, logInfo);
@@ -124,8 +126,8 @@ class Handshake {
       const dataAwaitable = this._onSocketDataAvailable();
       const nonce = await this._sendNonce();
       const data = await dataAwaitable;
-      const coreProvidedPem = this._readCoreId(nonce, data);
-      const publicKey = this._getCoreKey(nullthrows(coreProvidedPem));
+      const deviceProvidedPem = this._readDeviceID(nonce, data);
+      const publicKey = this._getDeviceKey(nullthrows(deviceProvidedPem));
       const {
         cipherStream,
         decipherStream,
@@ -138,16 +140,16 @@ class Handshake {
       ]);
       this._finished();
       return {
-        coreId: this._coreId,
+        deviceID: this._deviceID,
         cipherStream,
         decipherStream,
         handshakeBuffer,
         pendingBuffers: [...this._pendingBuffers],
         sessionKey,
       };
-    } catch (exception) {
-      logger.error(exception);
-      throw exception;
+    } catch (error) {
+      logger.error(`runHandshakeError(): ${error}`);
+      throw error;
     }
   };
 
@@ -192,14 +194,16 @@ class Handshake {
     return nonce;
   };
 
-  _readCoreId = (nonce: Buffer, data: Buffer): ?string => {
+  // TODO wrong method name? it read deviceID alongside with
+  // deviceKey? and returns deviceProvidedPem
+  _readDeviceID = (nonce: Buffer, data: Buffer): ?string => {
     //server should read 256 bytes
     //decrypt msg using server private key
     let plaintext;
     try {
       plaintext = CryptoLib.decrypt(CryptoLib.getServerKeys(), data);
-    } catch (exception) {
-      logger.error('Handshake decryption error: ', exception);
+    } catch (error) {
+      logger.error(`Handshake decryption error: ${error}`);
     }
 
     if (!plaintext) {
@@ -215,14 +219,14 @@ class Handshake {
 
     //success
     const nonceBuffer = new Buffer(40);
-    const coreIdBuffer = new Buffer(12);
+    const deviceIDBuffer = new Buffer(12);
 
     plaintext.copy(nonceBuffer, 0, 0, 40);
-    plaintext.copy(coreIdBuffer, 0, 40, 52);
+    plaintext.copy(deviceIDBuffer, 0, 40, 52);
 
-		const coreKey = new Buffer(plaintext.length - 52);
-		plaintext.copy(coreKey, 0, 52, plaintext.length);
-		const coreProvidedPem = utilities.convertDERtoPEM(coreKey);
+		const deviceKey = new Buffer(plaintext.length - 52);
+		plaintext.copy(deviceKey, 0, 52, plaintext.length);
+		const deviceProvidedPem = utilities.convertDERtoPEM(deviceKey);
 
     //nonces should match
     if (!utilities.bufferCompare(nonceBuffer, nonce)) {
@@ -230,28 +234,29 @@ class Handshake {
       return '';
     }
 
-    this._coreId = coreIdBuffer.toString('hex');
+    this._deviceID = deviceIDBuffer.toString('hex');
 
     this._handshakeStage = 'read-core-id';
 
-    return coreProvidedPem;
+    return deviceProvidedPem;
   };
 
   // 4.) Read the public key from disk for this core
-  _getCoreKey = (coreProvidedPem: string): Object => {
-    const publicKey = utilities.get_core_key(this._coreId);
+  // TODO do this with keys repository?
+  _getDeviceKey = (deviceProvidedPem: string): Object => {
+    const publicKey = utilities.get_core_key(this._deviceID);
     try {
       if (!publicKey) {
-        this._handshakeFail(`couldn't find key for core: ${this._coreId}`);
-        if (coreProvidedPem) {
-          utilities.save_handshake_key(this._coreId, coreProvidedPem);
+        this._handshakeFail(`couldn't find key for device: ${this._deviceID}`);
+        if (deviceProvidedPem) {
+          utilities.save_handshake_key(this._deviceID, deviceProvidedPem);
         }
-        throw `Failed finding key for core: ${this._coreId}`;
+        throw `Failed finding key for core: ${this._deviceID}`;
       }
     } catch (exception) {
       logger.error('Error handling get_corekey ', exception);
       this._handshakeFail(
-        `Failed handling find key for core: ${this._coreId}`,
+        `Failed handling find key for core: ${this._deviceID}`,
       );
     }
 
@@ -260,13 +265,13 @@ class Handshake {
   };
 
   _sendSessionKey = async (
-    corePublicKey: Object,
+    devicePublicKey: Object,
   ): Object => {
     const sessionKey = await CryptoLib.getRandomBytes(SESSION_BYTES);
 
     // Server RSA encrypts this 40-byte message using the Core's public key to
     // create a 128-byte ciphertext.
-    const ciphertext = CryptoLib.encrypt(corePublicKey, sessionKey);
+    const ciphertext = CryptoLib.encrypt(devicePublicKey, sessionKey);
 
     // Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
     // bytes generated in the previous step as the HMAC key.
@@ -311,10 +316,10 @@ class Handshake {
       decipherStream,
       sessionKey,
     };
-  }
+  };
 
   // TODO - Remove this callback once it resolves. When the stream is passed
-  // into the SparkCore, it should be rebound there to listen for the keep-alive
+  // into the Device, it should be rebound there to listen for the keep-alive
   // pings.
   _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> => {
     return new Promise((resolve, reject) => {
@@ -329,7 +334,7 @@ class Handshake {
       };
       decipherStream.on('readable', callback);
     });
-  }
+  };
 
   _queueEarlyData = (name: HandshakeStage, data: Buffer): void => {
     if (!data) {
@@ -341,17 +346,17 @@ class Handshake {
       data: (data) ? data.toString('hex') : data,
       cache_key: this._client._connectionKey
     });
-  }
+  };
 
   _onDecipherStreamTimeout = (): Promise<*> => {
     return new Promise(
       (resolve, reject) => setTimeout(() => reject(), 30 * 1000),
     );
-  }
+  };
 
   _finished = (): void => {
     this._handshakeStage = 'done';
-  }
+  };
 /*
   _flushEarlyData = (): void => {
     if (!this._pendingBuffers) {

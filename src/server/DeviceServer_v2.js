@@ -30,12 +30,16 @@ import type EventPublisher from '../lib/EventPublisher';
 import net from 'net';
 import nullthrows from 'nullthrows';
 import moment from 'moment';
-import SparkCore from '../clients/SparkCore';
+import Device from '../clients/Device';
 // TODO: Rename ICrypto to CryptoLib
 import CryptoLib from '../lib/ICrypto';
 import logger from '../lib/logger';
 import Messages from '../lib/Messages';
 import settings from '../settings';
+import {
+  DEVICE_EVENT_NAMES,
+  DEVICE_MESSAGE_EVENTS_NAMES,
+} from '../clients/Device';
 
 type DeviceServerConfig = {|
   coreKeysDir?: string,
@@ -53,104 +57,26 @@ let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
-  _devicesById: Map<string, SparkCore> = new Map();
+  _devicesById: Map<string, Device> = new Map();
   _eventPublisher: EventPublisher;
 
-  constructor(deviceServerConfig: DeviceServerConfig, eventPublisher: EventPublisher) {
+  constructor(
+    deviceServerConfig: DeviceServerConfig,
+    eventPublisher: EventPublisher,
+  ) {
     this._config = deviceServerConfig;
-    this._deviceAttributeRepository = this._config.deviceAttributeRepository;
-    // TODO: Remove this once the event system has been reworked
-    global.publisher = this._eventPublisher = eventPublisher;
+    this._deviceAttributeRepository =
+      deviceServerConfig.deviceAttributeRepository;
+    this._eventPublisher = eventPublisher;
     settings.coreKeysDir =
       deviceServerConfig.coreKeysDir || settings.coreKeysDir;
   }
 
   start() {
-    const server = net.createServer((socket: Socket) => {
-      process.nextTick(async (): Promise<void> => {
-        try {
-          // eslint-disable-next-line no-plusplus
-          const connectionKey = `_${connectionIdCounter++}`;
-          const device = new SparkCore(socket, connectionKey);
-
-          device.on('ready', async (): Promise<void> => {
-            logger.log('Device online!');
-            const deviceID = device.getHexCoreID();
-
-            if (this._devicesById.has(deviceID)) {
-              const existingConnection = this._devicesById.get(deviceID);
-              nullthrows(existingConnection).disconnect(
-                'Device was already connected. Reconnecting.\r\n',
-              );
-            }
-
-            this._devicesById.set(deviceID, device);
-            const existingAttributes =
-              await this._deviceAttributeRepository.getById(deviceID);
-            const deviceAttributes = {
-              ...existingAttributes,
-              deviceID,
-              ip: device.getRemoteIPAddress(),
-              particleProductId: device._particleProductId,
-              productFirmwareVersion: device._productFirmwareVersion,
-            };
-
-            this._deviceAttributeRepository.update(
-              deviceAttributes,
-            );
-
-            this.publishSpecialEvent('particle/status', 'online', deviceID);
-          });
-
-          device.on('disconnect', (): void =>
-            this._onDeviceDisconnect(device, connectionKey),
-          );
-
-          device.on(
-            // TODO figure out is this message for subscriptions on public events or
-            // public + private
-            'msg_Subscribe'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceSubscribe(message, device),
-          );
-
-          device.on(
-            'msg_PrivateEvent'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceSentMessage(
-                message,
-                /* isPublic */false,
-                device,
-              ),
-          );
-
-          device.on(
-            'msg_PublicEvent'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceSentMessage(
-                message,
-                /* isPublic */true,
-                device,
-              ),
-          );
-
-          device.on(
-            'msg_GetTime'.toLowerCase(),
-            (message: Message): void =>
-              this._onDeviceGetTime(message, device),
-          );
-
-          await device.startupProtocol();
-
-          logger.log(
-            `Connection from: ${device.getRemoteIPAddress()} - ` +
-            `Connection ID: ${connectionIdCounter}`,
-          );
-        } catch (error) {
-          logger.error(`Device startup failed: ${error.message}`);
-        }
-      });
-    });
+    const server = net.createServer(
+      (socket: Socket): void =>
+        process.nextTick((): void => this._onNewSocketConnection(socket)),
+    );
 
     server.on('error', (error: Error): void =>
       logger.error(`something blew up ${error.message}`),
@@ -181,8 +107,96 @@ class DeviceServer {
     );
   }
 
-  _onDeviceDisconnect = (device: SparkCore, connectionKey: string) => {
-    const deviceID = device.getHexCoreID();
+  _onNewSocketConnection = async (socket: Socket): Promise<void> => {
+    try {
+      // eslint-disable-next-line no-plusplus
+      const connectionKey = `_${connectionIdCounter++}`;
+      const device = new Device(socket, connectionKey);
+
+      device.on(
+        DEVICE_EVENT_NAMES.READY,
+        (): void => this._onDeviceReady(device),
+      );
+
+      device.on(
+        DEVICE_EVENT_NAMES.DISCONNECT,
+        (): void => this._onDeviceDisconnect(device, connectionKey),
+      );
+
+      device.on(
+        // TODO figure out is this message for subscriptions on public events or
+        // public + private
+        DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
+        (message: Message): void =>
+          this._onDeviceSubscribe(message, device),
+      );
+
+      device.on(
+        DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
+        (message: Message): void =>
+          this._onDeviceSentMessage(
+            message,
+            /* isPublic */false,
+            device,
+          ),
+      );
+
+      device.on(
+        DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
+        (message: Message): void =>
+          this._onDeviceSentMessage(
+            message,
+            /* isPublic */true,
+            device,
+          ),
+      );
+
+      device.on(
+        DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
+        (message: Message): void =>
+          this._onDeviceGetTime(message, device),
+      );
+
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_STARTED,
+        (): void => this.publishSpecialEvent(
+          'spark/flash/status',
+          'started',
+          device.getID(),
+        ),
+      );
+
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_SUCCESS,
+        (): void => this.publishSpecialEvent(
+          'spark/flash/status',
+          'success',
+          device.getID(),
+        ),
+      );
+
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_FAILED,
+        (): void => this.publishSpecialEvent(
+          'spark/flash/status',
+          'failed',
+          device.getID(),
+        ),
+      );
+
+      await device.startupProtocol();
+
+      logger.log(
+        `Connection from: ${device.getRemoteIPAddress()} - ` +
+        `Connection ID: ${connectionIdCounter}`,
+      );
+    } catch (error) {
+      logger.error(`Device startup failed: ${error.message}`);
+    }
+  };
+
+  _onDeviceDisconnect = (device: Device, connectionKey: string) => {
+    const deviceID = device.getID();
 
     if (this._devicesById.has(deviceID)) {
       this._devicesById.delete(deviceID);
@@ -193,7 +207,7 @@ class DeviceServer {
     }
   };
 
-  _onDeviceGetTime = (message: Message, device: SparkCore) => {
+  _onDeviceGetTime = (message: Message, device: Device) => {
     const timeStamp = moment().utc().unix();
     const binaryValue = Messages.toBinary(timeStamp, 'uint32');
 
@@ -205,12 +219,43 @@ class DeviceServer {
     );
   };
 
+  _onDeviceReady = async (device: Device): Promise<void> => {
+    logger.log('Device online!');
+    const deviceID = device.getID();
+
+    if (this._devicesById.has(deviceID)) {
+      const existingConnection = this._devicesById.get(deviceID);
+      nullthrows(existingConnection).disconnect(
+        'Device was already connected. Reconnecting.\r\n',
+      );
+    }
+
+    this._devicesById.set(deviceID, device);
+
+    const existingAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+
+    const deviceAttributes = {
+      ...existingAttributes,
+      deviceID,
+      ip: device.getRemoteIPAddress(),
+      particleProductId: device._particleProductId,
+      productFirmwareVersion: device._productFirmwareVersion,
+    };
+
+    this._deviceAttributeRepository.update(
+      deviceAttributes,
+    );
+
+    this.publishSpecialEvent('particle/status', 'online', deviceID);
+  };
+
   _onDeviceSentMessage = async (
     message: Message,
     isPublic: boolean,
-    device: SparkCore,
+    device: Device,
   ): Promise<void> => {
-    const deviceID = device.getHexCoreID();
+    const deviceID = device.getID();
     const deviceAttributes =
       await this._deviceAttributeRepository.getById(deviceID);
 
@@ -280,7 +325,7 @@ class DeviceServer {
       // TODO: (old code todo)
       // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
       if (lowerEventName === 'spark/cc3000-patch-version') {
-        // set_cc3000_version(this._coreId, obj.data);
+        // set_cc3000_version(this._id, obj.data);
         // eat_message = false;
       }
 
@@ -296,9 +341,9 @@ class DeviceServer {
 
   _onDeviceSubscribe = async (
     message: Message,
-    device: SparkCore,
+    device: Device,
   ): Promise<void> => {
-    const deviceID = device.getHexCoreID();
+    const deviceID = device.getID();
     // uri -> /e/?u    --> firehose for all my devices
     // uri -> /e/ (deviceid in body)   --> allowed
     // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
@@ -342,6 +387,9 @@ class DeviceServer {
     device.sendReply('SubscribeAck', message.getId());
   };
 
+  getDevice = (deviceID: string): ?Device =>
+    this._devicesById.get(deviceID);
+
   async publishSpecialEvent(
     eventName: string,
     data: string,
@@ -354,56 +402,6 @@ class DeviceServer {
       name: eventName,
       ttl: 60,
     });
-  }
-
-  _createCore(): void {
-    console.log('_createCore');
-  }
-
-  init() {
-    console.log('init');
-  }
-
-  addCoreKey(coreID: string, publicKey: Object) {
-    console.log('addCoreKey');
-  }
-
-  loadCoreData() {
-    console.log('loadCoreData');
-  }
-
-  saveCoreData(coreID: string, attribs: Object) {
-    console.log('saveCoreData');
-  }
-
-  getCore(coreID: string) {
-    return this._devicesById.get(coreID);
-  }
-  getCoreAttributes(coreID: string) {
-    return this._config.deviceAttributeRepository.getById(coreID);
-  }
-  setCoreAttribute(coreID: string, name: string, value: mixed) {
-    console.log('getCoreAttributes');
-  }
-  getCoreByName(name: string) {
-    console.log('getCoreByName');
-  }
-
-  /**
-   * return all the cores we know exist
-   * @returns {null}
-   */
-  // TODO: Remove this function and have the callers use the repository.
-  getAllCoreIDs() {
-    console.log('getAllCoreIDs');
-  }
-
-  /**
-   * return all the cores that are connected
-   * @returns {null}
-   */
-  getAllCores() {
-    console.log('getAllCores');
   }
 }
 
