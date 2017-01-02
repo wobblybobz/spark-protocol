@@ -123,15 +123,15 @@ class Device extends EventEmitter {
 
     this._socket.on(
       'error',
-      (error: Error): void => this.disconnect(`socket error ${error.message}`),
+      (error: Error): void => this.disconnect(`socket error: ${error.message}`),
     );
     this._socket.on(
       'close',
-      (error: Error): void => this.disconnect(`socket close ${error.message}`),
+      (): void => this.disconnect('socket close'),
     );
     this._socket.on(
       'timeout',
-      (error: Error): void => this.disconnect(`socket timeout ${error.message}`),
+      (): void => this.disconnect('socket timeout'),
     );
 
     await this.handshake();
@@ -1236,8 +1236,8 @@ class Device extends EventEmitter {
       try {
         this._decipherStream.end();
         this._decipherStream = null;
-      } catch (exception) {
-        logger.error('Error cleaning up _decipherStream ', exception);
+      } catch (error) {
+        logger.error(`Error cleaning up _decipherStream: ${error}`);
       }
     }
 
@@ -1245,8 +1245,8 @@ class Device extends EventEmitter {
       try {
         this._cipherStream.end();
         this._cipherStream = null;
-      } catch (exception) {
-        logger.error('Error cleaning up _cipherStream ', exception);
+      } catch (error) {
+        logger.error(`Error cleaning up _decipherStream: ${error}`);
       }
     }
 
