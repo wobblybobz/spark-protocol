@@ -249,13 +249,6 @@ class Device extends EventEmitter {
           result: result.getPayload().toString(),
         };
       }
-      case 'UFlash': {
-        if (settings.logApiMessages) {
-          logger.log('FlashCore', { deviceID: this._id });
-        }
-
-        return await this.flashCore(message.args.data);
-      }
       case 'RaiseHand': {
         if (settings.logApiMessages) {
           logger.log('SignalCore', { deviceID: this._id });
@@ -706,7 +699,7 @@ class Device extends EventEmitter {
     );
   };
 
-  flashCore = (binary: ?Buffer): Object => {
+  flash = async (binary: ?Buffer): Promise<string> => {
     if (!binary || (binary.length === 0)) {
       logger.log(
         'flash failed! - file is empty! ',
@@ -726,7 +719,6 @@ class Device extends EventEmitter {
     }
 
     const flasher = new Flasher(this);
-
     try {
       logger.log(
         'flash device started! - sending api event',
@@ -735,7 +727,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
-      flasher.startFlashBuffer(binary);
+      await flasher.startFlashBuffer(binary);
 
       logger.log(
         'flash device finished! - sending api event',
@@ -744,11 +736,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
-      return {
-        cmd: 'FlashReturn',
-        message: 'Update started',
-        name: 'Update',
-      };
+      return 'Update finished';
     } catch (error) {
       logger.log(
         'flash device failed! - sending api event',
@@ -756,7 +744,7 @@ class Device extends EventEmitter {
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
-      throw new Error(`update failed: ${error.message}`);
+      throw new Error(`Update failed: ${error.message}`);
     }
   };
 
