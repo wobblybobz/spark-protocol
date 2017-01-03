@@ -255,67 +255,61 @@ class Messages {
     }
   };
 
-  tryfromBinary = <TType>(buffer: Buffer, typeName: string): ?TType => {
-      var result = null;
+  tryFromBinary = <TType>(buffer: Buffer, typeName: string): ?TType => {
+      let result = null;
       try {
         result = this.fromBinary(buffer, typeName);
-      } catch (exception) {
-        logger.error('Could not parse type: ${typeName} ${buffer}', exception);
+      } catch (error) {
+        logger.error('Could not parse type: ${typeName} ${buffer}', error);
       }
       return result;
   };
 
   fromBinary = <TType>(buffer: Buffer, typeName: string): TType => {
-    //logger.log('converting a ' + name + ' fromBinary input was ' + buf);
-
-    if (!Buffer.isBuffer(buffer)) {
-      buffer = new Buffer(buffer);
-    }
-
-    var newBuffer = new BufferReader(buffer);
+    const bufferReader = new BufferReader(buffer);
 
     switch (typeName) {
       case 'bool': {
-        return !!newBuffer.shiftByte();
+        return !!bufferReader.shiftByte();
       }
 
       case 'byte': {
-        return newBuffer.shiftByte();
+        return bufferReader.shiftByte();
       }
 
       case 'crc': {
-        return newBuffer.shiftUInt32();
+        return bufferReader.shiftUInt32();
       }
 
       case 'uint32': {
-        return newBuffer.shiftUInt32();
+        return bufferReader.shiftUInt32();
       }
 
       case 'uint16': {
-        return newBuffer.shiftUInt16();
+        return bufferReader.shiftUInt16();
       }
 
       case 'int32':
       case 'number': {
-        return newBuffer.shiftInt32();
+        return bufferReader.shiftInt32();
       }
 
       case 'float': {
-        return newBuffer.shiftFloat();
+        return bufferReader.shiftFloat();
       }
 
       case 'double': {
         //doubles on the core are little-endian
-        return newBuffer.shiftDouble(true);
+        return bufferReader.shiftDouble(true);
       }
 
       case 'buffer': {
-        return newBuffer.getPayload();
+        return ((bufferReader.buffer: any): TType)
       }
 
       case 'string':
       default: {
-        return newBuffer.toString();
+        return bufferReader.buffer.toString();
       }
     }
   };
