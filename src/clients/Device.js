@@ -259,21 +259,24 @@ class Device extends EventEmitter {
 
         return { cmd: 'RaiseHandReturn', result };
       }
-      case 'Ping': {
-        if (settings.logApiMessages) {
-          logger.log('Pinged, replying', { deviceID: this._id });
-        }
-
-        return {
-          cmd: 'Pong',
-          connected: this._socket !== null,
-          lastPing: this._lastCorePing,
-        };
-      }
       default: {
         throw new Error('unknown message');
       }
     }
+  };
+
+  ping = (): {
+    connected: boolean,
+    lastPing: Date,
+  } => {
+    if (settings.logApiMessages) {
+      logger.log('Pinged, replying', { deviceID: this._id });
+    }
+
+    return {
+      connected: this._socket !== null,
+      lastPing: this._lastCorePing,
+    };
   };
 
   /**
