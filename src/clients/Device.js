@@ -20,6 +20,7 @@
 
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
+import type { Event } from '../types';
 
 import EventEmitter from 'events';
 import moment from 'moment';
