@@ -1237,7 +1237,7 @@ class Device extends EventEmitter {
         this._decipherStream.end();
         this._decipherStream = null;
       } catch (error) {
-        logger.error(`Error cleaning up _decipherStream: ${error}`);
+        logger.error(`Error cleaning up decipherStream: ${error}`);
       }
     }
 
@@ -1246,7 +1246,7 @@ class Device extends EventEmitter {
         this._cipherStream.end();
         this._cipherStream = null;
       } catch (error) {
-        logger.error(`Error cleaning up _decipherStream: ${error}`);
+        logger.error(`Error cleaning up cipherStream: ${error}`);
       }
     }
 
