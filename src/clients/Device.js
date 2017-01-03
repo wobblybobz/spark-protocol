@@ -222,33 +222,6 @@ class Device extends EventEmitter {
     this.emit(DEVICE_EVENT_NAMES.READY);
   };
 
-  /**
-   * Handles messages coming from the API over our message queue service
-   */
-  onApiMessage = async (sender: string, message: Message): Promise<*> => {
-    // if we're not the owner, then the socket is busy
-    const isBusy = !this._isSocketAvailable(null);
-    if (isBusy) {
-      throw new Error('This device is locked during the flashing process.');
-    }
-
-    switch (message.cmd) {
-      case 'RaiseHand': {
-        if (settings.logApiMessages) {
-          logger.log('SignalCore', { deviceID: this._id });
-        }
-
-        const showSignal = message.args && message.args.signal;
-        const result = await this._raiseYourHand(showSignal);
-
-        return { cmd: 'RaiseHandReturn', result };
-      }
-      default: {
-        throw new Error('unknown message');
-      }
-    }
-  };
-
   ping = (): {
     connected: boolean,
     lastPing: Date,
@@ -671,10 +644,13 @@ class Device extends EventEmitter {
 
   /**
    * Asks the core to start or stop its 'raise your hand' signal
-   * @param showSignal - whether it should show the signal or not
-   * @param callback - what to call when we're done or timed out...
    */
-  _raiseYourHand = async (showSignal: boolean, ..._:void[]): Promise<*> => {
+    // TODO figure out what is it for and why messageName isn't
+    // consistent with messages specification
+  raiseYourHand = async (
+    showSignal: boolean,
+    ..._:void[],
+  ): Promise<*> => {
     const token = this.sendMessage(
       '_raiseYourHand',
       { _writeCoapUri: Messages.raiseYourHandUrlGenerator(showSignal) },
