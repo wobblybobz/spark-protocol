@@ -222,20 +222,6 @@ class Device extends EventEmitter {
     this.emit(DEVICE_EVENT_NAMES.READY);
   };
 
-
-  /**
-   * @param sender
-   * @param response
-   */
-  sendApiResponse = (sender: string, response: Object): void => {
-    try {
-      this.emit(sender, sender, response);
-    } catch (exception) {
-      logger.error('Error during response ', exception);
-    }
-  };
-
-
   /**
    * Handles messages coming from the API over our message queue service
    */
@@ -243,11 +229,7 @@ class Device extends EventEmitter {
     // if we're not the owner, then the socket is busy
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
-      this.sendApiResponse(
-        sender,
-        { error: new Error('This core is locked during the flashing process.') },
-      );
-      return Promise.reject();
+      throw new Error('This device is locked during the flashing process.');
     }
 
     switch (message.cmd) {
@@ -258,126 +240,72 @@ class Device extends EventEmitter {
 
         try {
           await this._ensureWeHaveIntrospectionData();
-          this.sendApiResponse(
-            sender,
-            {
-              cmd: 'DescribeReturn',
-              firmware_version: this._productFirmwareVersion,
-              name: message.name,
-              product_id: this._particleProductId,
-              state: this._deviceFunctionState,
-            },
-          );
 
-          return this._deviceFunctionState;
-        } catch (exception) {
-          this.sendApiResponse(
-            sender,
-            {
-              cmd: 'DescribeReturn',
-              error: 'Error, no device state',
-              name: message.name,
-            },
-          );
+          return {
+            cmd: 'DescribeReturn',
+            firmware_version: this._productFirmwareVersion,
+            product_id: this._particleProductId,
+            state: this._deviceFunctionState,
+          };
+        } catch (error) {
+          throw new Error('Error, no device state');
         }
-        break;
       }
-
       case 'GetVar': {
         if (settings.logApiMessages) {
           logger.log('GetVar', { deviceID: this._id });
         }
-        try {
-          const result = await this._getVariable(
-            message.name,
-            message.type,
-          );
 
-          const response = {
-            cmd: 'VarReturn',
-            name: message.name,
-            result,
-          };
-          this.sendApiResponse(
-            sender,
-            response,
-          );
-          return result;
-        } catch (error) {
-          const response = {
-            cmd: 'VarReturn',
-            error,
-            name: message.name,
-          };
-          this.sendApiResponse(
-            sender,
-            response,
-          );
-          return response;
-        }
+        const result = await this._getVariable(
+          message.name,
+          message.type,
+        );
+
+        return {
+          cmd: 'VarReturn',
+          name: message.name,
+          result,
+        };
       }
       case 'SetVar': {
         if (settings.logApiMessages) {
           logger.log('SetVar', { deviceID: this._id });
         }
+
         const result = await this._setVariable(
           message.name,
           message.value,
         );
 
-        this.sendApiResponse(
-          sender,
-          {
-            cmd: 'VarReturn',
-            name: message.name,
-            result: result.getPayload().toString(),
-          },
-        );
-        break;
+        return {
+          cmd: 'VarReturn',
+          name: message.name,
+          result: result.getPayload().toString(),
+        };
       }
-
       case 'CallFn': {
         if (settings.logApiMessages) {
           logger.log('FunCall', { deviceID: this._id });
         }
 
-        try {
-          const result = await this._callFunction(
-            message.name,
-            message.args,
-          );
-          const sendResult = {
-            cmd: 'FnReturn',
-            name: message.name,
-            result,
-          };
-          this.sendApiResponse(
-            sender,
-            sendResult,
-          );
-          return sendResult;
-        } catch (error) {
-          const sendResult = {
-            cmd: 'FnReturn',
-            error,
-            name: message.name,
-          };
-          this.sendApiResponse(
-            sender,
-            sendResult,
-          );
-          return sendResult;
-        }
-      }
+        const result = await this._callFunction(
+          message.name,
+          message.args,
+        );
 
+        return {
+          cmd: 'FnReturn',
+          name: message.name,
+          result,
+        };
+      }
       case 'UFlash': {
         if (settings.logApiMessages) {
           logger.log('FlashCore', { deviceID: this._id });
         }
 
-        return await this.flashCore(message.args.data, sender);
+        return await this.flashCore(message.args.data);
       }
-
       case 'RaiseHand': {
         if (settings.logApiMessages) {
           logger.log('SignalCore', { deviceID: this._id });
@@ -385,35 +313,22 @@ class Device extends EventEmitter {
 
         const showSignal = message.args && message.args.signal;
         const result = await this._raiseYourHand(showSignal);
-        this.sendApiResponse(
-          sender,
-          { cmd: 'RaiseHandReturn', result },
-        );
-        break;
-      }
 
+        return { cmd: 'RaiseHandReturn', result };
+      }
       case 'Ping': {
         if (settings.logApiMessages) {
           logger.log('Pinged, replying', { deviceID: this._id });
         }
-        const result = {
+
+        return {
           cmd: 'Pong',
           connected: this._socket !== null,
           lastPing: this._lastCorePing,
         };
-        this.sendApiResponse(
-          sender,
-          result,
-        );
-
-        return result;
       }
-
       default: {
-        this.sendApiResponse(
-          sender,
-          { error: new Error('unknown message') },
-        );
+        throw new Error('unknown message');
       }
     }
   };
@@ -827,22 +742,14 @@ class Device extends EventEmitter {
     );
   };
 
-  flashCore = (binary: ?Buffer, sender: string): Object => {
+  flashCore = (binary: ?Buffer): Object => {
     if (!binary || (binary.length === 0)) {
       logger.log(
         'flash failed! - file is empty! ',
         { deviceID: this._id },
       );
-      const result = {
-        cmd: 'Event',
-        error: new Error('Update failed - File was too small!'),
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
-      return result;
+
+      throw new Error('Update failed - File was too small!');
     }
 
     if (binary && binary.length > MAX_BINARY_SIZE) {
@@ -850,19 +757,12 @@ class Device extends EventEmitter {
         `flash failed! - file is too BIG ${binary.length}`,
         { deviceID: this._id },
       );
-      const result = {
-        cmd: 'Event',
-        error: new Error('Update failed - File was too big!'),
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
-      return result;
+
+      throw new Error('Update failed - File was too big!');
     }
 
     const flasher = new Flasher(this);
+
     try {
       logger.log(
         'flash device started! - sending api event',
@@ -870,16 +770,6 @@ class Device extends EventEmitter {
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
-
-      const result = {
-        cmd: 'Event',
-        message: 'Update started',
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
 
       flasher.startFlashBuffer(binary);
 
@@ -890,12 +780,11 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
-      this.sendApiResponse(
-        sender,
-        { cmd: 'Event', name: 'Update', message: 'Update done' },
-      );
-
-      return result;
+      return {
+        cmd: 'FlashReturn',
+        message: 'Update started',
+        name: 'Update',
+      };
     } catch (error) {
       logger.log(
         'flash device failed! - sending api event',
@@ -903,17 +792,7 @@ class Device extends EventEmitter {
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
-
-      const result = {
-        cmd: 'Event',
-        error: new Error('Update failed'),
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
-      return result;
+      throw new Error(`update failed: ${error.message}`);
     }
   };
 
@@ -1023,6 +902,7 @@ class Device extends EventEmitter {
         '_transformFunctionResult - error transforming response ' +
         error,
       );
+      throw error;
     }
 
     return result;
