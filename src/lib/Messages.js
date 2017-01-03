@@ -255,7 +255,7 @@ class Messages {
     }
   };
 
-  tryFromBinary = (buffer: Buffer, typeName: string): ?mixed => {
+  tryFromBinary = <TType>(buffer: Buffer, typeName: string): ?TType => {
       let result = null;
       try {
         result = this.fromBinary(buffer, typeName);
@@ -265,13 +265,7 @@ class Messages {
       return result;
   };
 
-  fromBinary = (buffer: Buffer, typeName: string): mixed => {
-    //logger.log('converting a ' + name + ' fromBinary input was ' + buf);
-
-    if (!Buffer.isBuffer(buffer)) {
-      buffer = new Buffer(buffer);
-    }
-
+  fromBinary = <TType>(buffer: Buffer, typeName: string): TType => {
     const bufferReader = new BufferReader(buffer);
 
     switch (typeName) {
@@ -310,12 +304,12 @@ class Messages {
       }
 
       case 'buffer': {
-        return buffer;
+        return ((bufferReader.buffer: any): TType)
       }
 
       case 'string':
       default: {
-        return buffer.toString();
+        return bufferReader.buffer.toString();
       }
     }
   };
