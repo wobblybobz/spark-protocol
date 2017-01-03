@@ -75,7 +75,9 @@ class DeviceServer {
   start() {
     const server = net.createServer(
       (socket: Socket): void =>
-        process.nextTick((): void => this._onNewSocketConnection(socket)),
+        process.nextTick((): Promise<void> =>
+          this._onNewSocketConnection(socket),
+        ),
     );
 
     server.on('error', (error: Error): void =>
@@ -100,7 +102,7 @@ class DeviceServer {
     //
     //  Wait for the keys to be ready, then start accepting connections
     //
-    const serverPort = this._config.port;
+    const serverPort = this._config.port.toString();
     server.listen(
       serverPort,
       (): void => logger.log(`Server started on port: ${serverPort}`),
@@ -115,7 +117,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.READY,
-        (): void => this._onDeviceReady(device),
+        (): Promise<void> => this._onDeviceReady(device),
       );
 
       device.on(
@@ -127,13 +129,13 @@ class DeviceServer {
         // TODO figure out is this message for subscriptions on public events or
         // public + private
         DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
-        (message: Message): void =>
+        (message: Message): Promise<void> =>
           this._onDeviceSubscribe(message, device),
       );
 
       device.on(
         DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
-        (message: Message): void =>
+        (message: Message): Promise<void> =>
           this._onDeviceSentMessage(
             message,
             /* isPublic */false,
@@ -143,7 +145,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
-        (message: Message): void =>
+        (message: Message): Promise<void> =>
           this._onDeviceSentMessage(
             message,
             /* isPublic */true,
@@ -159,7 +161,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.FLASH_STARTED,
-        (): void => this.publishSpecialEvent(
+        (): Promise<void> => this.publishSpecialEvent(
           'spark/flash/status',
           'started',
           device.getID(),
@@ -168,7 +170,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.FLASH_SUCCESS,
-        (): void => this.publishSpecialEvent(
+        (): Promise<void> => this.publishSpecialEvent(
           'spark/flash/status',
           'success',
           device.getID(),
@@ -177,7 +179,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.FLASH_FAILED,
-        (): void => this.publishSpecialEvent(
+        (): Promise<void> => this.publishSpecialEvent(
           'spark/flash/status',
           'failed',
           device.getID(),
@@ -265,7 +267,7 @@ class DeviceServer {
       isPublic,
       name: message.getUriPath().substr(3),
       ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
-      userID: deviceAttributes.ownerID,
+      userID: deviceAttributes && deviceAttributes.ownerID,
     };
 
 
@@ -274,15 +276,15 @@ class DeviceServer {
     if (lowerEventName.match('spark/device/claim/code')) {
       const claimCode = message.getPayload().toString();
 
-      if (deviceAttributes.claimCode !== claimCode) {
+      if (deviceAttributes && deviceAttributes.claimCode !== claimCode) {
         await this._deviceAttributeRepository.update({
           ...deviceAttributes,
           claimCode,
         });
         // todo figure this out
-        if (global.api) {
-          global.api.linkDevice(deviceID, claimCode, this._particleProductId);
-        }
+        // if (global.api) {
+        //   global.api.linkDevice(deviceID, claimCode, this._particleProductId);
+        // }
       }
     }
 
@@ -369,6 +371,11 @@ class DeviceServer {
       const deviceAttributes =
         await this._deviceAttributeRepository.getById(deviceID);
 
+      if (!deviceAttributes || !deviceAttributes.ownerID) {
+        device.sendReply('SubscribeFail', message.getId());
+        return;
+      }
+
       this._eventPublisher.subscribe(
         messageName,
         device.onCoreEvent,
@@ -379,7 +386,7 @@ class DeviceServer {
       this._eventPublisher.subscribe(
         messageName,
         device.onCoreEvent,
-        /* filterOptions */null,
+        /* filterOptions */{},
         deviceID,
       );
     }

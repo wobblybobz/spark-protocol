@@ -4,6 +4,7 @@ export type DeviceAttributes = {
   deviceID: string,
   ip: string,
   name: string,
+  claimCode: ?string,
   ownerID: ?string,
   particleProductId: number,
   productFirmwareVersion: number,
@@ -16,7 +17,7 @@ export type Event = EventData & {
 };
 
 export type EventData = {
-  data: ?Object,
+  data: ?Object | string,
   deviceID?: ?string,
   isPublic: boolean,
   name: string,

@@ -45,7 +45,7 @@ class EventPublisher extends EventEmitter {
 
   _filterEvents = (
     eventHandler: (event: Event) => void,
-    filterOptions: FilterOptions = {},
+    filterOptions: FilterOptions,
   ): (event: Event) => void =>
     (event: Event) => {
       const { userID, deviceID } = filterOptions;
@@ -77,9 +77,9 @@ class EventPublisher extends EventEmitter {
 
 
   subscribe = (
-    eventName: ?string = ALL_EVENTS,
+    eventName: string = ALL_EVENTS,
     eventHandler: (event: Event) => void,
-    filterOptions?: FilterOptions,
+    filterOptions?: FilterOptions = {},
     subscriberID?: string,
   ): void => {
     const subscriptionID = uuid();
