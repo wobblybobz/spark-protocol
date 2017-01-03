@@ -543,6 +543,11 @@ class Device extends EventEmitter {
 
   // todo make return type annotation
   getDescription = async (): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     try {
       await this._ensureWeHaveIntrospectionData();
 
@@ -564,6 +569,11 @@ class Device extends EventEmitter {
   getVariableValue = async (
     name: string,
   ): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     await this._ensureWeHaveIntrospectionData();
     if (!this._hasParticleVariable(name)) {
       throw new Error('Variable not found');
@@ -588,6 +598,11 @@ class Device extends EventEmitter {
     data: Buffer,
     ..._:void[],
   ): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     // TODO: data type!
     const payload = Messages.toBinary(data);
     const token = this.sendMessage('VariableRequest', { name }, payload);
@@ -603,6 +618,11 @@ class Device extends EventEmitter {
     functionName: string,
     functionArguments: Object,
   ): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     const buffer = await this._transformArguments(
       functionName,
       functionArguments,
@@ -651,6 +671,11 @@ class Device extends EventEmitter {
     showSignal: boolean,
     ..._:void[],
   ): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     const token = this.sendMessage(
       '_raiseYourHand',
       { _writeCoapUri: Messages.raiseYourHandUrlGenerator(showSignal) },
@@ -664,6 +689,11 @@ class Device extends EventEmitter {
   };
 
   flash = async (binary: ?Buffer): Promise<string> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     if (!binary || (binary.length === 0)) {
       logger.log(
         'flash failed! - file is empty! ',
