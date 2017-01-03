@@ -233,40 +233,6 @@ class Device extends EventEmitter {
     }
 
     switch (message.cmd) {
-      case 'Describe': {
-        if (settings.logApiMessages) {
-          logger.log('Describe', { deviceID: this._id });
-        }
-
-        try {
-          await this._ensureWeHaveIntrospectionData();
-
-          return {
-            cmd: 'DescribeReturn',
-            firmware_version: this._productFirmwareVersion,
-            product_id: this._particleProductId,
-            state: this._deviceFunctionState,
-          };
-        } catch (error) {
-          throw new Error('Error, no device state');
-        }
-      }
-      case 'GetVar': {
-        if (settings.logApiMessages) {
-          logger.log('GetVar', { deviceID: this._id });
-        }
-
-        const result = await this.getVariableValue(
-          message.name,
-          message.type,
-        );
-
-        return {
-          cmd: 'VarReturn',
-          name: message.name,
-          result,
-        };
-      }
       case 'SetVar': {
         if (settings.logApiMessages) {
           logger.log('SetVar', { deviceID: this._id });
@@ -636,6 +602,21 @@ class Device extends EventEmitter {
     }
 
     return Messages.getResponseType(request);
+  };
+
+  // todo make return type annotation
+  getDescription = async (): Promise<*> => {
+    try {
+      await this._ensureWeHaveIntrospectionData();
+
+      return {
+        firmware_version: this._productFirmwareVersion,
+        product_id: this._particleProductId,
+        state: this._deviceFunctionState,
+      };
+    } catch (error) {
+      throw new Error('No device state!');
+    }
   };
 
   /**

@@ -299,21 +299,21 @@ class DeviceServer {
     }
 
     // TODO figure this out
-    if (lowerEventName.indexOf('spark/device/safemode') === 0) {
-      const token = device.sendMessage('Describe');
-      const systemMessage = await device.listenFor(
-        'DescribeReturn',
-        null,
-        token,
-      );
-
-      if (global.api) {
-        global.api.safeMode(
-          deviceID,
-          systemMessage.getPayload().toString(),
-        );
-      }
-    }
+    // if (lowerEventName.indexOf('spark/device/safemode') === 0) {
+    //   const token = device.sendMessage('Describe');
+    //   const systemMessage = await device.listenFor(
+    //     'DescribeReturn',
+    //     null,
+    //     token,
+    //   );
+    //
+    //   if (global.api) {
+    //     global.api.safeMode(
+    //       deviceID,
+    //       systemMessage.getPayload().toString(),
+    //     );
+    //   }
+    // }
 
     // TODO implement this eat message more clean
     // if the event name starts with spark (upper or lower), then eat it.
