@@ -256,7 +256,7 @@ class Device extends EventEmitter {
           logger.log('GetVar', { deviceID: this._id });
         }
 
-        const result = await this._getVariable(
+        const result = await this.getVariableValue(
           message.name,
           message.type,
         );
@@ -642,13 +642,9 @@ class Device extends EventEmitter {
    * Ensures we have introspection data from the core, and then
    * requests a variable value to be sent, when received it transforms
    * the response into the appropriate type
-   * @param name
-   * @param type
-   * @param callback - expects (value, buf, err)
-   */
-  _getVariable = async (
+   **/
+  getVariableValue = async (
     name: string,
-    type: string,
   ): Promise<*> => {
     await this._ensureWeHaveIntrospectionData();
     if (!this._hasParticleVariable(name)) {
@@ -656,13 +652,15 @@ class Device extends EventEmitter {
     }
 
     const messageToken = this.sendMessage(
-      'VariableRequest', { name },
+      'VariableRequest',
+      { name },
     );
     const message = await this.listenFor(
       'VariableValue',
       null,
       messageToken,
     );
+
     return this._transformVariableResult(name, message);
   };
 
