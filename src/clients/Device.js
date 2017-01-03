@@ -249,22 +249,6 @@ class Device extends EventEmitter {
           result: result.getPayload().toString(),
         };
       }
-      case 'CallFn': {
-        if (settings.logApiMessages) {
-          logger.log('FunCall', { deviceID: this._id });
-        }
-
-        const result = await this._callFunction(
-          message.name,
-          message.args,
-        );
-
-        return {
-          cmd: 'FnReturn',
-          name: message.name,
-          result,
-        };
-      }
       case 'UFlash': {
         if (settings.logApiMessages) {
           logger.log('FlashCore', { deviceID: this._id });
@@ -660,47 +644,48 @@ class Device extends EventEmitter {
     return await this.listenFor('VariableValue', null, token);
   };
 
-  _callFunction = async (
-    name: string,
-    args: Object,
+  // call function on device firmware
+  callFunction = async (
+    functionName: string,
+    functionArguments: Object,
   ): Promise<*> => {
-    try {
-      const buffer = await this._transformArguments(name, args);
-      if (!buffer) {
-        throw new Error(`Unknown Function ${name}`);
-      }
+    const buffer = await this._transformArguments(
+      functionName,
+      functionArguments,
+    );
 
-      if (settings.showVerboseDeviceLogs) {
-        logger.log(
-          'sending function call to the core',
-          { deviceID: this._id, name },
-        );
-      }
-
-      const writeUrl = (message: Message): Message => {
-        message.setUri(`f/${name}`);
-        if (buffer) {
-          message.setUriQuery(buffer.toString());
-        }
-
-        return message;
-      };
-
-      const token = this.sendMessage(
-        'FunctionCall',
-        {
-          _writeCoapUri: writeUrl,
-          args: buffer,
-          name,
-        },
-        null,
-      );
-
-      const message = await this.listenFor('FunctionReturn', null, token);
-      return this._transformFunctionResult(name, message);
-    } catch (error) {
-      throw error;
+    if (!buffer) {
+      throw new Error(`Unknown Function ${functionName}`);
     }
+
+    if (settings.showVerboseDeviceLogs) {
+      logger.log(
+        'sending function call to the core',
+        { deviceID: this._id, functionName },
+      );
+    }
+
+    const writeUrl = (message: Message): Message => {
+      message.setUri(`f/${functionName}`);
+      if (buffer) {
+        message.setUriQuery(buffer.toString());
+      }
+
+      return message;
+    };
+
+    const token = this.sendMessage(
+      'FunctionCall',
+      {
+        _writeCoapUri: writeUrl,
+        args: buffer,
+        name: functionName,
+      },
+      null,
+    );
+
+    const message = await this.listenFor('FunctionReturn', null, token);
+    return this._transformFunctionResult(functionName, message);
   };
 
   /**
