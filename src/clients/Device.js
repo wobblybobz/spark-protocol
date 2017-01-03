@@ -233,22 +233,6 @@ class Device extends EventEmitter {
     }
 
     switch (message.cmd) {
-      case 'SetVar': {
-        if (settings.logApiMessages) {
-          logger.log('SetVar', { deviceID: this._id });
-        }
-
-        const result = await this._setVariable(
-          message.name,
-          message.value,
-        );
-
-        return {
-          cmd: 'VarReturn',
-          name: message.name,
-          result: result.getPayload().toString(),
-        };
-      }
       case 'RaiseHand': {
         if (settings.logApiMessages) {
           logger.log('SignalCore', { deviceID: this._id });
@@ -625,10 +609,11 @@ class Device extends EventEmitter {
     return this._transformVariableResult(name, message);
   };
 
-  _setVariable = async (
+  // TODO refactor, make sure if we need this at all
+  setVariableValue = async (
     name: string,
     data: Buffer,
-    ..._:void[]
+    ..._:void[],
   ): Promise<*> => {
     // TODO: data type!
     const payload = Messages.toBinary(data);
