@@ -13,296 +13,403 @@
 *
 *   You should have received a copy of the GNU Lesser General Public
 *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* @flow
+*
 */
 
-var settings = require('../settings.js');
-var CryptoLib = require('../lib/ICrypto.js');
-var Device = require('../clients/Device.js');
-var EventPublisher = require('../lib/EventPublisher.js').default;
-var utilities = require('../lib/utilities.js');
-var logger = require('../lib/logger.js').default;
-var crypto = require('crypto');
-var ursa = require('ursa');
-var when = require('when');
-var path = require('path');
-var net = require('net');
-var fs = require('fs');
-var moment = require('moment');
-var eventDebug = require('event-debug');
+import type { Socket } from 'net';
+import type { Message } from 'h5.coap';
+import type {
+  DeviceAttributes,
+  Repository,
+  ServerConfigRepository,
+} from '../types';
+import type EventPublisher from '../lib/EventPublisher';
 
-var DeviceServer = function (options) {
-    this.options = options;
-    this.options = options || {};
-    settings.coreKeysDir = this.options.coreKeysDir = this.options.coreKeysDir || settings.coreKeysDir;
+import net from 'net';
+import nullthrows from 'nullthrows';
+import moment from 'moment';
+import Device from '../clients/Device';
+// TODO: Rename ICrypto to CryptoLib
+import CryptoLib from '../lib/ICrypto';
+import logger from '../lib/logger';
+import Messages from '../lib/Messages';
+import settings from '../settings';
+import {
+  DEVICE_EVENT_NAMES,
+  DEVICE_MESSAGE_EVENTS_NAMES,
+} from '../clients/Device';
 
-    this._allCoresByID = {};
-    this._attribsByID = {};
-    this._allIDs = {};
+type DeviceServerConfig = {|
+  coreKeysDir?: string,
+  deviceAttributeRepository: Repository<DeviceAttributes>,
+  host: string,
+  port: number,
+  serverConfigRepository: ServerConfigRepository,
+  // TODO: Remove the file paths and just use the repository.
+  serverKeyFile: string,
+  serverKeyPassFile: ?string,
+  serverKeyPassEnvVar: ?string,
+|};
 
-    this.init();
-};
+let connectionIdCounter = 0;
+class DeviceServer {
+  _config: DeviceServerConfig;
+  _deviceAttributeRepository: Repository<DeviceAttributes>;
+  _devicesById: Map<string, Device> = new Map();
+  _eventPublisher: EventPublisher;
 
-DeviceServer.prototype = {
-    _allCoresByID: null,
-    _attribsByID: null,
-    _allIDs: null,
+  constructor(
+    deviceServerConfig: DeviceServerConfig,
+    eventPublisher: EventPublisher,
+  ) {
+    this._config = deviceServerConfig;
+    this._deviceAttributeRepository =
+      deviceServerConfig.deviceAttributeRepository;
+    this._eventPublisher = eventPublisher;
+    settings.coreKeysDir =
+      deviceServerConfig.coreKeysDir || settings.coreKeysDir;
+  }
 
-        _serverReady: null,
-        _serverFailed: null,
-        _severReadyPromise: null,
+  start() {
+    const server = net.createServer(
+      (socket: Socket): void =>
+        process.nextTick((): Promise<void> =>
+          this._onNewSocketConnection(socket),
+        ),
+    );
 
-    init: function () {
+    server.on('error', (error: Error): void =>
+      logger.error(`something blew up ${error.message}`),
+    );
 
-      this._severReadyPromise = new Promise((resolve, reject) => {
-        this._serverReady = resolve;
-        this._serverFailed = reject;
-      });
-        this.loadCoreData();
-    },
+    // Create the keys if they don't exist
+    this._config.serverConfigRepository.setupKeys();
 
-    addCoreKey: function(coreid, public_key) {
-        try{
-            var fullPath = path.join(this.options.coreKeysDir, coreid + ".pub.pem");
-            fs.writeFileSync(fullPath, public_key);
-            return true;
-        }
-        catch (ex) {
-            logger.error("Error saving new core key ", ex);
-        }
-        return false;
-    },
+    // TODO: These files should come from a repository -- not using fs in the
+    // lib
+    //
+    //  Load our server key
+    //
+    logger.log(`Loading server key from ${this._config.serverKeyFile}`);
+    CryptoLib.loadServerKeys(
+      this._config.serverKeyFile,
+      this._config.serverKeyPassFile,
+      this._config.serverKeyPassEnvVar,
+    );
 
+    //
+    //  Wait for the keys to be ready, then start accepting connections
+    //
+    const serverPort = this._config.port.toString();
+    server.listen(
+      serverPort,
+      (): void => logger.log(`Server started on port: ${serverPort}`),
+    );
+  }
 
-    loadCoreData: function () {
-        var attribsByID = {};
+  _onNewSocketConnection = async (socket: Socket): Promise<void> => {
+    try {
+      // eslint-disable-next-line no-plusplus
+      const connectionKey = `_${connectionIdCounter++}`;
+      const device = new Device(socket, connectionKey);
 
-        if (!fs.existsSync(this.options.coreKeysDir)) {
-            console.log("core keys directory didn't exist, creating... " + this.options.coreKeysDir);
-            fs.mkdirSync(this.options.coreKeysDir);
-        }
+      device.on(
+        DEVICE_EVENT_NAMES.READY,
+        (): Promise<void> => this._onDeviceReady(device),
+      );
 
-        var files = fs.readdirSync(this.options.coreKeysDir);
-        for (var i = 0; i < files.length; i++) {
-            var filename = files[i],
-                fullPath = path.join(this.options.coreKeysDir, filename),
-                ext = utilities.getFilenameExt(filename),
-                id = utilities.filenameNoExt(utilities.filenameNoExt(filename));
+      device.on(
+        DEVICE_EVENT_NAMES.DISCONNECT,
+        (): void => this._onDeviceDisconnect(device, connectionKey),
+      );
 
-            if (ext===".pem") {
-            	if (!this._allIDs[id]) {
-                	console.log("found pem " + id);
-                	this._allIDs[id] = true;
-				}
-                if (!attribsByID[id]) {
-                    var core = {}
-                    core.coreID = id;
-                    attribsByID[id] = core;
-                }
-            }
-            else if (ext===".json") {
-                try {
-                    var contents = fs.readFileSync(fullPath);
-                    var core = JSON.parse(contents);
-                    if (!attribsByID[core.coreID]) {
-                    	core.coreID = core.coreID || id;
-                    	attribsByID[core.coreID ] = core;
-                    }
-					if (!this._allIDs[core.coreID]) {
-                    	console.log("found json " + core.coreID);
-                    	this._allIDs[core.coreID ] = true;
-                    }
-                }
-                catch (ex) {
-                    logger.error("Error loading core file " + filename);
-                }
-            }
-        }
+      device.on(
+        // TODO figure out is this message for subscriptions on public events or
+        // public + private
+        DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
+        (message: Message): Promise<void> =>
+          this._onDeviceSubscribe(message, device),
+      );
 
-        this._attribsByID = attribsByID;
-    },
+      device.on(
+        DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
+        (message: Message): Promise<void> =>
+          this._onDeviceSentMessage(
+            message,
+            /* isPublic */false,
+            device,
+          ),
+      );
 
-    saveCoreData: function (coreid, attribs) {
-        try {
-            //assert basics
-            attribs = attribs || {};
-//            attribs["coreID"] = coreid;
+      device.on(
+        DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
+        (message: Message): Promise<void> =>
+          this._onDeviceSentMessage(
+            message,
+            /* isPublic */true,
+            device,
+          ),
+      );
 
-            var jsonStr = JSON.stringify(attribs, null, 2);
-            if (!jsonStr) {
-                return false;
-            }
+      device.on(
+        DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
+        (message: Message): void =>
+          this._onDeviceGetTime(message, device),
+      );
 
-            var fullPath = path.join(this.options.coreKeysDir, coreid + ".json");
-            fs.writeFileSync(fullPath, jsonStr);
-            return true;
-        }
-        catch (ex) {
-            logger.error("Error saving core data ", ex);
-        }
-        return false;
-    },
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_STARTED,
+        (): Promise<void> => this.publishSpecialEvent(
+          'spark/flash/status',
+          'started',
+          device.getID(),
+        ),
+      );
 
-    getCore: function (coreid) {
-      return this._allCoresByID[coreid];
-    },
-    getCoreAttributes: function (coreid) {
-        //assert this exists and is set properly when asked.
-        this._attribsByID[coreid] = this._attribsByID[coreid] || {};
-        //this._attribsByID[coreid]["coreID"] = coreid;
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_SUCCESS,
+        (): Promise<void> => this.publishSpecialEvent(
+          'spark/flash/status',
+          'success',
+          device.getID(),
+        ),
+      );
 
-        return this._attribsByID[coreid];
-    },
-    setCoreAttribute: function (coreid, name, value) {
-        this._attribsByID[coreid] = this._attribsByID[coreid] || {};
-        this._attribsByID[coreid][name] = value;
-        this.saveCoreData(coreid, this._attribsByID[coreid]);
-        return true;
-    },
-    getCoreByName: function (name) {
-        //var cores = this._allCoresByID;
-        var cores = this._attribsByID;
-        for (var coreid in cores) {
-            var attribs = cores[coreid];
-            if (attribs && (attribs.name===name)) {
-                return this._allCoresByID[coreid];
-            }
-        }
-        return null;
-    },
+      device.on(
+        DEVICE_EVENT_NAMES.FLASH_FAILED,
+        (): Promise<void> => this.publishSpecialEvent(
+          'spark/flash/status',
+          'failed',
+          device.getID(),
+        ),
+      );
 
-    /**
-     * return all the cores we know exist
-     * @returns {null}
-     */
-    getAllCoreIDs: function () {
-        return this._allIDs;
-    },
+      await device.startupProtocol();
 
-    /**
-     * return all the cores that are connected
-     * @returns {null}
-     */
-    getAllCores: function () {
-        return this._allCoresByID;
-    },
+      logger.log(
+        `Connection from: ${device.getRemoteIPAddress()} - ` +
+        `Connection ID: ${connectionIdCounter}`,
+      );
+    } catch (error) {
+      logger.error(`Device startup failed: ${error.message}`);
+    }
+  };
 
-	/* publish special events */
-	publishSpecialEvents: function (name, data, coreid) {
-		return global.publisher.publish(false,name,null,data,60,new Date(),coreid);
-	},
+  _onDeviceDisconnect = (device: Device, connectionKey: string) => {
+    const deviceID = device.getID();
 
-//id: core.coreID,
-//name: core.name || null,
-//last_app: core.last_flashed_app_name || null,
-//last_heard: null
+    if (this._devicesById.has(deviceID)) {
+      this._devicesById.delete(deviceID);
+      this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
-    start: function () {
-        global.settings = settings;
+      this.publishSpecialEvent('particle/status', 'offline', deviceID);
+      logger.log(`Session ended for device with ID: ${deviceID} with connectionKey: ${connectionKey}`);
+    }
+  };
 
-        //
-        //  Create our basic socket handler
-        //
+  _onDeviceGetTime = (message: Message, device: Device) => {
+    const timeStamp = moment().utc().unix();
+    const binaryValue = Messages.toBinary(timeStamp, 'uint32');
 
-        var that = this,
-            connId = 0,
-            _cores = {},
-            server = net.createServer(function (socket) {
-                process.nextTick(function () {
-                    try {
-                        var key = "_" + connId++;
-                        logger.log("Connection from: " + socket.remoteAddress + ", connId: " + connId);
+    device.sendReply(
+      'GetTimeReturn',
+      message.getId(),
+      binaryValue,
+      message.getToken(),
+    );
+  };
 
-                        var core = new Device();
-                        core._socket = socket;
-                        core.startupProtocol();
-                        core._connectionKey = key;
+  _onDeviceReady = async (device: Device): Promise<void> => {
+    logger.log('Device online!');
+    const deviceID = device.getID();
 
-                        //TODO: expose to API
-
-
-                        _cores[key] = core;
-                        core.on('ready', function () {
-                            logger.log("Core online!");
-                            var coreid = this.getID();
-                            that._allCoresByID[coreid] = core;
-                            that._attribsByID[coreid] = that._attribsByID[coreid] || {
-                                coreID: coreid,
-                                name: null
-                            };
-                            that._attribsByID[coreid]._particleProductId = this._particleProductId;
-                            that._attribsByID[coreid]._productFirmwareVersion = this._productFirmwareVersion;
-                            that._attribsByID[coreid].ip = this.getRemoteIPAddress();
-                            that.saveCoreData(coreid, that._attribsByID[coreid]);
-
-                            that.publishSpecialEvent('spark/status', 'online', coreid);
-                        });
-                        core.on('disconnect', function (msg) {
-                        	if(core.coreID in that._allCoresByID && that._allCoresByID[core.coreID]._connectionKey===core._connectionKey) {
-                                that.publishSpecialEvent('spark/status', 'offline', core.coreID);
-                            }
-                            logger.log("Session ended for " + core._connectionKey);
-                            delete _cores[key];
-                        });
-                    }
-                    catch (ex) {
-                        logger.error("core startup failed " + ex + ex.stack);
-                    }
-                });
-            });
-
-        global.cores = _cores;
-        global.publisher = new EventPublisher();
-        eventDebug(server, 'COAP Server')
-        server.on('error', () => {
-            logger.error("something blew up ", arguments);
-            this._serverFailed();
-        });
-
-
-        //
-        //  Load the provided key, or generate one
-        //
-        if (!fs.existsSync(settings.serverKeyFile)) {
-            console.warn("Creating NEW server key");
-            var keys = ursa.generatePrivateKey();
-
-
-            var extIdx = settings.serverKeyFile.lastIndexOf(".");
-            var derFilename = settings.serverKeyFile.substring(0, extIdx) + ".der";
-            var pubPemFilename = settings.serverKeyFile.substring(0, extIdx) + ".pub.pem";
-
-            fs.writeFileSync(settings.serverKeyFile, keys.toPrivatePem('binary'));
-            fs.writeFileSync(pubPemFilename, keys.toPublicPem('binary'));
-
-            //DER FORMATTED KEY for the core hardware
-            //TODO: fs.writeFileSync(derFilename, keys.toPrivatePem('binary'));
-        }
-
-
-        //
-        //  Load our server key
-        //
-        console.info("Loading server key from " + settings.serverKeyFile);
-        CryptoLib.loadServerKeys(
-            settings.serverKeyFile,
-            settings.serverKeyPassFile,
-            settings.serverKeyPassEnvVar
-        );
-
-        //
-        //  Wait for the keys to be ready, then start accepting connections
-        //
-        server.listen(settings.PORT, () => {
-            logger.log("server started", { host: settings.HOST, port: settings.PORT });
-            this._serverReady();
-        });
-
-
-    },
-
-    onReady: function(): Promise<*> {
-      return this._severReadyPromise;
+    if (this._devicesById.has(deviceID)) {
+      const existingConnection = this._devicesById.get(deviceID);
+      nullthrows(existingConnection).disconnect(
+        'Device was already connected. Reconnecting.\r\n',
+      );
     }
 
-};
-module.exports = DeviceServer;
+    this._devicesById.set(deviceID, device);
+
+    const existingAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+
+    const deviceAttributes = {
+      ...existingAttributes,
+      deviceID,
+      ip: device.getRemoteIPAddress(),
+      particleProductId: device._particleProductId,
+      productFirmwareVersion: device._productFirmwareVersion,
+    };
+
+    this._deviceAttributeRepository.update(
+      deviceAttributes,
+    );
+
+    this.publishSpecialEvent('particle/status', 'online', deviceID);
+  };
+
+  _onDeviceSentMessage = async (
+    message: Message,
+    isPublic: boolean,
+    device: Device,
+  ): Promise<void> => {
+    const deviceID = device.getID();
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+
+    const eventData = {
+      data: message.getPayloadLength() === 0 ? null : message.getPayload().toString(),
+      deviceID,
+      isPublic,
+      name: message.getUriPath().substr(3),
+      ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
+      userID: deviceAttributes && deviceAttributes.ownerID,
+    };
+
+
+    const lowerEventName = eventData.name.toLowerCase();
+
+    if (lowerEventName.match('spark/device/claim/code')) {
+      const claimCode = message.getPayload().toString();
+
+      if (deviceAttributes && deviceAttributes.claimCode !== claimCode) {
+        await this._deviceAttributeRepository.update({
+          ...deviceAttributes,
+          claimCode,
+        });
+        // todo figure this out
+        // if (global.api) {
+        //   global.api.linkDevice(deviceID, claimCode, this._particleProductId);
+        // }
+      }
+    }
+
+    if (lowerEventName.match('spark/device/system/version')) {
+      const deviceSystemVersion = message.getPayload().toString();
+
+      await this._deviceAttributeRepository.update({
+        ...deviceAttributes,
+        // TODO should it be this key?:
+        spark_system_version: deviceSystemVersion,
+      });
+    }
+
+    // TODO figure this out
+    // if (lowerEventName.indexOf('spark/device/safemode') === 0) {
+    //   const token = device.sendMessage('Describe');
+    //   const systemMessage = await device.listenFor(
+    //     'DescribeReturn',
+    //     null,
+    //     token,
+    //   );
+    //
+    //   if (global.api) {
+    //     global.api.safeMode(
+    //       deviceID,
+    //       systemMessage.getPayload().toString(),
+    //     );
+    //   }
+    // }
+
+    // TODO implement this eat message more clean
+    // if the event name starts with spark (upper or lower), then eat it.
+    if (lowerEventName.match('spark')) {
+      // allow some kinds of message through.
+      let eatMessage = true;
+
+      // if we do let these through, make them private.
+      const isEventPublic = false;
+
+      // TODO: (old code todo)
+      // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
+      if (lowerEventName === 'spark/cc3000-patch-version') {
+        // set_cc3000_version(this._id, obj.data);
+        // eat_message = false;
+      }
+
+      if (eatMessage) {
+        // short-circuit
+        device.sendReply('EventAck', message.getId());
+        return;
+      }
+    }
+
+    await this._eventPublisher.publish(eventData);
+  };
+
+  _onDeviceSubscribe = async (
+    message: Message,
+    device: Device,
+  ): Promise<void> => {
+    const deviceID = device.getID();
+    // uri -> /e/?u    --> firehose for all my devices
+    // uri -> /e/ (deviceid in body)   --> allowed
+    // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+    // uri -> /e/event_name?u    --> all my devices
+    // uri -> /e/event_name?u (deviceid)    --> deviceid?
+    const messageName = message.getUriPath().substr(3);
+
+    if (!messageName) {
+      device.sendReply('SubscribeFail', message.getId());
+      return;
+    }
+
+    const query = message.getUriQuery();
+    const isFromMyDevices = query && !!query.match('u');
+
+    logger.log(
+      `Got subscribe request from device with ID ${deviceID} ` +
+      `on event: '${messageName}' ` +
+      `from my devices only: ${isFromMyDevices || false}`,
+    );
+
+    if (isFromMyDevices) {
+      const deviceAttributes =
+        await this._deviceAttributeRepository.getById(deviceID);
+
+      if (!deviceAttributes || !deviceAttributes.ownerID) {
+        device.sendReply('SubscribeFail', message.getId());
+        return;
+      }
+
+      this._eventPublisher.subscribe(
+        messageName,
+        device.onCoreEvent,
+        { userID: deviceAttributes.ownerID },
+        deviceID,
+      );
+    } else {
+      this._eventPublisher.subscribe(
+        messageName,
+        device.onCoreEvent,
+        /* filterOptions */{},
+        deviceID,
+      );
+    }
+
+    device.sendReply('SubscribeAck', message.getId());
+  };
+
+  getDevice = (deviceID: string): ?Device =>
+    this._devicesById.get(deviceID);
+
+  async publishSpecialEvent(
+    eventName: string,
+    data: string,
+    deviceID: string,
+  ): Promise<void> {
+    await this._eventPublisher.publish({
+      data,
+      deviceID,
+      isPublic: false,
+      name: eventName,
+      ttl: 60,
+    });
+  }
+}
+
+export default DeviceServer;
