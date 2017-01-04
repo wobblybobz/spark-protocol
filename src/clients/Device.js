@@ -673,24 +673,19 @@ class Device extends EventEmitter {
   /**
    * Asks the core to start or stop its 'raise your hand' signal
    */
-    // TODO figure out what is it for and why messageName isn't
-    // consistent with messages specification
-  raiseYourHand = async (
-    showSignal: boolean,
-    ..._:void[],
-  ): Promise<*> => {
+  raiseYourHand = async(showSignal: boolean): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This core is locked during the flashing process.');
     }
 
     const token = this.sendMessage(
-      '_raiseYourHand',
+      'RaiseYourHand',
       { _writeCoapUri: Messages.raiseYourHandUrlGenerator(showSignal) },
       null,
     );
     return await this.listenFor(
-      '_raiseYourHandReturn',
+      'RaiseYourHandReturn',
       null,
       token,
     );
