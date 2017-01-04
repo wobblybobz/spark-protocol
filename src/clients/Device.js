@@ -438,13 +438,12 @@ class Device extends EventEmitter {
         if (uri && message.getUriPath().indexOf(uri) !== 0) {
           if (beVerbose) {
             logger.log(
-              'uri filter did not match',
+              'URI filter did not match',
               uri,
               message.getUriPath(),
               { deviceID: this._id },
             );
           }
-          reject();
           return;
         }
 
@@ -457,7 +456,6 @@ class Device extends EventEmitter {
                { deviceID: this._id },
              );
           }
-          reject();
           return;
         }
 
