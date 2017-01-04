@@ -222,200 +222,18 @@ class Device extends EventEmitter {
     this.emit(DEVICE_EVENT_NAMES.READY);
   };
 
-
-  /**
-   * @param sender
-   * @param response
-   */
-  sendApiResponse = (sender: string, response: Object): void => {
-    try {
-      this.emit(sender, sender, response);
-    } catch (exception) {
-      logger.error('Error during response ', exception);
-    }
-  };
-
-
-  /**
-   * Handles messages coming from the API over our message queue service
-   */
-  onApiMessage = async (sender: string, message: Message): Promise<*> => {
-    // if we're not the owner, then the socket is busy
-    const isBusy = !this._isSocketAvailable(null);
-    if (isBusy) {
-      this.sendApiResponse(
-        sender,
-        { error: new Error('This core is locked during the flashing process.') },
-      );
-      return Promise.reject();
+  ping = (): {
+    connected: boolean,
+    lastPing: Date,
+  } => {
+    if (settings.logApiMessages) {
+      logger.log('Pinged, replying', { deviceID: this._id });
     }
 
-    switch (message.cmd) {
-      case 'Describe': {
-        if (settings.logApiMessages) {
-          logger.log('Describe', { deviceID: this._id });
-        }
-
-        try {
-          await this._ensureWeHaveIntrospectionData();
-          this.sendApiResponse(
-            sender,
-            {
-              cmd: 'DescribeReturn',
-              firmware_version: this._productFirmwareVersion,
-              name: message.name,
-              product_id: this._particleProductId,
-              state: this._deviceFunctionState,
-            },
-          );
-
-          return this._deviceFunctionState;
-        } catch (exception) {
-          this.sendApiResponse(
-            sender,
-            {
-              cmd: 'DescribeReturn',
-              error: 'Error, no device state',
-              name: message.name,
-            },
-          );
-        }
-        break;
-      }
-
-      case 'GetVar': {
-        if (settings.logApiMessages) {
-          logger.log('GetVar', { deviceID: this._id });
-        }
-        try {
-          const result = await this._getVariable(
-            message.name,
-            message.type,
-          );
-
-          const response = {
-            cmd: 'VarReturn',
-            name: message.name,
-            result,
-          };
-          this.sendApiResponse(
-            sender,
-            response,
-          );
-          return result;
-        } catch (error) {
-          const response = {
-            cmd: 'VarReturn',
-            error,
-            name: message.name,
-          };
-          this.sendApiResponse(
-            sender,
-            response,
-          );
-          return response;
-        }
-      }
-      case 'SetVar': {
-        if (settings.logApiMessages) {
-          logger.log('SetVar', { deviceID: this._id });
-        }
-        const result = await this._setVariable(
-          message.name,
-          message.value,
-        );
-
-        this.sendApiResponse(
-          sender,
-          {
-            cmd: 'VarReturn',
-            name: message.name,
-            result: result.getPayload().toString(),
-          },
-        );
-        break;
-      }
-
-      case 'CallFn': {
-        if (settings.logApiMessages) {
-          logger.log('FunCall', { deviceID: this._id });
-        }
-
-        try {
-          const result = await this._callFunction(
-            message.name,
-            message.args,
-          );
-          const sendResult = {
-            cmd: 'FnReturn',
-            name: message.name,
-            result,
-          };
-          this.sendApiResponse(
-            sender,
-            sendResult,
-          );
-          return sendResult;
-        } catch (error) {
-          const sendResult = {
-            cmd: 'FnReturn',
-            error,
-            name: message.name,
-          };
-          this.sendApiResponse(
-            sender,
-            sendResult,
-          );
-          return sendResult;
-        }
-      }
-
-      case 'UFlash': {
-        if (settings.logApiMessages) {
-          logger.log('FlashCore', { deviceID: this._id });
-        }
-
-        return await this.flashCore(message.args.data, sender);
-      }
-
-      case 'RaiseHand': {
-        if (settings.logApiMessages) {
-          logger.log('SignalCore', { deviceID: this._id });
-        }
-
-        const showSignal = message.args && message.args.signal;
-        const result = await this._raiseYourHand(showSignal);
-        this.sendApiResponse(
-          sender,
-          { cmd: 'RaiseHandReturn', result },
-        );
-        break;
-      }
-
-      case 'Ping': {
-        if (settings.logApiMessages) {
-          logger.log('Pinged, replying', { deviceID: this._id });
-        }
-        const result = {
-          cmd: 'Pong',
-          connected: this._socket !== null,
-          lastPing: this._lastCorePing,
-        };
-        this.sendApiResponse(
-          sender,
-          result,
-        );
-
-        return result;
-      }
-
-      default: {
-        this.sendApiResponse(
-          sender,
-          { error: new Error('unknown message') },
-        );
-      }
-    }
+    return {
+      connected: this._socket !== null,
+      lastPing: this._lastCorePing,
+    };
   };
 
   /**
@@ -723,39 +541,68 @@ class Device extends EventEmitter {
     return Messages.getResponseType(request);
   };
 
+  // todo make return type annotation
+  getDescription = async (): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
+    try {
+      await this._ensureWeHaveIntrospectionData();
+
+      return {
+        firmware_version: this._productFirmwareVersion,
+        product_id: this._particleProductId,
+        state: this._deviceFunctionState,
+      };
+    } catch (error) {
+      throw new Error('No device state!');
+    }
+  };
+
   /**
    * Ensures we have introspection data from the core, and then
    * requests a variable value to be sent, when received it transforms
    * the response into the appropriate type
-   * @param name
-   * @param type
-   * @param callback - expects (value, buf, err)
-   */
-  _getVariable = async (
+   **/
+  getVariableValue = async (
     name: string,
-    type: string,
   ): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     await this._ensureWeHaveIntrospectionData();
     if (!this._hasParticleVariable(name)) {
       throw new Error('Variable not found');
     }
 
     const messageToken = this.sendMessage(
-      'VariableRequest', { name },
+      'VariableRequest',
+      { name },
     );
     const message = await this.listenFor(
       'VariableValue',
       null,
       messageToken,
     );
+
     return this._transformVariableResult(name, message);
   };
 
-  _setVariable = async (
+  // TODO refactor, make sure if we need this at all
+  setVariableValue = async (
     name: string,
     data: Buffer,
-    ..._:void[]
+    ..._:void[],
   ): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     // TODO: data type!
     const payload = Messages.toBinary(data);
     const token = this.sendMessage('VariableRequest', { name }, payload);
@@ -766,55 +613,69 @@ class Device extends EventEmitter {
     return await this.listenFor('VariableValue', null, token);
   };
 
-  _callFunction = async (
-    name: string,
-    args: Object,
+  // call function on device firmware
+  callFunction = async (
+    functionName: string,
+    functionArguments: Object,
   ): Promise<*> => {
-    try {
-      const buffer = await this._transformArguments(name, args);
-      if (!buffer) {
-        throw new Error(`Unknown Function ${name}`);
-      }
-
-      if (settings.showVerboseDeviceLogs) {
-        logger.log(
-          'sending function call to the core',
-          { deviceID: this._id, name },
-        );
-      }
-
-      const writeUrl = (message: Message): Message => {
-        message.setUri(`f/${name}`);
-        if (buffer) {
-          message.setUriQuery(buffer.toString());
-        }
-
-        return message;
-      };
-
-      const token = this.sendMessage(
-        'FunctionCall',
-        {
-          _writeCoapUri: writeUrl,
-          args: buffer,
-          name,
-        },
-        null,
-      );
-
-      const message = await this.listenFor('FunctionReturn', null, token);
-      return this._transformFunctionResult(name, message);
-    } catch (error) {
-      throw error;
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
     }
+
+    const buffer = await this._transformArguments(
+      functionName,
+      functionArguments,
+    );
+
+    if (!buffer) {
+      throw new Error(`Unknown Function ${functionName}`);
+    }
+
+    if (settings.showVerboseDeviceLogs) {
+      logger.log(
+        'sending function call to the core',
+        { deviceID: this._id, functionName },
+      );
+    }
+
+    const writeUrl = (message: Message): Message => {
+      message.setUri(`f/${functionName}`);
+      if (buffer) {
+        message.setUriQuery(buffer.toString());
+      }
+
+      return message;
+    };
+
+    const token = this.sendMessage(
+      'FunctionCall',
+      {
+        _writeCoapUri: writeUrl,
+        args: buffer,
+        name: functionName,
+      },
+      null,
+    );
+
+    const message = await this.listenFor('FunctionReturn', null, token);
+    return this._transformFunctionResult(functionName, message);
   };
 
   /**
    * Asks the core to start or stop its 'raise your hand' signal
-   * @param showSignal - whether it should show the signal or not
-   * @param callback - what to call when we're done or timed out...
    */
-  _raiseYourHand = async (showSignal: boolean, ..._:void[]): Promise<*> => {
+    // TODO figure out what is it for and why messageName isn't
+    // consistent with messages specification
+  raiseYourHand = async (
+    showSignal: boolean,
+    ..._:void[],
+  ): Promise<*> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     const token = this.sendMessage(
       '_raiseYourHand',
       { _writeCoapUri: Messages.raiseYourHandUrlGenerator(showSignal) },
@@ -827,22 +688,19 @@ class Device extends EventEmitter {
     );
   };
 
-  flashCore = (binary: ?Buffer, sender: string): Object => {
+  flash = async (binary: ?Buffer): Promise<string> => {
+    const isBusy = !this._isSocketAvailable(null);
+    if (isBusy) {
+      throw new Error('This core is locked during the flashing process.');
+    }
+
     if (!binary || (binary.length === 0)) {
       logger.log(
         'flash failed! - file is empty! ',
         { deviceID: this._id },
       );
-      const result = {
-        cmd: 'Event',
-        error: new Error('Update failed - File was too small!'),
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
-      return result;
+
+      throw new Error('Update failed - File was too small!');
     }
 
     if (binary && binary.length > MAX_BINARY_SIZE) {
@@ -850,16 +708,8 @@ class Device extends EventEmitter {
         `flash failed! - file is too BIG ${binary.length}`,
         { deviceID: this._id },
       );
-      const result = {
-        cmd: 'Event',
-        error: new Error('Update failed - File was too big!'),
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
-      return result;
+
+      throw new Error('Update failed - File was too big!');
     }
 
     const flasher = new Flasher(this);
@@ -871,17 +721,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
-      const result = {
-        cmd: 'Event',
-        message: 'Update started',
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
-
-      flasher.startFlashBuffer(binary);
+      await flasher.startFlashBuffer(binary);
 
       logger.log(
         'flash device finished! - sending api event',
@@ -890,12 +730,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
-      this.sendApiResponse(
-        sender,
-        { cmd: 'Event', name: 'Update', message: 'Update done' },
-      );
-
-      return result;
+      return 'Update finished';
     } catch (error) {
       logger.log(
         'flash device failed! - sending api event',
@@ -903,17 +738,7 @@ class Device extends EventEmitter {
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
-
-      const result = {
-        cmd: 'Event',
-        error: new Error('Update failed'),
-        name: 'Update',
-      };
-      this.sendApiResponse(
-        sender,
-        result,
-      );
-      return result;
+      throw new Error(`Update failed: ${error.message}`);
     }
   };
 
@@ -1023,6 +848,7 @@ class Device extends EventEmitter {
         '_transformFunctionResult - error transforming response ' +
         error,
       );
+      throw error;
     }
 
     return result;
