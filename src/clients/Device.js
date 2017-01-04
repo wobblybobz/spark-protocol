@@ -671,9 +671,11 @@ class Device extends EventEmitter {
   };
 
   /**
-   * Asks the core to start or stop its 'raise your hand' signal
+   * Asks the core to start or stop its 'raise your hand' signal.
+   * This will turn `nyan` mode on or off which just flashes the LED a bunch of
+   * colors.
    */
-  raiseYourHand = async(showSignal: boolean): Promise<*> => {
+  raiseYourHand = async(shouldShowSignal: boolean): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
@@ -681,7 +683,7 @@ class Device extends EventEmitter {
 
     const token = this.sendMessage(
       'RaiseYourHand',
-      { _writeCoapUri: Messages.raiseYourHandUrlGenerator(showSignal) },
+      { _writeCoapUri: Messages.raiseYourHandUrlGenerator(shouldShowSignal) },
       null,
     );
     return await this.listenFor(
