@@ -553,7 +553,7 @@ class Device extends EventEmitter {
   getDescription = async (): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
-      throw new Error('This core is locked during the flashing process.');
+      throw new Error('This device is locked during the flashing process.');
     }
 
     try {
@@ -579,7 +579,7 @@ class Device extends EventEmitter {
   ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
-      throw new Error('This core is locked during the flashing process.');
+      throw new Error('This device is locked during the flashing process.');
     }
 
     await this._ensureWeHaveIntrospectionData();
@@ -608,7 +608,7 @@ class Device extends EventEmitter {
   ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
-      throw new Error('This core is locked during the flashing process.');
+      throw new Error('This device is locked during the flashing process.');
     }
 
     // TODO: data type!
@@ -628,7 +628,7 @@ class Device extends EventEmitter {
   ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
-      throw new Error('This core is locked during the flashing process.');
+      throw new Error('This device is locked during the flashing process.');
     }
 
     const buffer = await this._transformArguments(
@@ -676,7 +676,7 @@ class Device extends EventEmitter {
   raiseYourHand = async(showSignal: boolean): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
-      throw new Error('This core is locked during the flashing process.');
+      throw new Error('This device is locked during the flashing process.');
     }
 
     const token = this.sendMessage(
@@ -694,7 +694,7 @@ class Device extends EventEmitter {
   flash = async (binary: ?Buffer): Promise<string> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
-      throw new Error('This core is locked during the flashing process.');
+      throw new Error('This device is locked during the flashing process.');
     }
 
     if (!binary || (binary.length === 0)) {
