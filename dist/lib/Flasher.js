@@ -589,7 +589,7 @@ function Flasher(client) {
 			}, _callee7, _this);
 		}));
 
-		return function (_x4) {
+		return function () {
 			return _ref7.apply(this, arguments);
 		};
 	}();

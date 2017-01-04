@@ -17,9 +17,9 @@ var _EventPublisher = require('./lib/EventPublisher');
 
 var _EventPublisher2 = _interopRequireDefault(_EventPublisher);
 
-var _DeviceServer_v = require('./server/DeviceServer_v2');
+var _DeviceServer = require('./server/DeviceServer');
 
-var _DeviceServer_v2 = _interopRequireDefault(_DeviceServer_v);
+var _DeviceServer2 = _interopRequireDefault(_DeviceServer);
 
 var _FileManager = require('./repository/FileManager');
 
@@ -45,7 +45,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 exports.DeviceAttributeFileRepository = _DeviceAttributeFileRepository2.default;
 exports.DeviceKeyFileRepository = _DeviceKeyFileRepository2.default;
-exports.DeviceServer = _DeviceServer_v2.default;
+exports.DeviceServer = _DeviceServer2.default;
 exports.EventPublisher = _EventPublisher2.default;
 exports.FileManager = _FileManager2.default;
 exports.JSONFileManager = _JSONFileManager2.default;

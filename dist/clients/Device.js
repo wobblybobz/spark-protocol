@@ -520,7 +520,7 @@ var Device = function (_EventEmitter) {
         }, _callee4, _this2);
       }));
 
-      return function (_x, _x2, _x3, _x4) {
+      return function (_x, _x2, _x3) {
         return _ref4.apply(this, arguments);
       };
     }();
@@ -658,7 +658,7 @@ var Device = function (_EventEmitter) {
         }, _callee6, _this2);
       }));
 
-      return function (_x5) {
+      return function (_x4) {
         return _ref6.apply(this, arguments);
       };
     }();
@@ -703,7 +703,7 @@ var Device = function (_EventEmitter) {
         }, _callee7, _this2);
       }));
 
-      return function (_x6, _x7, _x8) {
+      return function (_x5, _x6) {
         return _ref7.apply(this, arguments);
       };
     }();
@@ -773,7 +773,7 @@ var Device = function (_EventEmitter) {
         }, _callee8, _this2);
       }));
 
-      return function (_x9, _x10) {
+      return function (_x7, _x8) {
         return _ref8.apply(this, arguments);
       };
     }();
@@ -810,7 +810,7 @@ var Device = function (_EventEmitter) {
         }, _callee9, _this2);
       }));
 
-      return function (_x11) {
+      return function (_x9) {
         return _ref9.apply(this, arguments);
       };
     }();
@@ -887,7 +887,7 @@ var Device = function (_EventEmitter) {
         }, _callee10, _this2, [[10, 20]]);
       }));
 
-      return function (_x12) {
+      return function (_x10) {
         return _ref10.apply(this, arguments);
       };
     }();
@@ -1019,7 +1019,7 @@ var Device = function (_EventEmitter) {
         }, _callee11, _this2);
       }));
 
-      return function (_x13, _x14) {
+      return function (_x11, _x12) {
         return _ref11.apply(this, arguments);
       };
     }();
