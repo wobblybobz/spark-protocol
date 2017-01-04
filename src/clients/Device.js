@@ -61,7 +61,15 @@ import nullthrows from 'nullthrows';
 // an HTTP callback to a 3rd party
 // KeyChange — sent by Server to change the AES credentials
 
-const COUNTER_MAX = settings.message_counter_max;
+/**
+ * How high do our counters go before we wrap around to 0?
+ * (CoAP maxes out at a 16 bit int)
+ */
+const COUNTER_MAX = 65536;
+/**
+ * How big can our tokens be in CoAP messages?
+ */
+const TOKEN_COUNTER_MAX = 256;
 const KEEP_ALIVE_TIMEOUT = settings.keepaliveTimeout;
 const SOCKET_TIMEOUT = settings.socketTimeout;
 const MAX_BINARY_SIZE = 108000; // According to the forums this is the max size.
@@ -472,9 +480,9 @@ class Device extends EventEmitter {
     });
   };
 
-  _increment = (counter: number): number => {
+  _increment = (counter: number, maxSize: number): number => {
     counter++;
-    return counter < COUNTER_MAX
+    return counter < maxSize
       ? counter
       : 0;
   };
@@ -484,18 +492,18 @@ class Device extends EventEmitter {
    * @returns {null}
    */
   _incrementSendCounter = () => {
-    this._sendCounter = this._increment(this._sendCounter);
+    this._sendCounter = this._increment(this._sendCounter, COUNTER_MAX);
   };
 
   _incrementReceiveCounter = () => {
-    this._recieveCounter = this._increment(this._recieveCounter);
+    this._recieveCounter = this._increment(this._recieveCounter, COUNTER_MAX);
   };
 
   /**
    * increments or wraps our token value, and makes sure it isn't in use
    */
   _incrementSendToken = (): number => {
-    this._sendToken = this._increment(this._sendToken);
+    this._sendToken = this._increment(this._sendToken, TOKEN_COUNTER_MAX);
     this._clearToken(this._sendToken);
     return this._sendToken;
   };
