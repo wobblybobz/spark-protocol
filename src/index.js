@@ -26,7 +26,6 @@ import FileManager from './repository/FileManager';
 import JSONFileManager from './repository/JSONFileManager';
 import ServerConfigFileRepository from './repository/ServerConfigFileRepository';
 import Device from './clients/Device';
-import uuid from './lib/uuid';
 
 export {
   DeviceAttributeFileRepository,
@@ -37,5 +36,4 @@ export {
   JSONFileManager,
   ServerConfigFileRepository,
   Device,
-  uuid,
 };

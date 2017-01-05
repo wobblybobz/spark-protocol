@@ -44,7 +44,7 @@ var _nullthrows2 = require('nullthrows');
 
 var _nullthrows3 = _interopRequireDefault(_nullthrows2);
 
-var _uuid = require('./uuid');
+var _uuid = require('uuid');
 
 var _uuid2 = _interopRequireDefault(_uuid);
 
@@ -115,6 +115,10 @@ var EventPublisher = function (_EventEmitter) {
       var subscriberID = arguments[3];
 
       var subscriptionID = (0, _uuid2.default)();
+      while (_this._subscriptionsByID.has(subscriptionID)) {
+        subscriptionID = (0, _uuid2.default)();
+      }
+
       var listener = _this._filterEvents(eventHandler, filterOptions);
 
       _this._subscriptionsByID.set(subscriptionID, {

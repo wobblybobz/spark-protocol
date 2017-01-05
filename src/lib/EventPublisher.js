@@ -24,7 +24,7 @@ import EventEmitter from 'events';
 import moment from 'moment';
 import logger from './logger';
 import nullthrows from 'nullthrows';
-import uuid from './uuid';
+import uuid from 'uuid';
 
 const ALL_EVENTS = '*all*';
 
@@ -82,7 +82,11 @@ class EventPublisher extends EventEmitter {
     filterOptions?: FilterOptions = {},
     subscriberID?: string,
   ): void => {
-    const subscriptionID = uuid();
+    let subscriptionID = uuid();
+    while(this._subscriptionsByID.has(subscriptionID)) {
+      subscriptionID = uuid();
+    }
+
     const listener = this._filterEvents(eventHandler, filterOptions);
 
     this._subscriptionsByID.set(
