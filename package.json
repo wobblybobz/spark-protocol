@@ -27,6 +27,7 @@
     "moment": "*",
     "nullthrows": "^1.0.0",
     "ursa": "*",
+    "uuid": "^3.0.1",
     "when": "*",
     "xtend": "*"
   },

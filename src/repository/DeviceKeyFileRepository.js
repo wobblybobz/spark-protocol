@@ -1,9 +1,6 @@
 // @flow
 
-import type {DeviceAttributes} from '../types';
-
 import FileManager from './FileManager';
-import uuid from '../lib/uuid';
 
 const FILE_EXTENSION = '.pub.pem';
 
