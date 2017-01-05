@@ -20,10 +20,6 @@ var _FileManager = require('./FileManager');
 
 var _FileManager2 = _interopRequireDefault(_FileManager);
 
-var _uuid = require('../lib/uuid');
-
-var _uuid2 = _interopRequireDefault(_uuid);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var FILE_EXTENSION = '.pub.pem';
