@@ -1,7 +1,7 @@
 {
   "name": "spark-protocol",
   "version": "0.1.6",
-  "main": "./lib/index.js",
+  "main": "./dist/index.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/spark/spark-protocol"
@@ -16,7 +16,7 @@
   "license": "LGPL-3.0",
   "scripts": {
     "lint": "eslint -- .",
-    "start": "babel ./src --out-dir ./lib --watch"
+    "start": "babel ./src --out-dir ./dist --watch"
   },
   "dependencies": {
     "buffer-crc32": "~0.2.3",
