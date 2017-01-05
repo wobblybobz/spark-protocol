@@ -119,7 +119,9 @@ var ID_BYTES = 12;
 var SESSION_BYTES = 40;
 var GLOBAL_TIMEOUT = 10;
 
-var Handshake = function Handshake(client) {
+// TODO make Handshake module stateless.
+
+var Handshake = function Handshake() {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, Handshake);
@@ -127,32 +129,43 @@ var Handshake = function Handshake(client) {
   this._deviceID = '';
   this._pendingBuffers = [];
   this._useChunkingStream = true;
-  this.start = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
-    return _regenerator2.default.wrap(function _callee$(_context) {
-      while (1) {
-        switch (_context.prev = _context.next) {
-          case 0:
-            return _context.abrupt('return', _promise2.default.race([_this._runHandshake(), _this._startGlobalTimeout(), new _promise2.default(function (resolve, reject) {
-              return _this._reject = reject;
-            })]).catch(function (message) {
-              var logInfo = {
-                cache_key: _this._client && _this._client._connectionKey,
-                ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown',
-                deviceID: _this._deviceID ? _this._deviceID.toString('hex') : null
-              };
 
-              _logger2.default.error('Handshake failed: ', message, logInfo);
+  this.start = function () {
+    var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(device) {
+      return _regenerator2.default.wrap(function _callee$(_context) {
+        while (1) {
+          switch (_context.prev = _context.next) {
+            case 0:
+              _this._client = device;
+              _this._socket = device._socket;
 
-              throw message;
-            }));
+              return _context.abrupt('return', _promise2.default.race([_this._runHandshake(), _this._startGlobalTimeout(), new _promise2.default(function (resolve, reject) {
+                return _this._reject = reject;
+              })]).catch(function (message) {
+                var logInfo = {
+                  cache_key: _this._client && _this._client._connectionKey,
+                  ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown',
+                  deviceID: _this._deviceID ? _this._deviceID.toString('hex') : null
+                };
 
-          case 1:
-          case 'end':
-            return _context.stop();
+                _logger2.default.error('Handshake failed: ', message, logInfo);
+
+                throw message;
+              }));
+
+            case 3:
+            case 'end':
+              return _context.stop();
+          }
         }
-      }
-    }, _callee, _this);
-  }));
+      }, _callee, _this);
+    }));
+
+    return function (_x) {
+      return _ref.apply(this, arguments);
+    };
+  }();
+
   this._runHandshake = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
     var dataAwaitable, nonce, data, deviceProvidedPem, publicKey, _ref3, cipherStream, decipherStream, sessionKey, handshakeBuffer;
 
@@ -407,7 +420,7 @@ var Handshake = function Handshake(client) {
       }, _callee4, _this);
     }));
 
-    return function (_x) {
+    return function (_x2) {
       return _ref5.apply(this, arguments);
     };
   }();
@@ -454,9 +467,6 @@ var Handshake = function Handshake(client) {
   this._handshakeFail = function (message) {
     _this._reject && _this._reject(message);
   };
-
-  this._client = client;
-  this._socket = client._socket;
 }
 
 // TODO wrong method name? it read deviceID alongside with

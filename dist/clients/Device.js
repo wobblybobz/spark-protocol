@@ -55,10 +55,6 @@ var _Messages = require('../lib/Messages');
 
 var _Messages2 = _interopRequireDefault(_Messages);
 
-var _Handshake = require('../lib/Handshake');
-
-var _Handshake2 = _interopRequireDefault(_Handshake);
-
 var _utilities = require('../lib/utilities');
 
 var _utilities2 = _interopRequireDefault(_utilities);
@@ -162,7 +158,7 @@ var DEVICE_MESSAGE_EVENTS_NAMES = exports.DEVICE_MESSAGE_EVENTS_NAMES = {
 var Device = function (_EventEmitter) {
   (0, _inherits3.default)(Device, _EventEmitter);
 
-  function Device(socket, connectionKey) {
+  function Device(socket, connectionKey, handshake) {
     var _this2 = this;
 
     (0, _classCallCheck3.default)(this, Device);
@@ -214,17 +210,11 @@ var Device = function (_EventEmitter) {
       }, _callee, _this2);
     }));
     _this.handshake = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
-      var handshake;
       return _regenerator2.default.wrap(function _callee3$(_context3) {
         while (1) {
           switch (_context3.prev = _context3.next) {
             case 0:
-              handshake = new _Handshake2.default(_this);
-
-              // when the handshake is done, we can expect two stream properties,
-              // '_decipherStream' and '_cipherStream'
-
-              _context3.prev = 1;
+              _context3.prev = 0;
               return _context3.delegateYield(_regenerator2.default.mark(function _callee2() {
                 var _ref3, cipherStream, decipherStream, deviceID, handshakeBuffer, pendingBuffers, sessionKey;
 
@@ -233,7 +223,7 @@ var Device = function (_EventEmitter) {
                     switch (_context2.prev = _context2.next) {
                       case 0:
                         _context2.next = 2;
-                        return handshake.start();
+                        return _this._handshake.start(_this);
 
                       case 2:
                         _ref3 = _context2.sent;
@@ -268,24 +258,24 @@ var Device = function (_EventEmitter) {
                     }
                   }
                 }, _callee2, _this2);
-              })(), 't0', 3);
+              })(), 't0', 2);
 
-            case 3:
-              _context3.next = 8;
+            case 2:
+              _context3.next = 7;
               break;
 
-            case 5:
-              _context3.prev = 5;
-              _context3.t1 = _context3['catch'](1);
+            case 4:
+              _context3.prev = 4;
+              _context3.t1 = _context3['catch'](0);
 
               _this.disconnect(_context3.t1);
 
-            case 8:
+            case 7:
             case 'end':
               return _context3.stop();
           }
         }
-      }, _callee3, _this2, [[1, 5]]);
+      }, _callee3, _this2, [[0, 4]]);
     }));
 
     _this._getHello = function (chunk) {
@@ -1228,12 +1218,17 @@ var Device = function (_EventEmitter) {
 
     _this._connectionKey = connectionKey;
     _this._socket = socket;
+    _this._handshake = handshake;
     return _this;
   }
 
   /**
    * configure our socket and start the handshake
    */
+
+
+  // TODO now we have handshake method and this._handshake module
+  // rename one of these.
 
 
   /**

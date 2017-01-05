@@ -87,6 +87,7 @@ const ID_BYTES = 12;
 const SESSION_BYTES = 40;
 const GLOBAL_TIMEOUT = 10;
 
+// TODO make Handshake module stateless.
 class Handshake {
   _client: Device;
   _socket: Socket;
@@ -96,12 +97,10 @@ class Handshake {
   _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
 
-  constructor(client: Device) {
-    this._client = client;
-    this._socket = client._socket;
-  }
+  start = async (device: Device): Promise<*> => {
+    this._client = device;
+    this._socket = device._socket;
 
-  start = async (): Promise<*> => {
     return Promise.race([
       this._runHandshake(),
       this._startGlobalTimeout(),

@@ -21,6 +21,7 @@
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
 import type { Event } from '../types';
+import type Handshake from '../lib/Handshake';
 
 import EventEmitter from 'events';
 import moment from 'moment';
@@ -30,7 +31,7 @@ import { Message } from 'h5.coap';
 import settings from '../settings';
 import CryptoLib from '../lib/ICrypto';
 import Messages from '../lib/Messages';
-import Handshake from '../lib/Handshake';
+
 import utilities from '../lib/utilities';
 import Flasher from '../lib/Flasher';
 import logger from '../lib/logger';
@@ -114,12 +115,18 @@ class Device extends EventEmitter {
   _sendToken: number = 0;
   _socket: Socket;
   _tokens: {[key: string]: string} = {};
+  _handshake: Handshake;
 
-  constructor(socket: Socket, connectionKey: string) {
+  constructor(
+    socket: Socket,
+    connectionKey: string,
+    handshake: Handshake,
+  ) {
     super();
 
     this._connectionKey = connectionKey;
     this._socket = socket;
+    this._handshake = handshake;
   }
 
   /**
@@ -146,9 +153,9 @@ class Device extends EventEmitter {
     await this.handshake();
   };
 
+  // TODO now we have handshake method and this._handshake module
+  // rename one of these.
   handshake = async (): Promise<*> => {
-    const handshake = new Handshake(this);
-
     // when the handshake is done, we can expect two stream properties,
     // '_decipherStream' and '_cipherStream'
     try {
@@ -159,7 +166,7 @@ class Device extends EventEmitter {
         handshakeBuffer,
         pendingBuffers,
         sessionKey,
-      } = await handshake.start();
+      } = await this._handshake.start(this);
       this._id = deviceID;
 
       this._getHello(handshakeBuffer);

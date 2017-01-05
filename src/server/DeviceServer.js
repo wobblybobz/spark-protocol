@@ -26,6 +26,7 @@ import type {
   ServerConfigRepository,
 } from '../types';
 import type EventPublisher from '../lib/EventPublisher';
+import Handshake from '../lib/Handshake';
 
 import net from 'net';
 import nullthrows from 'nullthrows';
@@ -113,7 +114,12 @@ class DeviceServer {
     try {
       // eslint-disable-next-line no-plusplus
       const connectionKey = `_${connectionIdCounter++}`;
-      const device = new Device(socket, connectionKey);
+      const handshake = new Handshake();
+      const device = new Device(
+        socket,
+        connectionKey,
+        handshake,
+      );
 
       device.on(
         DEVICE_EVENT_NAMES.READY,
