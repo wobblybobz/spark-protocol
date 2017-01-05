@@ -216,7 +216,7 @@ var Device = function (_EventEmitter) {
             case 0:
               _context3.prev = 0;
               return _context3.delegateYield(_regenerator2.default.mark(function _callee2() {
-                var _ref3, cipherStream, decipherStream, deviceID, handshakeBuffer, pendingBuffers, sessionKey;
+                var _ref3, cipherStream, decipherStream, deviceID, handshakeBuffer, pendingBuffers;
 
                 return _regenerator2.default.wrap(function _callee2$(_context2) {
                   while (1) {
@@ -232,7 +232,6 @@ var Device = function (_EventEmitter) {
                         deviceID = _ref3.deviceID;
                         handshakeBuffer = _ref3.handshakeBuffer;
                         pendingBuffers = _ref3.pendingBuffers;
-                        sessionKey = _ref3.sessionKey;
 
                         _this._id = deviceID;
 
@@ -252,7 +251,7 @@ var Device = function (_EventEmitter) {
                           _this.routeMessage(chunk);
                         });
 
-                      case 15:
+                      case 14:
                       case 'end':
                         return _context2.stop();
                     }

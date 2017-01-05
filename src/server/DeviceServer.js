@@ -45,6 +45,7 @@ import {
 type DeviceServerConfig = {|
   coreKeysDir?: string,
   deviceAttributeRepository: Repository<DeviceAttributes>,
+  deviceKeyRepository: Repository<string>,
   host: string,
   port: number,
   serverConfigRepository: ServerConfigRepository,
@@ -58,6 +59,7 @@ let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
+  _deviceKeyRepository: Repository<string>;
   _devicesById: Map<string, Device> = new Map();
   _eventPublisher: EventPublisher;
 
@@ -68,6 +70,8 @@ class DeviceServer {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository =
       deviceServerConfig.deviceAttributeRepository;
+    this._deviceKeyRepository =
+      deviceServerConfig.deviceKeyRepository;
     this._eventPublisher = eventPublisher;
     settings.coreKeysDir =
       deviceServerConfig.coreKeysDir || settings.coreKeysDir;
@@ -114,7 +118,7 @@ class DeviceServer {
     try {
       // eslint-disable-next-line no-plusplus
       const connectionKey = `_${connectionIdCounter++}`;
-      const handshake = new Handshake();
+      const handshake = new Handshake(this._deviceKeyRepository);
       const device = new Device(
         socket,
         connectionKey,

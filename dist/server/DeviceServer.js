@@ -111,7 +111,7 @@ var DeviceServer = function () {
                         case 0:
                           // eslint-disable-next-line no-plusplus
                           connectionKey = '_' + connectionIdCounter++;
-                          handshake = new _Handshake2.default();
+                          handshake = new _Handshake2.default(_this._deviceKeyRepository);
                           device = new _Device2.default(socket, connectionKey, handshake);
 
 
@@ -445,6 +445,7 @@ var DeviceServer = function () {
 
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceServerConfig.deviceAttributeRepository;
+    this._deviceKeyRepository = deviceServerConfig.deviceKeyRepository;
     this._eventPublisher = eventPublisher;
     _settings2.default.coreKeysDir = deviceServerConfig.coreKeysDir || _settings2.default.coreKeysDir;
   }

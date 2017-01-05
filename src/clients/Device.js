@@ -165,7 +165,6 @@ class Device extends EventEmitter {
         deviceID,
         handshakeBuffer,
         pendingBuffers,
-        sessionKey,
       } = await this._handshake.start(this);
       this._id = deviceID;
 
