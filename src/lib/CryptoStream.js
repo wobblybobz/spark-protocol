@@ -41,7 +41,7 @@ class CryptoStream extends Transform {
 
     this._key = options.key;
     this._iv = options.iv;
-    this._encrypt = options.encrypt;
+    this._encrypt = !!options.encrypt;
   }
 
   _getCipher = (callback: Function): Duplex => {

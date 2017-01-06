@@ -121,7 +121,7 @@ var CryptoStream = function (_Transform) {
 
     _this._key = options.key;
     _this._iv = options.iv;
-    _this._encrypt = options.encrypt;
+    _this._encrypt = !!options.encrypt;
     return _this;
   }
 

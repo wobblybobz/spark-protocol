@@ -22,7 +22,7 @@ import type Device from '../clients/Device';
 import type { Repository } from '../types';
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
-import type { CryptoStream } from './CryptoStream';
+import type CryptoStream from './CryptoStream';
 import type CryptoManager from './CryptoManager';
 
 
@@ -202,10 +202,13 @@ class Handshake {
     return nonce;
   };
 
-  _readDeviceHandshakeData = async (nonce: Buffer, data: Buffer): {
+  _readDeviceHandshakeData = async (
+    nonce: Buffer,
+    data: Buffer,
+  ): Promise<{
     deviceID: string,
     deviceProvidedPem: ?string,
-  } => {
+  }> => {
     const decryptedHandshakeData =
       await this._cryptoManager.decrypt(data);
 
