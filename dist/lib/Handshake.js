@@ -24,10 +24,6 @@ var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _ICrypto = require('./ICrypto');
-
-var _ICrypto2 = _interopRequireDefault(_ICrypto);
-
 var _utilities = require('./utilities');
 
 var _utilities2 = _interopRequireDefault(_utilities);
@@ -121,7 +117,7 @@ var GLOBAL_TIMEOUT = 10;
 
 // TODO make Handshake module stateless.
 
-var Handshake = function Handshake(deviceKeyRepository) {
+var Handshake = function Handshake(cryptoManager) {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, Handshake);
@@ -166,7 +162,7 @@ var Handshake = function Handshake(deviceKeyRepository) {
   }();
 
   this._runHandshake = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
-    var nonce, data, _readDeviceHandshakeD, deviceID, deviceProvidedPem, publicKey, _ref3, cipherStream, decipherStream, handshakeBuffer;
+    var nonce, data, _ref3, deviceID, deviceProvidedPem, publicKey, _ref4, cipherStream, decipherStream, handshakeBuffer;
 
     return _regenerator2.default.wrap(function _callee2$(_context2) {
       while (1) {
@@ -182,26 +178,31 @@ var Handshake = function Handshake(deviceKeyRepository) {
 
           case 5:
             data = _context2.sent;
-            _readDeviceHandshakeD = _this._readDeviceHandshakeData(nonce, data), deviceID = _readDeviceHandshakeD.deviceID, deviceProvidedPem = _readDeviceHandshakeD.deviceProvidedPem;
+            _context2.next = 8;
+            return _this._readDeviceHandshakeData(nonce, data);
+
+          case 8:
+            _ref3 = _context2.sent;
+            deviceID = _ref3.deviceID;
+            deviceProvidedPem = _ref3.deviceProvidedPem;
 
             _this._deviceID = deviceID;
-
-            _context2.next = 10;
+            _context2.next = 14;
             return _this._getDevicePublicKey(deviceID, deviceProvidedPem);
 
-          case 10:
+          case 14:
             publicKey = _context2.sent;
-            _context2.next = 13;
+            _context2.next = 17;
             return _this._sendSessionKey(publicKey);
 
-          case 13:
-            _ref3 = _context2.sent;
-            cipherStream = _ref3.cipherStream;
-            decipherStream = _ref3.decipherStream;
-            _context2.next = 18;
+          case 17:
+            _ref4 = _context2.sent;
+            cipherStream = _ref4.cipherStream;
+            decipherStream = _ref4.decipherStream;
+            _context2.next = 22;
             return _promise2.default.race([_this._onDecipherStreamReadable(decipherStream), _this._onDecipherStreamTimeout()]);
 
-          case 18:
+          case 22:
             handshakeBuffer = _context2.sent;
 
 
@@ -215,7 +216,7 @@ var Handshake = function Handshake(deviceKeyRepository) {
               pendingBuffers: [].concat((0, _toConsumableArray3.default)(_this._pendingBuffers))
             });
 
-          case 21:
+          case 25:
           case 'end':
             return _context2.stop();
         }
@@ -264,7 +265,7 @@ var Handshake = function Handshake(deviceKeyRepository) {
             _this._handshakeStage = 'send-nonce';
 
             _context3.next = 3;
-            return _ICrypto2.default.getRandomBytes(NONCE_BYTES);
+            return _this._cryptoManager.getRandomBytes(NONCE_BYTES);
 
           case 3:
             nonce = _context3.sent;
@@ -281,73 +282,64 @@ var Handshake = function Handshake(deviceKeyRepository) {
     }, _callee3, _this);
   }));
 
-  this._readDeviceHandshakeData = function (nonce, data) {
-    var decryptedHandshakeData = _ICrypto2.default.decrypt(_ICrypto2.default.getServerKeys(), data);
-
-    if (!decryptedHandshakeData) {
-      throw new Error('handshake data decryption failed');
-    }
-
-    if (decryptedHandshakeData.length < NONCE_BYTES + ID_BYTES) {
-      throw new Error('handshake data was too small: ' + decryptedHandshakeData.length);
-    }
-
-    var nonceBuffer = new Buffer(NONCE_BYTES);
-    var deviceIDBuffer = new Buffer(ID_BYTES);
-    var deviceKeyBuffer = new Buffer(decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES));
-
-    decryptedHandshakeData.copy(nonceBuffer, 0, 0, NONCE_BYTES);
-    decryptedHandshakeData.copy(deviceIDBuffer, 0, NONCE_BYTES, NONCE_BYTES + ID_BYTES);
-    decryptedHandshakeData.copy(deviceKeyBuffer, 0, NONCE_BYTES + ID_BYTES, decryptedHandshakeData.length);
-
-    if (!_utilities2.default.bufferCompare(nonceBuffer, nonce)) {
-      throw new Error('nonces didn\`t match');
-    }
-
-    var deviceProvidedPem = _utilities2.default.convertDERtoPEM(deviceKeyBuffer);
-    var deviceID = deviceIDBuffer.toString('hex');
-
-    // todo remove stages;
-    _this._handshakeStage = 'read-core-id';
-
-    return { deviceID: deviceID, deviceProvidedPem: deviceProvidedPem };
-  };
-
-  this._getDevicePublicKey = function () {
-    var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(deviceID, deviceProvidedPem) {
-      var publicKeyString;
+  this._readDeviceHandshakeData = function () {
+    var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(nonce, data) {
+      var decryptedHandshakeData, nonceBuffer, deviceIDBuffer, deviceKeyBuffer, deviceProvidedPem, deviceID;
       return _regenerator2.default.wrap(function _callee4$(_context4) {
         while (1) {
           switch (_context4.prev = _context4.next) {
             case 0:
               _context4.next = 2;
-              return _this._deviceKeyRepository.getById(deviceID);
+              return _this._cryptoManager.decrypt(data);
 
             case 2:
-              publicKeyString = _context4.sent;
+              decryptedHandshakeData = _context4.sent;
 
-              if (publicKeyString) {
-                _context4.next = 8;
+              if (decryptedHandshakeData) {
+                _context4.next = 5;
                 break;
               }
 
-              if (!deviceProvidedPem) {
+              throw new Error('handshake data decryption failed');
+
+            case 5:
+              if (!(decryptedHandshakeData.length < NONCE_BYTES + ID_BYTES)) {
                 _context4.next = 7;
                 break;
               }
 
-              _this._deviceKeyRepository.update(deviceID, deviceProvidedPem);
-              return _context4.abrupt('return', _ICrypto2.default.createPublicKey(deviceProvidedPem));
+              throw new Error('handshake data was too small: ' + decryptedHandshakeData.length);
 
             case 7:
-              throw new Error('no public key found for device: ' + deviceID);
+              nonceBuffer = new Buffer(NONCE_BYTES);
+              deviceIDBuffer = new Buffer(ID_BYTES);
+              deviceKeyBuffer = new Buffer(decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES));
 
-            case 8:
 
-              _this._handshakeStage = 'get-core-key';
-              return _context4.abrupt('return', _ICrypto2.default.createPublicKey(publicKeyString));
+              decryptedHandshakeData.copy(nonceBuffer, 0, 0, NONCE_BYTES);
+              decryptedHandshakeData.copy(deviceIDBuffer, 0, NONCE_BYTES, NONCE_BYTES + ID_BYTES);
+              decryptedHandshakeData.copy(deviceKeyBuffer, 0, NONCE_BYTES + ID_BYTES, decryptedHandshakeData.length);
 
-            case 10:
+              if (_utilities2.default.bufferCompare(nonceBuffer, nonce)) {
+                _context4.next = 15;
+                break;
+              }
+
+              throw new Error('nonces didn\`t match');
+
+            case 15:
+
+              // todo move method to CryptoManager?
+              deviceProvidedPem = _utilities2.default.convertDERtoPEM(deviceKeyBuffer);
+              deviceID = deviceIDBuffer.toString('hex');
+
+              // todo remove stages;
+
+              _this._handshakeStage = 'read-core-id';
+
+              return _context4.abrupt('return', { deviceID: deviceID, deviceProvidedPem: deviceProvidedPem });
+
+            case 19:
             case 'end':
               return _context4.stop();
           }
@@ -356,46 +348,100 @@ var Handshake = function Handshake(deviceKeyRepository) {
     }));
 
     return function (_x2, _x3) {
-      return _ref5.apply(this, arguments);
+      return _ref6.apply(this, arguments);
     };
   }();
 
-  this._sendSessionKey = function () {
-    var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(devicePublicKey) {
-      var sessionKey, ciphertext, hash, signedhmac, message, decipherStream, cipherStream, chunkingIn, chunkingOut;
+  this._getDevicePublicKey = function () {
+    var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(deviceID, deviceProvidedPem) {
+      var publicKey;
       return _regenerator2.default.wrap(function _callee5$(_context5) {
         while (1) {
           switch (_context5.prev = _context5.next) {
             case 0:
               _context5.next = 2;
-              return _ICrypto2.default.getRandomBytes(SESSION_BYTES);
+              return _this._cryptoManager.getDevicePublicKey(deviceID);
 
             case 2:
-              sessionKey = _context5.sent;
+              publicKey = _context5.sent;
 
+              if (publicKey) {
+                _context5.next = 9;
+                break;
+              }
 
-              // Server RSA encrypts this 40-byte message using the Core's public key to
-              // create a 128-byte ciphertext.
-              ciphertext = _ICrypto2.default.encrypt(devicePublicKey, sessionKey);
+              if (!deviceProvidedPem) {
+                _context5.next = 8;
+                break;
+              }
+
+              _context5.next = 7;
+              return _this._cryptoManager.createDevicePublicKey(deviceID, deviceProvidedPem);
+
+            case 7:
+              return _context5.abrupt('return', _context5.sent);
+
+            case 8:
+              throw new Error('no public key found for device: ' + deviceID);
+
+            case 9:
+
+              _this._handshakeStage = 'get-core-key';
+              return _context5.abrupt('return', publicKey);
+
+            case 11:
+            case 'end':
+              return _context5.stop();
+          }
+        }
+      }, _callee5, _this);
+    }));
+
+    return function (_x4, _x5) {
+      return _ref7.apply(this, arguments);
+    };
+  }();
+
+  this._sendSessionKey = function () {
+    var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(devicePublicKey) {
+      var sessionKey, ciphertext, hash, signedhmac, message, decipherStream, cipherStream, chunkingIn, chunkingOut;
+      return _regenerator2.default.wrap(function _callee6$(_context6) {
+        while (1) {
+          switch (_context6.prev = _context6.next) {
+            case 0:
+              _context6.next = 2;
+              return _this._cryptoManager.getRandomBytes(SESSION_BYTES);
+
+            case 2:
+              sessionKey = _context6.sent;
+              _context6.next = 5;
+              return _this._cryptoManager.encrypt(devicePublicKey, sessionKey);
+
+            case 5:
+              ciphertext = _context6.sent;
+
 
               // Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
               // bytes generated in the previous step as the HMAC key.
-
-              hash = _ICrypto2.default.createHmacDigest(ciphertext, sessionKey);
+              hash = _this._cryptoManager.createHmacDigest(ciphertext, sessionKey);
 
               // Server signs the HMAC with its RSA private key generating a 256-byte
               // signature.
 
-              signedhmac = _ICrypto2.default.sign(null, hash);
+              _context6.next = 9;
+              return _this._cryptoManager.sign(hash);
+
+            case 9:
+              signedhmac = _context6.sent;
+
 
               //Server sends ~384 bytes to Core: the ciphertext then the signature.
-
               message = Buffer.concat([ciphertext, signedhmac], ciphertext.length + signedhmac.length);
 
               _this._socket.write(message);
 
-              decipherStream = _ICrypto2.default.CreateAESDecipherStream(sessionKey);
-              cipherStream = _ICrypto2.default.CreateAESCipherStream(sessionKey);
+              decipherStream = _this._cryptoManager.createAESDecipherStream(sessionKey);
+              cipherStream = _this._cryptoManager.createAESCipherStream(sessionKey);
 
 
               if (_this._useChunkingStream) {
@@ -419,18 +465,18 @@ var Handshake = function Handshake(deviceKeyRepository) {
 
               _this._handshakeStage = 'send-session-key';
 
-              return _context5.abrupt('return', { cipherStream: cipherStream, decipherStream: decipherStream });
+              return _context6.abrupt('return', { cipherStream: cipherStream, decipherStream: decipherStream });
 
-            case 13:
+            case 17:
             case 'end':
-              return _context5.stop();
+              return _context6.stop();
           }
         }
-      }, _callee5, _this);
+      }, _callee6, _this);
     }));
 
-    return function (_x4) {
-      return _ref6.apply(this, arguments);
+    return function (_x6) {
+      return _ref8.apply(this, arguments);
     };
   }();
 
@@ -477,7 +523,7 @@ var Handshake = function Handshake(deviceKeyRepository) {
     _this._reject && _this._reject(message);
   };
 
-  this._deviceKeyRepository = deviceKeyRepository;
+  this._cryptoManager = cryptoManager;
 }
 
 // TODO - Remove this callback once it resolves. When the stream is passed

@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.Device = exports.ServerConfigFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = undefined;
+exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = undefined;
 
 var _DeviceAttributeFileRepository = require('./repository/DeviceAttributeFileRepository');
 
@@ -29,9 +29,9 @@ var _JSONFileManager = require('./repository/JSONFileManager');
 
 var _JSONFileManager2 = _interopRequireDefault(_JSONFileManager);
 
-var _ServerConfigFileRepository = require('./repository/ServerConfigFileRepository');
+var _ServerKeyFileRepository = require('./repository/ServerKeyFileRepository');
 
-var _ServerConfigFileRepository2 = _interopRequireDefault(_ServerConfigFileRepository);
+var _ServerKeyFileRepository2 = _interopRequireDefault(_ServerKeyFileRepository);
 
 var _Device = require('./clients/Device');
 
@@ -65,5 +65,5 @@ exports.DeviceServer = _DeviceServer2.default;
 exports.EventPublisher = _EventPublisher2.default;
 exports.FileManager = _FileManager2.default;
 exports.JSONFileManager = _JSONFileManager2.default;
-exports.ServerConfigFileRepository = _ServerConfigFileRepository2.default;
+exports.ServerKeyFileRepository = _ServerKeyFileRepository2.default;
 exports.Device = _Device2.default;

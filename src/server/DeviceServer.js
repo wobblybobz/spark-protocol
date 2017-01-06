@@ -23,58 +23,52 @@ import type { Message } from 'h5.coap';
 import type {
   DeviceAttributes,
   Repository,
-  ServerConfigRepository,
+  ServerKeyRepository,
 } from '../types';
 import type EventPublisher from '../lib/EventPublisher';
+import CryptoManager from '../lib/CryptoManager';
 import Handshake from '../lib/Handshake';
 
 import net from 'net';
 import nullthrows from 'nullthrows';
 import moment from 'moment';
 import Device from '../clients/Device';
-// TODO: Rename ICrypto to CryptoLib
-import CryptoLib from '../lib/ICrypto';
+
 import logger from '../lib/logger';
 import Messages from '../lib/Messages';
-import settings from '../settings';
 import {
   DEVICE_EVENT_NAMES,
   DEVICE_MESSAGE_EVENTS_NAMES,
 } from '../clients/Device';
 
 type DeviceServerConfig = {|
-  coreKeysDir?: string,
-  deviceAttributeRepository: Repository<DeviceAttributes>,
-  deviceKeyRepository: Repository<string>,
   host: string,
   port: number,
-  serverConfigRepository: ServerConfigRepository,
-  // TODO: Remove the file paths and just use the repository.
-  serverKeyFile: string,
-  serverKeyPassFile: ?string,
-  serverKeyPassEnvVar: ?string,
 |};
 
 let connectionIdCounter = 0;
 class DeviceServer {
   _config: DeviceServerConfig;
+  _cryptoManager: CryptoManager;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
-  _deviceKeyRepository: Repository<string>;
   _devicesById: Map<string, Device> = new Map();
   _eventPublisher: EventPublisher;
 
   constructor(
-    deviceServerConfig: DeviceServerConfig,
+    deviceAttributeRepository: Repository<DeviceAttributes>,
+    deviceKeyRepository: Repository<string>,
+    serverKeyRepository: ServerKeyRepository,
     eventPublisher: EventPublisher,
+    deviceServerConfig: DeviceServerConfig,
   ) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository =
-      deviceServerConfig.deviceAttributeRepository;
-    this._deviceKeyRepository =
-      deviceServerConfig.deviceKeyRepository;
+      deviceAttributeRepository;
+    this._cryptoManager = new CryptoManager(
+      deviceKeyRepository,
+      serverKeyRepository,
+    );
     this._eventPublisher = eventPublisher;
-    settings.coreKeysDir =
-      deviceServerConfig.coreKeysDir || settings.coreKeysDir;
   }
 
   start() {
@@ -89,24 +83,6 @@ class DeviceServer {
       logger.error(`something blew up ${error.message}`),
     );
 
-    // Create the keys if they don't exist
-    this._config.serverConfigRepository.setupKeys();
-
-    // TODO: These files should come from a repository -- not using fs in the
-    // lib
-    //
-    //  Load our server key
-    //
-    logger.log(`Loading server key from ${this._config.serverKeyFile}`);
-    CryptoLib.loadServerKeys(
-      this._config.serverKeyFile,
-      this._config.serverKeyPassFile,
-      this._config.serverKeyPassEnvVar,
-    );
-
-    //
-    //  Wait for the keys to be ready, then start accepting connections
-    //
     const serverPort = this._config.port.toString();
     server.listen(
       serverPort,
@@ -118,7 +94,7 @@ class DeviceServer {
     try {
       // eslint-disable-next-line no-plusplus
       const connectionKey = `_${connectionIdCounter++}`;
-      const handshake = new Handshake(this._deviceKeyRepository);
+      const handshake = new Handshake(this._cryptoManager);
       const device = new Device(
         socket,
         connectionKey,

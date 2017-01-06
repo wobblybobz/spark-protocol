@@ -23,8 +23,9 @@ import type { Repository } from '../types';
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
 import type { CryptoStream } from './CryptoStream';
+import type CryptoManager from './CryptoManager';
 
-import CryptoLib from './ICrypto';
+
 import utilities from './utilities';
 import ChunkingStream from './ChunkingStream';
 import logger from './logger';
@@ -92,7 +93,7 @@ const GLOBAL_TIMEOUT = 10;
 // TODO make Handshake module stateless.
 class Handshake {
   _client: Device;
-  _deviceKeyRepository: Repository<string>;
+  _cryptoManager: CryptoManager;
   _socket: Socket;
   _handshakeStage: HandshakeStage = 'send-nonce';
   _reject: ?Function;
@@ -100,8 +101,8 @@ class Handshake {
   _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
 
-  constructor(deviceKeyRepository: Repository<string>) {
-    this._deviceKeyRepository = deviceKeyRepository;
+  constructor(cryptoManager: CryptoManager) {
+    this._cryptoManager = cryptoManager;
   }
 
   start = async (device: Device): Promise<*> => {
@@ -134,9 +135,8 @@ class Handshake {
       const {
         deviceID,
         deviceProvidedPem,
-      } = this._readDeviceHandshakeData(nonce, data);
+      } = await this._readDeviceHandshakeData(nonce, data);
       this._deviceID = deviceID;
-
       const publicKey = await this._getDevicePublicKey(deviceID, deviceProvidedPem);
 
       const {
@@ -196,17 +196,18 @@ class Handshake {
   _sendNonce = async (): Promise<Buffer> => {
     this._handshakeStage = 'send-nonce';
 
-    const nonce = await CryptoLib.getRandomBytes(NONCE_BYTES);
+    const nonce = await this._cryptoManager.getRandomBytes(NONCE_BYTES);
     this._socket.write(nonce);
 
     return nonce;
   };
 
-  _readDeviceHandshakeData = (nonce: Buffer, data: Buffer): {
+  _readDeviceHandshakeData = async (nonce: Buffer, data: Buffer): {
     deviceID: string,
     deviceProvidedPem: ?string,
   } => {
-    const decryptedHandshakeData = CryptoLib.decrypt(CryptoLib.getServerKeys(), data);
+    const decryptedHandshakeData =
+      await this._cryptoManager.decrypt(data);
 
     if (!decryptedHandshakeData) {
       throw new Error('handshake data decryption failed');
@@ -241,6 +242,7 @@ class Handshake {
       throw new Error('nonces didn\`t match');
     }
 
+    // todo move method to CryptoManager?
 		const deviceProvidedPem = utilities.convertDERtoPEM(deviceKeyBuffer);
 		const deviceID = deviceIDBuffer.toString('hex');
 
@@ -255,19 +257,21 @@ class Handshake {
     deviceID: string,
     deviceProvidedPem: ?string,
   ): Promise<Object> => {
-    const publicKeyString = await this._deviceKeyRepository.getById(deviceID);
+    const publicKey = await this._cryptoManager.getDevicePublicKey(deviceID);
 
-    if (!publicKeyString) {
+    if (!publicKey) {
       if (deviceProvidedPem) {
-        this._deviceKeyRepository.update(deviceID, deviceProvidedPem);
-        return CryptoLib.createPublicKey(deviceProvidedPem);
+        return await this._cryptoManager.createDevicePublicKey(
+          deviceID,
+          deviceProvidedPem,
+        );
       }
 
       throw new Error(`no public key found for device: ${deviceID}`);
     }
 
     this._handshakeStage = 'get-core-key';
-    return CryptoLib.createPublicKey(publicKeyString);
+    return publicKey;
   };
 
   _sendSessionKey = async (
@@ -276,19 +280,22 @@ class Handshake {
     cipherStream: CryptoStream,
     decipherStream: CryptoStream,
   }> => {
-    const sessionKey = await CryptoLib.getRandomBytes(SESSION_BYTES);
+    const sessionKey = await this._cryptoManager.getRandomBytes(SESSION_BYTES);
 
     // Server RSA encrypts this 40-byte message using the Core's public key to
     // create a 128-byte ciphertext.
-    const ciphertext = CryptoLib.encrypt(devicePublicKey, sessionKey);
+    const ciphertext = await this._cryptoManager.encrypt(
+      devicePublicKey,
+      sessionKey,
+    );
 
     // Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
     // bytes generated in the previous step as the HMAC key.
-    const hash = CryptoLib.createHmacDigest(ciphertext, sessionKey);
+    const hash = this._cryptoManager.createHmacDigest(ciphertext, sessionKey);
 
     // Server signs the HMAC with its RSA private key generating a 256-byte
     // signature.
-    const signedhmac = CryptoLib.sign(null, hash);
+    const signedhmac = await this._cryptoManager.sign(hash);
 
     //Server sends ~384 bytes to Core: the ciphertext then the signature.
     const message = Buffer.concat(
@@ -297,8 +304,8 @@ class Handshake {
     );
     this._socket.write(message);
 
-    const decipherStream = CryptoLib.CreateAESDecipherStream(sessionKey);
-    const cipherStream = CryptoLib.CreateAESCipherStream(sessionKey);
+    const decipherStream = this._cryptoManager.createAESDecipherStream(sessionKey);
+    const cipherStream = this._cryptoManager.createAESCipherStream(sessionKey);
 
     if (this._useChunkingStream) {
       const chunkingIn = new ChunkingStream({outgoing: false });

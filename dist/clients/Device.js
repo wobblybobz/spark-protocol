@@ -47,9 +47,9 @@ var _settings = require('../settings');
 
 var _settings2 = _interopRequireDefault(_settings);
 
-var _ICrypto = require('../lib/ICrypto');
+var _CryptoManager = require('../lib/CryptoManager');
 
-var _ICrypto2 = _interopRequireDefault(_ICrypto);
+var _CryptoManager2 = _interopRequireDefault(_CryptoManager);
 
 var _Messages = require('../lib/Messages');
 
@@ -305,7 +305,7 @@ var Device = function (_EventEmitter) {
       _this._decipherStream = decipherStream;
 
       // client will set the counter property on the message
-      _this._sendCounter = _ICrypto2.default.getRandomUINT16();
+      _this._sendCounter = _CryptoManager2.default.getRandomUINT16();
       _this.sendMessage('Hello', {}, null);
     };
 

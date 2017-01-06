@@ -33,6 +33,10 @@ export type Repository<TModel> = {
   update: (model: TModel) => Promise<TModel>,
 };
 
-export type ServerConfigRepository = {
-  setupKeys(): void,
+export type ServerKeyRepository = {
+  createKeys: (privateKeyPem: Buffer, publicKeyPem: Buffer)=> Promise<{
+    privateKeyPem: Buffer,
+    publicKeyPem: Buffer,
+  }>,
+  getPrivateKey: () => Promise<?string>,
 };
