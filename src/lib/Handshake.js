@@ -19,8 +19,10 @@
 */
 
 import type Device from '../clients/Device';
+import type { Repository } from '../types';
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
+import type { CryptoStream } from './CryptoStream';
 
 import CryptoLib from './ICrypto';
 import utilities from './utilities';
@@ -87,76 +89,81 @@ const ID_BYTES = 12;
 const SESSION_BYTES = 40;
 const GLOBAL_TIMEOUT = 10;
 
+// TODO make Handshake module stateless.
 class Handshake {
   _client: Device;
+  _deviceKeyRepository: Repository<string>;
   _socket: Socket;
   _handshakeStage: HandshakeStage = 'send-nonce';
   _reject: ?Function;
-  _deviceID: string = '';
+  _deviceID: string;
   _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
 
-  constructor(client: Device) {
-    this._client = client;
-    this._socket = client._socket;
+  constructor(deviceKeyRepository: Repository<string>) {
+    this._deviceKeyRepository = deviceKeyRepository;
   }
 
-  start = async (): Promise<*> => {
+  start = async (device: Device): Promise<*> => {
+    this._client = device;
+    this._socket = device._socket;
+
     return Promise.race([
       this._runHandshake(),
       this._startGlobalTimeout(),
       new Promise((resolve, reject) => this._reject = reject),
-    ]).catch((message) => {
+    ]).catch((error) => {
       var logInfo = {
         cache_key: this._client && this._client._connectionKey,
         ip: this._socket && this._socket.remoteAddress
           ? this._socket.remoteAddress.toString()
           : 'unknown',
-        deviceID: this._deviceID ? this._deviceID.toString('hex') : null,
+        deviceID: this._deviceID || null,
       };
 
-      logger.error('Handshake failed: ', message, logInfo);
+      logger.error('Handshake failed: ', error, logInfo);
 
-      throw message;
+      throw error;
     });
   };
 
   _runHandshake = async (): Promise<*> => {
-    try {
-      const dataAwaitable = this._onSocketDataAvailable();
       const nonce = await this._sendNonce();
-      const data = await dataAwaitable;
-      const deviceProvidedPem = this._readDeviceID(nonce, data);
-      const publicKey = this._getDeviceKey(nullthrows(deviceProvidedPem));
+      const data = await this._onSocketDataAvailable();
+
+      const {
+        deviceID,
+        deviceProvidedPem,
+      } = this._readDeviceHandshakeData(nonce, data);
+      this._deviceID = deviceID;
+
+      const publicKey = await this._getDevicePublicKey(deviceID, deviceProvidedPem);
+
       const {
         cipherStream,
         decipherStream,
-        sessionKey,
       } = await this._sendSessionKey(publicKey);
 
       const handshakeBuffer = await Promise.race([
         this._onDecipherStreamReadable(decipherStream),
         this._onDecipherStreamTimeout(),
       ]);
+
       this._finished();
+
       return {
-        deviceID: this._deviceID,
+        deviceID,
         cipherStream,
         decipherStream,
         handshakeBuffer,
         pendingBuffers: [...this._pendingBuffers],
-        sessionKey,
       };
-    } catch (error) {
-      logger.error(`runHandshakeError(): ${error}`);
-      throw error;
-    }
   };
 
   _startGlobalTimeout = (): Promise<*> => {
     return new Promise((resolve, reject) => {
       setTimeout(
-        () => reject(`Handshake did not complete in ${GLOBAL_TIMEOUT} seconds`),
+        () => reject(new Error(`Handshake did not complete in ${GLOBAL_TIMEOUT} seconds`)),
         GLOBAL_TIMEOUT * 1000,
       );
     });
@@ -165,18 +172,19 @@ class Handshake {
   _onSocketDataAvailable = (): Promise<Buffer> => {
     return new Promise((resolve, reject): void => {
       const onReadable = (): void => {
-        const data = ((this._socket.read(): any): Buffer);
         try {
+          const data = ((this._socket.read(): any): Buffer);
+
           if (!data) {
             logger.log('onSocketData called, but no data sent.');
-            reject();
+            reject(new Error('onSocketData called, but no data sent.'));
           }
 
           resolve(data);
-        } catch (exception) {
+        } catch (error) {
           logger.log('Handshake: Exception thrown while processing data');
-          logger.error(exception);
-          reject();
+          logger.error(error);
+          reject(error);
         }
 
         this._socket.removeListener('readable', onReadable);
@@ -194,79 +202,80 @@ class Handshake {
     return nonce;
   };
 
-  // TODO wrong method name? it read deviceID alongside with
-  // deviceKey? and returns deviceProvidedPem
-  _readDeviceID = (nonce: Buffer, data: Buffer): ?string => {
-    //server should read 256 bytes
-    //decrypt msg using server private key
-    let plaintext;
-    try {
-      plaintext = CryptoLib.decrypt(CryptoLib.getServerKeys(), data);
-    } catch (error) {
-      logger.error(`Handshake decryption error: ${error}`);
+  _readDeviceHandshakeData = (nonce: Buffer, data: Buffer): {
+    deviceID: string,
+    deviceProvidedPem: ?string,
+  } => {
+    const decryptedHandshakeData = CryptoLib.decrypt(CryptoLib.getServerKeys(), data);
+
+    if (!decryptedHandshakeData) {
+      throw new Error('handshake data decryption failed');
     }
 
-    if (!plaintext) {
-      this._handshakeFail('decryption failed');
-      return '';
+    if (decryptedHandshakeData.length < (NONCE_BYTES + ID_BYTES)) {
+      throw new Error(`handshake data was too small: ${decryptedHandshakeData.length}`);
     }
 
-    //plaintext should be 52 bytes, else fail
-    if (plaintext.length < (NONCE_BYTES + ID_BYTES)) {
-		  this._handshakeFail('plaintext was too small: ' + plaintext.length);
-      return '';
-    }
 
-    //success
-    const nonceBuffer = new Buffer(40);
-    const deviceIDBuffer = new Buffer(12);
+    const nonceBuffer = new Buffer(NONCE_BYTES);
+    const deviceIDBuffer = new Buffer(ID_BYTES);
+    const deviceKeyBuffer = new Buffer(
+      decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES),
+    );
 
-    plaintext.copy(nonceBuffer, 0, 0, 40);
-    plaintext.copy(deviceIDBuffer, 0, 40, 52);
+    decryptedHandshakeData.copy(nonceBuffer, 0, 0, NONCE_BYTES);
+    decryptedHandshakeData.copy(
+      deviceIDBuffer,
+      0,
+      NONCE_BYTES,
+      (NONCE_BYTES + ID_BYTES)
+    );
+    decryptedHandshakeData.copy(
+      deviceKeyBuffer,
+      0,
+      (NONCE_BYTES + ID_BYTES),
+      decryptedHandshakeData.length
+    );
 
-		const deviceKey = new Buffer(plaintext.length - 52);
-		plaintext.copy(deviceKey, 0, 52, plaintext.length);
-		const deviceProvidedPem = utilities.convertDERtoPEM(deviceKey);
-
-    //nonces should match
     if (!utilities.bufferCompare(nonceBuffer, nonce)) {
-      this._handshakeFail('nonces didn\'t match');
-      return '';
+      throw new Error('nonces didn\`t match');
     }
 
-    this._deviceID = deviceIDBuffer.toString('hex');
+		const deviceProvidedPem = utilities.convertDERtoPEM(deviceKeyBuffer);
+		const deviceID = deviceIDBuffer.toString('hex');
 
+		// todo remove stages;
     this._handshakeStage = 'read-core-id';
 
-    return deviceProvidedPem;
+    return { deviceID, deviceProvidedPem };
   };
 
-  // 4.) Read the public key from disk for this core
-  // TODO do this with keys repository?
-  _getDeviceKey = (deviceProvidedPem: string): Object => {
-    const publicKey = utilities.get_core_key(this._deviceID);
-    try {
-      if (!publicKey) {
-        this._handshakeFail(`couldn't find key for device: ${this._deviceID}`);
-        if (deviceProvidedPem) {
-          utilities.save_handshake_key(this._deviceID, deviceProvidedPem);
-        }
-        throw `Failed finding key for core: ${this._deviceID}`;
+
+  _getDevicePublicKey = async (
+    deviceID: string,
+    deviceProvidedPem: ?string,
+  ): Promise<Object> => {
+    const publicKeyString = await this._deviceKeyRepository.getById(deviceID);
+
+    if (!publicKeyString) {
+      if (deviceProvidedPem) {
+        this._deviceKeyRepository.update(deviceID, deviceProvidedPem);
+        return CryptoLib.createPublicKey(deviceProvidedPem);
       }
-    } catch (exception) {
-      logger.error('Error handling get_corekey ', exception);
-      this._handshakeFail(
-        `Failed handling find key for core: ${this._deviceID}`,
-      );
+
+      throw new Error(`no public key found for device: ${deviceID}`);
     }
 
     this._handshakeStage = 'get-core-key';
-    return publicKey;
+    return CryptoLib.createPublicKey(publicKeyString);
   };
 
   _sendSessionKey = async (
     devicePublicKey: Object,
-  ): Object => {
+  ): Promise<{
+    cipherStream: CryptoStream,
+    decipherStream: CryptoStream,
+  }> => {
     const sessionKey = await CryptoLib.getRandomBytes(SESSION_BYTES);
 
     // Server RSA encrypts this 40-byte message using the Core's public key to
@@ -311,11 +320,7 @@ class Handshake {
 
     this._handshakeStage = 'send-session-key';
 
-    return {
-      cipherStream,
-      decipherStream,
-      sessionKey,
-    };
+    return { cipherStream, decipherStream };
   };
 
   // TODO - Remove this callback once it resolves. When the stream is passed

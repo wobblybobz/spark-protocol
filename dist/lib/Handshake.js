@@ -119,104 +119,114 @@ var ID_BYTES = 12;
 var SESSION_BYTES = 40;
 var GLOBAL_TIMEOUT = 10;
 
-var Handshake = function Handshake(client) {
+// TODO make Handshake module stateless.
+
+var Handshake = function Handshake(deviceKeyRepository) {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, Handshake);
   this._handshakeStage = 'send-nonce';
-  this._deviceID = '';
   this._pendingBuffers = [];
   this._useChunkingStream = true;
-  this.start = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
-    return _regenerator2.default.wrap(function _callee$(_context) {
-      while (1) {
-        switch (_context.prev = _context.next) {
-          case 0:
-            return _context.abrupt('return', _promise2.default.race([_this._runHandshake(), _this._startGlobalTimeout(), new _promise2.default(function (resolve, reject) {
-              return _this._reject = reject;
-            })]).catch(function (message) {
-              var logInfo = {
-                cache_key: _this._client && _this._client._connectionKey,
-                ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown',
-                deviceID: _this._deviceID ? _this._deviceID.toString('hex') : null
-              };
 
-              _logger2.default.error('Handshake failed: ', message, logInfo);
+  this.start = function () {
+    var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(device) {
+      return _regenerator2.default.wrap(function _callee$(_context) {
+        while (1) {
+          switch (_context.prev = _context.next) {
+            case 0:
+              _this._client = device;
+              _this._socket = device._socket;
 
-              throw message;
-            }));
+              return _context.abrupt('return', _promise2.default.race([_this._runHandshake(), _this._startGlobalTimeout(), new _promise2.default(function (resolve, reject) {
+                return _this._reject = reject;
+              })]).catch(function (error) {
+                var logInfo = {
+                  cache_key: _this._client && _this._client._connectionKey,
+                  ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown',
+                  deviceID: _this._deviceID || null
+                };
 
-          case 1:
-          case 'end':
-            return _context.stop();
+                _logger2.default.error('Handshake failed: ', error, logInfo);
+
+                throw error;
+              }));
+
+            case 3:
+            case 'end':
+              return _context.stop();
+          }
         }
-      }
-    }, _callee, _this);
-  }));
+      }, _callee, _this);
+    }));
+
+    return function (_x) {
+      return _ref.apply(this, arguments);
+    };
+  }();
+
   this._runHandshake = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
-    var dataAwaitable, nonce, data, deviceProvidedPem, publicKey, _ref3, cipherStream, decipherStream, sessionKey, handshakeBuffer;
+    var nonce, data, _readDeviceHandshakeD, deviceID, deviceProvidedPem, publicKey, _ref3, cipherStream, decipherStream, handshakeBuffer;
 
     return _regenerator2.default.wrap(function _callee2$(_context2) {
       while (1) {
         switch (_context2.prev = _context2.next) {
           case 0:
-            _context2.prev = 0;
-            dataAwaitable = _this._onSocketDataAvailable();
-            _context2.next = 4;
+            _context2.next = 2;
             return _this._sendNonce();
 
-          case 4:
+          case 2:
             nonce = _context2.sent;
-            _context2.next = 7;
-            return dataAwaitable;
+            _context2.next = 5;
+            return _this._onSocketDataAvailable();
 
-          case 7:
+          case 5:
             data = _context2.sent;
-            deviceProvidedPem = _this._readDeviceID(nonce, data);
-            publicKey = _this._getDeviceKey((0, _nullthrows2.default)(deviceProvidedPem));
-            _context2.next = 12;
+            _readDeviceHandshakeD = _this._readDeviceHandshakeData(nonce, data), deviceID = _readDeviceHandshakeD.deviceID, deviceProvidedPem = _readDeviceHandshakeD.deviceProvidedPem;
+
+            _this._deviceID = deviceID;
+
+            _context2.next = 10;
+            return _this._getDevicePublicKey(deviceID, deviceProvidedPem);
+
+          case 10:
+            publicKey = _context2.sent;
+            _context2.next = 13;
             return _this._sendSessionKey(publicKey);
 
-          case 12:
+          case 13:
             _ref3 = _context2.sent;
             cipherStream = _ref3.cipherStream;
             decipherStream = _ref3.decipherStream;
-            sessionKey = _ref3.sessionKey;
             _context2.next = 18;
             return _promise2.default.race([_this._onDecipherStreamReadable(decipherStream), _this._onDecipherStreamTimeout()]);
 
           case 18:
             handshakeBuffer = _context2.sent;
 
+
             _this._finished();
+
             return _context2.abrupt('return', {
-              deviceID: _this._deviceID,
+              deviceID: deviceID,
               cipherStream: cipherStream,
               decipherStream: decipherStream,
               handshakeBuffer: handshakeBuffer,
-              pendingBuffers: [].concat((0, _toConsumableArray3.default)(_this._pendingBuffers)),
-              sessionKey: sessionKey
+              pendingBuffers: [].concat((0, _toConsumableArray3.default)(_this._pendingBuffers))
             });
 
-          case 23:
-            _context2.prev = 23;
-            _context2.t0 = _context2['catch'](0);
-
-            _logger2.default.error('runHandshakeError(): ' + _context2.t0);
-            throw _context2.t0;
-
-          case 27:
+          case 21:
           case 'end':
             return _context2.stop();
         }
       }
-    }, _callee2, _this, [[0, 23]]);
+    }, _callee2, _this);
   }));
 
   this._startGlobalTimeout = function () {
     return new _promise2.default(function (resolve, reject) {
       setTimeout(function () {
-        return reject('Handshake did not complete in ' + GLOBAL_TIMEOUT + ' seconds');
+        return reject(new Error('Handshake did not complete in ' + GLOBAL_TIMEOUT + ' seconds'));
       }, GLOBAL_TIMEOUT * 1000);
     });
   };
@@ -224,18 +234,19 @@ var Handshake = function Handshake(client) {
   this._onSocketDataAvailable = function () {
     return new _promise2.default(function (resolve, reject) {
       var onReadable = function onReadable() {
-        var data = _this._socket.read();
         try {
+          var data = _this._socket.read();
+
           if (!data) {
             _logger2.default.log('onSocketData called, but no data sent.');
-            reject();
+            reject(new Error('onSocketData called, but no data sent.'));
           }
 
           resolve(data);
-        } catch (exception) {
+        } catch (error) {
           _logger2.default.log('Handshake: Exception thrown while processing data');
-          _logger2.default.error(exception);
-          reject();
+          _logger2.default.error(error);
+          reject(error);
         }
 
         _this._socket.removeListener('readable', onReadable);
@@ -270,82 +281,97 @@ var Handshake = function Handshake(client) {
     }, _callee3, _this);
   }));
 
-  this._readDeviceID = function (nonce, data) {
-    //server should read 256 bytes
-    //decrypt msg using server private key
-    var plaintext = void 0;
-    try {
-      plaintext = _ICrypto2.default.decrypt(_ICrypto2.default.getServerKeys(), data);
-    } catch (error) {
-      _logger2.default.error('Handshake decryption error: ' + error);
+  this._readDeviceHandshakeData = function (nonce, data) {
+    var decryptedHandshakeData = _ICrypto2.default.decrypt(_ICrypto2.default.getServerKeys(), data);
+
+    if (!decryptedHandshakeData) {
+      throw new Error('handshake data decryption failed');
     }
 
-    if (!plaintext) {
-      _this._handshakeFail('decryption failed');
-      return '';
+    if (decryptedHandshakeData.length < NONCE_BYTES + ID_BYTES) {
+      throw new Error('handshake data was too small: ' + decryptedHandshakeData.length);
     }
 
-    //plaintext should be 52 bytes, else fail
-    if (plaintext.length < NONCE_BYTES + ID_BYTES) {
-      _this._handshakeFail('plaintext was too small: ' + plaintext.length);
-      return '';
-    }
+    var nonceBuffer = new Buffer(NONCE_BYTES);
+    var deviceIDBuffer = new Buffer(ID_BYTES);
+    var deviceKeyBuffer = new Buffer(decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES));
 
-    //success
-    var nonceBuffer = new Buffer(40);
-    var deviceIDBuffer = new Buffer(12);
+    decryptedHandshakeData.copy(nonceBuffer, 0, 0, NONCE_BYTES);
+    decryptedHandshakeData.copy(deviceIDBuffer, 0, NONCE_BYTES, NONCE_BYTES + ID_BYTES);
+    decryptedHandshakeData.copy(deviceKeyBuffer, 0, NONCE_BYTES + ID_BYTES, decryptedHandshakeData.length);
 
-    plaintext.copy(nonceBuffer, 0, 0, 40);
-    plaintext.copy(deviceIDBuffer, 0, 40, 52);
-
-    var deviceKey = new Buffer(plaintext.length - 52);
-    plaintext.copy(deviceKey, 0, 52, plaintext.length);
-    var deviceProvidedPem = _utilities2.default.convertDERtoPEM(deviceKey);
-
-    //nonces should match
     if (!_utilities2.default.bufferCompare(nonceBuffer, nonce)) {
-      _this._handshakeFail('nonces didn\'t match');
-      return '';
+      throw new Error('nonces didn\`t match');
     }
 
-    _this._deviceID = deviceIDBuffer.toString('hex');
+    var deviceProvidedPem = _utilities2.default.convertDERtoPEM(deviceKeyBuffer);
+    var deviceID = deviceIDBuffer.toString('hex');
 
+    // todo remove stages;
     _this._handshakeStage = 'read-core-id';
 
-    return deviceProvidedPem;
+    return { deviceID: deviceID, deviceProvidedPem: deviceProvidedPem };
   };
 
-  this._getDeviceKey = function (deviceProvidedPem) {
-    var publicKey = _utilities2.default.get_core_key(_this._deviceID);
-    try {
-      if (!publicKey) {
-        _this._handshakeFail('couldn\'t find key for device: ' + _this._deviceID);
-        if (deviceProvidedPem) {
-          _utilities2.default.save_handshake_key(_this._deviceID, deviceProvidedPem);
-        }
-        throw 'Failed finding key for core: ' + _this._deviceID;
-      }
-    } catch (exception) {
-      _logger2.default.error('Error handling get_corekey ', exception);
-      _this._handshakeFail('Failed handling find key for core: ' + _this._deviceID);
-    }
-
-    _this._handshakeStage = 'get-core-key';
-    return publicKey;
-  };
-
-  this._sendSessionKey = function () {
-    var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(devicePublicKey) {
-      var sessionKey, ciphertext, hash, signedhmac, message, decipherStream, cipherStream, chunkingIn, chunkingOut;
+  this._getDevicePublicKey = function () {
+    var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(deviceID, deviceProvidedPem) {
+      var publicKeyString;
       return _regenerator2.default.wrap(function _callee4$(_context4) {
         while (1) {
           switch (_context4.prev = _context4.next) {
             case 0:
               _context4.next = 2;
+              return _this._deviceKeyRepository.getById(deviceID);
+
+            case 2:
+              publicKeyString = _context4.sent;
+
+              if (publicKeyString) {
+                _context4.next = 8;
+                break;
+              }
+
+              if (!deviceProvidedPem) {
+                _context4.next = 7;
+                break;
+              }
+
+              _this._deviceKeyRepository.update(deviceID, deviceProvidedPem);
+              return _context4.abrupt('return', _ICrypto2.default.createPublicKey(deviceProvidedPem));
+
+            case 7:
+              throw new Error('no public key found for device: ' + deviceID);
+
+            case 8:
+
+              _this._handshakeStage = 'get-core-key';
+              return _context4.abrupt('return', _ICrypto2.default.createPublicKey(publicKeyString));
+
+            case 10:
+            case 'end':
+              return _context4.stop();
+          }
+        }
+      }, _callee4, _this);
+    }));
+
+    return function (_x2, _x3) {
+      return _ref5.apply(this, arguments);
+    };
+  }();
+
+  this._sendSessionKey = function () {
+    var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(devicePublicKey) {
+      var sessionKey, ciphertext, hash, signedhmac, message, decipherStream, cipherStream, chunkingIn, chunkingOut;
+      return _regenerator2.default.wrap(function _callee5$(_context5) {
+        while (1) {
+          switch (_context5.prev = _context5.next) {
+            case 0:
+              _context5.next = 2;
               return _ICrypto2.default.getRandomBytes(SESSION_BYTES);
 
             case 2:
-              sessionKey = _context4.sent;
+              sessionKey = _context5.sent;
 
 
               // Server RSA encrypts this 40-byte message using the Core's public key to
@@ -393,22 +419,18 @@ var Handshake = function Handshake(client) {
 
               _this._handshakeStage = 'send-session-key';
 
-              return _context4.abrupt('return', {
-                cipherStream: cipherStream,
-                decipherStream: decipherStream,
-                sessionKey: sessionKey
-              });
+              return _context5.abrupt('return', { cipherStream: cipherStream, decipherStream: decipherStream });
 
             case 13:
             case 'end':
-              return _context4.stop();
+              return _context5.stop();
           }
         }
-      }, _callee4, _this);
+      }, _callee5, _this);
     }));
 
-    return function (_x) {
-      return _ref5.apply(this, arguments);
+    return function (_x4) {
+      return _ref6.apply(this, arguments);
     };
   }();
 
@@ -455,17 +477,8 @@ var Handshake = function Handshake(client) {
     _this._reject && _this._reject(message);
   };
 
-  this._client = client;
-  this._socket = client._socket;
+  this._deviceKeyRepository = deviceKeyRepository;
 }
-
-// TODO wrong method name? it read deviceID alongside with
-// deviceKey? and returns deviceProvidedPem
-
-
-// 4.) Read the public key from disk for this core
-// TODO do this with keys repository?
-
 
 // TODO - Remove this callback once it resolves. When the stream is passed
 // into the Device, it should be rebound there to listen for the keep-alive

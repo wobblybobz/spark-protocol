@@ -28,6 +28,10 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
+var _Handshake = require('../lib/Handshake');
+
+var _Handshake2 = _interopRequireDefault(_Handshake);
+
 var _net = require('net');
 
 var _net2 = _interopRequireDefault(_net);
@@ -62,8 +66,6 @@ var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var connectionIdCounter = 0;
-// TODO: Rename ICrypto to CryptoLib
 /*
 *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 *
@@ -84,6 +86,9 @@ var connectionIdCounter = 0;
 *
 */
 
+var connectionIdCounter = 0;
+// TODO: Rename ICrypto to CryptoLib
+
 var DeviceServer = function () {
   function DeviceServer(deviceServerConfig, eventPublisher) {
     var _this = this;
@@ -99,14 +104,15 @@ var DeviceServer = function () {
               case 0:
                 _context2.prev = 0;
                 return _context2.delegateYield(_regenerator2.default.mark(function _callee() {
-                  var connectionKey, device;
+                  var connectionKey, handshake, device;
                   return _regenerator2.default.wrap(function _callee$(_context) {
                     while (1) {
                       switch (_context.prev = _context.next) {
                         case 0:
                           // eslint-disable-next-line no-plusplus
                           connectionKey = '_' + connectionIdCounter++;
-                          device = new _Device2.default(socket, connectionKey);
+                          handshake = new _Handshake2.default(_this._deviceKeyRepository);
+                          device = new _Device2.default(socket, connectionKey, handshake);
 
 
                           device.on(_Device.DEVICE_EVENT_NAMES.READY, function () {
@@ -150,14 +156,14 @@ var DeviceServer = function () {
                             return _this.publishSpecialEvent('spark/flash/status', 'failed', device.getID());
                           });
 
-                          _context.next = 13;
+                          _context.next = 14;
                           return device.startupProtocol();
 
-                        case 13:
+                        case 14:
 
                           _logger2.default.log('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Connection ID: ' + connectionIdCounter));
 
-                        case 14:
+                        case 15:
                         case 'end':
                           return _context.stop();
                       }
@@ -439,6 +445,7 @@ var DeviceServer = function () {
 
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceServerConfig.deviceAttributeRepository;
+    this._deviceKeyRepository = deviceServerConfig.deviceKeyRepository;
     this._eventPublisher = eventPublisher;
     _settings2.default.coreKeysDir = deviceServerConfig.coreKeysDir || _settings2.default.coreKeysDir;
   }
