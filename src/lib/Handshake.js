@@ -122,7 +122,7 @@ class Handshake {
         deviceID: this._deviceID || null,
       };
 
-      logger.error('Handshake failed: ', error, logInfo);
+      logger.error('Handshake failed: ', error.message, logInfo);
 
       throw error;
     });

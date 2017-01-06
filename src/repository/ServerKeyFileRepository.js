@@ -4,6 +4,7 @@ import FileManager from './FileManager';
 
 class ServerKeyFileRepository {
   _serverKeyFileName: string;
+  _fileManager: FileManager;
 
   constructor(
     serverKeysDir: string,

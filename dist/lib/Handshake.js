@@ -143,7 +143,7 @@ var Handshake = function Handshake(cryptoManager) {
                   deviceID: _this._deviceID || null
                 };
 
-                _logger2.default.error('Handshake failed: ', error, logInfo);
+                _logger2.default.error('Handshake failed: ', error.message, logInfo);
 
                 throw error;
               }));
