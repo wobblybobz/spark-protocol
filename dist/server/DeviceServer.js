@@ -28,6 +28,10 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
+var _CryptoManager = require('../lib/CryptoManager');
+
+var _CryptoManager2 = _interopRequireDefault(_CryptoManager);
+
 var _Handshake = require('../lib/Handshake');
 
 var _Handshake2 = _interopRequireDefault(_Handshake);
@@ -48,10 +52,6 @@ var _Device = require('../clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
 
-var _ICrypto = require('../lib/ICrypto');
-
-var _ICrypto2 = _interopRequireDefault(_ICrypto);
-
 var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
@@ -60,37 +60,30 @@ var _Messages = require('../lib/Messages');
 
 var _Messages2 = _interopRequireDefault(_Messages);
 
-var _settings = require('../settings');
-
-var _settings2 = _interopRequireDefault(_settings);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
-*/
-
-var connectionIdCounter = 0;
-// TODO: Rename ICrypto to CryptoLib
+var connectionIdCounter = 0; /*
+                             *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                             *
+                             *   This program is free software; you can redistribute it and/or
+                             *   modify it under the terms of the GNU Lesser General Public
+                             *   License as published by the Free Software Foundation, either
+                             *   version 3 of the License, or (at your option) any later version.
+                             *
+                             *   This program is distributed in the hope that it will be useful,
+                             *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                             *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                             *   Lesser General Public License for more details.
+                             *
+                             *   You should have received a copy of the GNU Lesser General Public
+                             *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                             *
+                             * 
+                             *
+                             */
 
 var DeviceServer = function () {
-  function DeviceServer(deviceServerConfig, eventPublisher) {
+  function DeviceServer(deviceAttributeRepository, deviceKeyRepository, serverKeyRepository, eventPublisher, deviceServerConfig) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
@@ -111,7 +104,7 @@ var DeviceServer = function () {
                         case 0:
                           // eslint-disable-next-line no-plusplus
                           connectionKey = '_' + connectionIdCounter++;
-                          handshake = new _Handshake2.default(_this._deviceKeyRepository);
+                          handshake = new _Handshake2.default(_this._cryptoManager);
                           device = new _Device2.default(socket, connectionKey, handshake);
 
 
@@ -444,10 +437,9 @@ var DeviceServer = function () {
     };
 
     this._config = deviceServerConfig;
-    this._deviceAttributeRepository = deviceServerConfig.deviceAttributeRepository;
-    this._deviceKeyRepository = deviceServerConfig.deviceKeyRepository;
+    this._deviceAttributeRepository = deviceAttributeRepository;
+    this._cryptoManager = new _CryptoManager2.default(deviceKeyRepository, serverKeyRepository);
     this._eventPublisher = eventPublisher;
-    _settings2.default.coreKeysDir = deviceServerConfig.coreKeysDir || _settings2.default.coreKeysDir;
   }
 
   (0, _createClass3.default)(DeviceServer, [{
@@ -465,20 +457,6 @@ var DeviceServer = function () {
         return _logger2.default.error('something blew up ' + error.message);
       });
 
-      // Create the keys if they don't exist
-      this._config.serverConfigRepository.setupKeys();
-
-      // TODO: These files should come from a repository -- not using fs in the
-      // lib
-      //
-      //  Load our server key
-      //
-      _logger2.default.log('Loading server key from ' + this._config.serverKeyFile);
-      _ICrypto2.default.loadServerKeys(this._config.serverKeyFile, this._config.serverKeyPassFile, this._config.serverKeyPassEnvVar);
-
-      //
-      //  Wait for the keys to be ready, then start accepting connections
-      //
       var serverPort = this._config.port.toString();
       server.listen(serverPort, function () {
         return _logger2.default.log('Server started on port: ' + serverPort);

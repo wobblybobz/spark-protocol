@@ -29,7 +29,7 @@ import moment from 'moment';
 import { Message } from 'h5.coap';
 
 import settings from '../settings';
-import CryptoLib from '../lib/ICrypto';
+import CryptoManager from '../lib/CryptoManager';
 import Messages from '../lib/Messages';
 
 import utilities from '../lib/utilities';
@@ -214,7 +214,7 @@ class Device extends EventEmitter {
     this._decipherStream = decipherStream;
 
     // client will set the counter property on the message
-    this._sendCounter = CryptoLib.getRandomUINT16();
+    this._sendCounter = CryptoManager.getRandomUINT16();
     this.sendMessage('Hello', {}, null);
   };
 

@@ -24,7 +24,7 @@ import EventPublisher from './lib/EventPublisher';
 import DeviceServer from './server/DeviceServer';
 import FileManager from './repository/FileManager';
 import JSONFileManager from './repository/JSONFileManager';
-import ServerConfigFileRepository from './repository/ServerConfigFileRepository';
+import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import Device from './clients/Device';
 
 export {
@@ -34,6 +34,6 @@ export {
   EventPublisher,
   FileManager,
   JSONFileManager,
-  ServerConfigFileRepository,
+  ServerKeyFileRepository,
   Device,
 };
