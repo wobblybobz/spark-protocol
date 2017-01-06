@@ -25,8 +25,8 @@ class CryptoManager {
   }
 
   _createCryptoStream = (
-    sessionKey: Boolean,
-    encrypt: boolean
+    sessionKey: Buffer,
+    encrypt: boolean,
   ): CryptoStream => {
     // The first 16 bytes (MSB first) will be the key,
     // the next 16 bytes (MSB first) will be the initialization vector (IV),
@@ -94,7 +94,7 @@ class CryptoManager {
     return ursa.createPublicKey(publicKeyPem);
   };
 
-  decrypt = async (data: Buffer): Buffer =>
+  decrypt = async (data: Buffer): Promise<Buffer> =>
     (await this._getServerPrivateKey()).decrypt(
       data,
       /* input buffer encoding */undefined,
@@ -143,7 +143,7 @@ class CryptoManager {
     publicKey: Object,
     hash: Buffer,
     signature: Buffer,
-  ): Boolean => {
+  ): boolean => {
     try {
       const decryptedSignature = publicKey.publicDecrypt(signature);
 
