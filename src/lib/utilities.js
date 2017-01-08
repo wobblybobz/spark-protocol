@@ -124,7 +124,7 @@ var utilities = {
 
     get_core_key: function(coreId: string): Object {
       const keyFile = path.join(
-        global.settings && global.settings.coreKeysDir || settings.coreKeysDir,
+        global.settings && global.settings.DEVICE_DIRECTORY || settings.DEVICE_DIRECTORY,
         coreId + '.pub.pem',
       );
       if (!fs.existsSync(keyFile)) {
@@ -136,7 +136,7 @@ var utilities = {
 
   	save_handshake_key: function(coreId: string, pem: string) {
   		const keyFile = path.join(
-        global.settings && global.settings.coreKeysDir || settings.coreKeysDir,
+        global.settings && global.settings.DEVICE_DIRECTORY || settings.DEVICE_DIRECTORY,
         coreId + '_handshake.pub.pem',
       );
   		if (fs.existsSync(keyFile)) {

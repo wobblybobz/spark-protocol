@@ -150,7 +150,7 @@ var utilities = {
   },
 
   get_core_key: function get_core_key(coreId) {
-    var keyFile = _path2.default.join(global.settings && global.settings.coreKeysDir || _settings2.default.coreKeysDir, coreId + '.pub.pem');
+    var keyFile = _path2.default.join(global.settings && global.settings.DEVICE_DIRECTORY || _settings2.default.DEVICE_DIRECTORY, coreId + '.pub.pem');
     if (!_fs2.default.existsSync(keyFile)) {
       throw 'Expected to find public key for core ' + coreId + ' at ' + keyFile;
     }
@@ -159,7 +159,7 @@ var utilities = {
   },
 
   save_handshake_key: function save_handshake_key(coreId, pem) {
-    var keyFile = _path2.default.join(global.settings && global.settings.coreKeysDir || _settings2.default.coreKeysDir, coreId + '_handshake.pub.pem');
+    var keyFile = _path2.default.join(global.settings && global.settings.DEVICE_DIRECTORY || _settings2.default.DEVICE_DIRECTORY, coreId + '_handshake.pub.pem');
     if (_fs2.default.existsSync(keyFile)) {
       return;
     }

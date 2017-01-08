@@ -19,36 +19,34 @@ export default (container: Container): void => {
 
   // Repository
   container.bindClass(
-    DeviceAttributeFileRepository,
+    'DeviceAttributeRepository',
     DeviceAttributeFileRepository,
     ['DEVICE_DIRECTORY'],
   );
   container.bindClass(
-    DeviceKeyFileRepository,
+    'DeviceKeyRepository',
     DeviceKeyFileRepository,
     ['DEVICE_DIRECTORY'],
   );
   container.bindClass(
-    ServerKeyFileRepository,
+    'ServerKeyRepository',
     ServerKeyFileRepository,
     ['SERVER_KEYS_DIRECTORY', 'SERVER_KEY_FILENAME'],
   );
 
   // Utils
-  container.bindClass(EventPublisher, EventPublisher, []);
+  container.bindClass('EventPublisher', EventPublisher, []);
 
   // Device server
   container.bindClass(
-    DeviceServer,
+    'DeviceServer',
     DeviceServer,
     [
-      DeviceAttributeFileRepository,
-      DeviceKeyFileRepository,
-      ServerKeyFileRepository,
-      EventPublisher,
+      'DeviceAttributeRepository',
+      'DeviceKeyRepository',
+      'ServerKeyRepository',
+      'EventPublisher',
       'SERVER_CONFIG'
     ],
   );
-
-  console.log(container.constitute(DeviceServer));
 };

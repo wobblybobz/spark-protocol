@@ -40,15 +40,13 @@ exports.default = function (container) {
   container.bindValue('SERVER_KEYS_DIRECTORY', _settings2.default.SERVER_KEYS_DIRECTORY);
 
   // Repository
-  container.bindClass(_DeviceAttributeFileRepository2.default, _DeviceAttributeFileRepository2.default, ['DEVICE_DIRECTORY']);
-  container.bindClass(_DeviceKeyFileRepository2.default, _DeviceKeyFileRepository2.default, ['DEVICE_DIRECTORY']);
-  container.bindClass(_ServerKeyFileRepository2.default, _ServerKeyFileRepository2.default, ['SERVER_KEYS_DIRECTORY', 'SERVER_KEY_FILENAME']);
+  container.bindClass('DeviceAttributeRepository', _DeviceAttributeFileRepository2.default, ['DEVICE_DIRECTORY']);
+  container.bindClass('DeviceKeyRepository', _DeviceKeyFileRepository2.default, ['DEVICE_DIRECTORY']);
+  container.bindClass('ServerKeyRepository', _ServerKeyFileRepository2.default, ['SERVER_KEYS_DIRECTORY', 'SERVER_KEY_FILENAME']);
 
   // Utils
-  container.bindClass(_EventPublisher2.default, _EventPublisher2.default, []);
+  container.bindClass('EventPublisher', _EventPublisher2.default, []);
 
   // Device server
-  container.bindClass(_DeviceServer2.default, _DeviceServer2.default, [_DeviceAttributeFileRepository2.default, _DeviceKeyFileRepository2.default, _ServerKeyFileRepository2.default, _EventPublisher2.default, 'SERVER_CONFIG']);
-
-  console.log(container.constitute(_DeviceServer2.default));
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'DeviceKeyRepository', 'ServerKeyRepository', 'EventPublisher', 'SERVER_CONFIG']);
 };
