@@ -608,7 +608,6 @@ class Device extends EventEmitter {
   setVariableValue = async (
     name: string,
     data: Buffer,
-    ..._:void[],
   ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {

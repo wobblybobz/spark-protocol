@@ -160,7 +160,7 @@ var DeviceAttributeFileRepository = function DeviceAttributeFileRepository(path)
       }, _callee5, _this);
     }));
 
-    return function () {
+    return function (_x6) {
       return _ref5.apply(this, arguments);
     };
   }();
@@ -208,7 +208,7 @@ var DeviceAttributeFileRepository = function DeviceAttributeFileRepository(path)
       }, _callee6, _this);
     }));
 
-    return function (_x7) {
+    return function (_x8, _x9) {
       return _ref6.apply(this, arguments);
     };
   }();

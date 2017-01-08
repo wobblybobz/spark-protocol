@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "buffer-crc32": "~0.2.3",
+    "constitute": "^1.6.2",
     "h5.buffers": "~0.1.1",
     "h5.coap": "git+https://github.com/morkai/h5.coap.git",
     "hogan.js": "*",

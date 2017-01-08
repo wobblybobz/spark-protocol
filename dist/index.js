@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = undefined;
+exports.settings = exports.defaultBindings = exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = undefined;
 
 var _DeviceAttributeFileRepository = require('./repository/DeviceAttributeFileRepository');
 
@@ -37,6 +37,16 @@ var _Device = require('./clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
 
+var _settings = require('./settings');
+
+var settings = _interopRequireWildcard(_settings);
+
+var _defaultBindings = require('./defaultBindings');
+
+var _defaultBindings2 = _interopRequireDefault(_defaultBindings);
+
+function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /*
@@ -67,3 +77,5 @@ exports.FileManager = _FileManager2.default;
 exports.JSONFileManager = _JSONFileManager2.default;
 exports.ServerKeyFileRepository = _ServerKeyFileRepository2.default;
 exports.Device = _Device2.default;
+exports.defaultBindings = _defaultBindings2.default;
+exports.settings = settings;

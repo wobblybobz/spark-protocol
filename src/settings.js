@@ -19,27 +19,30 @@
 */
 
 
-var path = require('path');
+import path from 'path';
 
-module.exports = {
-    PORT: 5683,
-    HOST: "localhost",
-    environment: 'prn',
+export default {
+  DEVICE_DIRECTORY: path.join(__dirname, './data/deviceKeys'),
+  SERVER_CONFIG: {
+    host: 'localhost',
+    port: 5683,
+  },
+  SERVER_KEYS_DIRECTORY: path.join(__dirname, './data/users'),
+  SERVER_KEY_FILENAME: 'default_key.pem',
 
-    /**
-     * Your server crypto keys!
-     */
-    cryptoSalt: 'aes-128-cbc',
-    serverKeyFile: "default_key.pem",
-    serverKeyPassFile: null,
-    serverKeyPassEnvVar: null,
+  environment: 'prn',
 
-    coreKeysDir: path.join(__dirname, "data"),
+  /**
+   * Your server crypto keys!
+   */
+  cryptoSalt: 'aes-128-cbc',
+  serverKeyPassFile: null,
+  serverKeyPassEnvVar: null,
 
-  	keepaliveTimeout: 15000, //15 seconds
-  	socketTimeout: 31000, //31 seconds
+	keepaliveTimeout: 15000, //15 seconds
+	socketTimeout: 31000, //31 seconds
 
-    verboseProtocol: false,
-    showVerboseDeviceLogs: false,
-    logApiMessages: true,
+  verboseProtocol: false,
+  showVerboseDeviceLogs: false,
+  logApiMessages: true,
 };
