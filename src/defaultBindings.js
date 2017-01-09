@@ -1,7 +1,7 @@
 // @flow
 
 
-import {Container} from 'constitute';
+import { Container } from 'constitute';
 
 import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
 import DeviceKeyFileRepository from './repository/DeviceKeyFileRepository';
@@ -45,8 +45,9 @@ export default (container: Container): void => {
       'DeviceAttributeRepository',
       'DeviceKeyRepository',
       'ServerKeyRepository',
+      'UserRepository',
       'EventPublisher',
-      'SERVER_CONFIG'
+      'SERVER_CONFIG',
     ],
   );
 };

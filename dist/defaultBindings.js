@@ -48,5 +48,5 @@ exports.default = function (container) {
   container.bindClass('EventPublisher', _EventPublisher2.default, []);
 
   // Device server
-  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'DeviceKeyRepository', 'ServerKeyRepository', 'EventPublisher', 'SERVER_CONFIG']);
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'DeviceKeyRepository', 'ServerKeyRepository', 'UserRepository', 'EventPublisher', 'SERVER_CONFIG']);
 };

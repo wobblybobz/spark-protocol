@@ -40,3 +40,39 @@ export type ServerKeyRepository = {
   }>,
   getPrivateKey: () => Promise<?string>,
 };
+
+export type TokenObject = {
+  accessToken: string,
+  accessTokenExpiresAt: Date,
+  refreshToken: string,
+  refreshTokenExpiresAt: Date,
+  scope: string,
+};
+
+export type User = {
+  accessTokens: Array<TokenObject>,
+  claimCodes: Array<string>,
+  created_at: Date,
+  id: string,
+  passwordHash: string,
+  salt: string,
+  username: string,
+};
+
+export type UserCredentials = {
+  username: string,
+  password: string,
+};
+
+export type UserRepository = Repository<User> & {
+  addClaimCode(userID: string, claimCode: string): Promise<User>,
+  createWithCredentials(credentials: UserCredentials): Promise<User>,
+  deleteAccessToken(user: User, accessToken: string): Promise<void>,
+  getByAccessToken(accessToken: string): Promise<?User>,
+  getByClaimCode(claimCode: string): Promise<?User>,
+  getByUsername(username: string): Promise<?User>,
+  isUserNameInUse(username: string): Promise<boolean>,
+  removeClaimCode(userID: string, claimCode: string): Promise<?User>,
+  saveAccessToken(userId: string, tokenObject: TokenObject): Promise<void>,
+  validateLogin(username: string, password: string): Promise<User>,
+};

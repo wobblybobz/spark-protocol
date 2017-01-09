@@ -83,7 +83,7 @@ var connectionIdCounter = 0; /*
                              */
 
 var DeviceServer = function () {
-  function DeviceServer(deviceAttributeRepository, deviceKeyRepository, serverKeyRepository, eventPublisher, deviceServerConfig) {
+  function DeviceServer(deviceAttributeRepository, deviceKeyRepository, serverKeyRepository, userRepository, eventPublisher, deviceServerConfig) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
@@ -257,7 +257,7 @@ var DeviceServer = function () {
 
     this._onDeviceSentMessage = function () {
       var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(message, isPublic, device) {
-        var deviceID, deviceAttributes, eventData, lowerEventName, claimCode, deviceSystemVersion, eatMessage, isEventPublic;
+        var deviceID, deviceAttributes, eventData, lowerEventName, deviceSystemVersion, eatMessage, isEventPublic;
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
@@ -279,38 +279,29 @@ var DeviceServer = function () {
                 lowerEventName = eventData.name.toLowerCase();
 
                 if (!lowerEventName.match('spark/device/claim/code')) {
-                  _context4.next = 11;
+                  _context4.next = 9;
                   break;
                 }
 
-                claimCode = message.getPayload().toString();
+                _context4.next = 9;
+                return _this._onDeviceClaimCodeMessage(message, device);
 
-                if (!(deviceAttributes && deviceAttributes.claimCode !== claimCode)) {
-                  _context4.next = 11;
-                  break;
-                }
-
-                _context4.next = 11;
-                return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
-                  claimCode: claimCode
-                }));
-
-              case 11:
+              case 9:
                 if (!lowerEventName.match('spark/device/system/version')) {
-                  _context4.next = 15;
+                  _context4.next = 13;
                   break;
                 }
 
                 deviceSystemVersion = message.getPayload().toString();
-                _context4.next = 15;
+                _context4.next = 13;
                 return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
                   // TODO should it be this key?:
                   spark_system_version: deviceSystemVersion
                 }));
 
-              case 15:
+              case 13:
                 if (!lowerEventName.match('spark')) {
-                  _context4.next = 22;
+                  _context4.next = 20;
                   break;
                 }
 
@@ -330,7 +321,7 @@ var DeviceServer = function () {
                 }
 
                 if (!eatMessage) {
-                  _context4.next = 22;
+                  _context4.next = 20;
                   break;
                 }
 
@@ -338,11 +329,11 @@ var DeviceServer = function () {
                 device.sendReply('EventAck', message.getId());
                 return _context4.abrupt('return');
 
-              case 22:
-                _context4.next = 24;
+              case 20:
+                _context4.next = 22;
                 return _this._eventPublisher.publish(eventData);
 
-              case 24:
+              case 22:
               case 'end':
                 return _context4.stop();
             }
@@ -355,74 +346,67 @@ var DeviceServer = function () {
       };
     }();
 
-    this._onDeviceSubscribe = function () {
+    this._onDeviceClaimCodeMessage = function () {
       var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(message, device) {
-        var deviceID, messageName, query, isFromMyDevices, deviceAttributes;
+        var claimCode, deviceID, deviceAttributes, claimRequestUser;
         return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
             switch (_context5.prev = _context5.next) {
               case 0:
+                claimCode = message.getPayload().toString();
                 deviceID = device.getID();
-                // uri -> /e/?u    --> firehose for all my devices
-                // uri -> /e/ (deviceid in body)   --> allowed
-                // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-                // uri -> /e/event_name?u    --> all my devices
-                // uri -> /e/event_name?u (deviceid)    --> deviceid?
+                _context5.next = 4;
+                return _this._deviceAttributeRepository.getById(deviceID);
 
-                messageName = message.getUriPath().substr(3);
+              case 4:
+                deviceAttributes = _context5.sent;
 
-                if (messageName) {
-                  _context5.next = 5;
+                if (deviceAttributes) {
+                  _context5.next = 7;
                   break;
                 }
 
-                device.sendReply('SubscribeFail', message.getId());
                 return _context5.abrupt('return');
 
-              case 5:
-                query = message.getUriQuery();
-                isFromMyDevices = query && !!query.match('u');
+              case 7:
+                if (!deviceAttributes.ownerID) {
+                  _context5.next = 9;
+                  break;
+                }
 
+                return _context5.abrupt('return');
 
-                _logger2.default.log('Got subscribe request from device with ID ' + deviceID + ' ' + ('on event: \'' + messageName + '\' ') + ('from my devices only: ' + (isFromMyDevices || false)));
-
-                if (!isFromMyDevices) {
+              case 9:
+                if (!(deviceAttributes.claimCode !== claimCode)) {
                   _context5.next = 19;
                   break;
                 }
 
-                _context5.next = 11;
-                return _this._deviceAttributeRepository.getById(deviceID);
+                _context5.next = 12;
+                return _this._userRepository.getByClaimCode(claimCode);
 
-              case 11:
-                deviceAttributes = _context5.sent;
+              case 12:
+                claimRequestUser = _context5.sent;
 
-                if (!(!deviceAttributes || !deviceAttributes.ownerID)) {
-                  _context5.next = 16;
+                if (claimRequestUser) {
+                  _context5.next = 15;
                   break;
                 }
 
-                // not sure if sending 'ok subscribe reply' right in this case, but with
-                // SubscribeFail the device reconnects to the cloud infinitely
-                device.sendReply('SubscribeAck', message.getId());
-                _logger2.default.log('device with ID ' + deviceID + ' wasn\'t subscribed to' + (messageName + ' MY_DEVICES event: the device is unclaimed.'));
                 return _context5.abrupt('return');
 
-              case 16:
+              case 15:
+                _context5.next = 17;
+                return _this._userRepository.removeClaimCode(claimRequestUser.id, claimCode);
 
-                _this._eventPublisher.subscribe(messageName, device.onCoreEvent, { userID: deviceAttributes.ownerID }, deviceID);
-                _context5.next = 20;
-                break;
+              case 17:
+                _context5.next = 19;
+                return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
+                  claimCode: claimCode,
+                  ownerID: claimRequestUser.id
+                }));
 
               case 19:
-                _this._eventPublisher.subscribe(messageName, device.onCoreEvent,
-                /* filterOptions */{}, deviceID);
-
-              case 20:
-
-                device.sendReply('SubscribeAck', message.getId());
-
-              case 21:
               case 'end':
                 return _context5.stop();
             }
@@ -435,6 +419,83 @@ var DeviceServer = function () {
       };
     }();
 
+    this._onDeviceSubscribe = function () {
+      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(message, device) {
+        var deviceID, messageName, query, isFromMyDevices, deviceAttributes;
+        return _regenerator2.default.wrap(function _callee6$(_context6) {
+          while (1) {
+            switch (_context6.prev = _context6.next) {
+              case 0:
+                deviceID = device.getID();
+                // uri -> /e/?u    --> firehose for all my devices
+                // uri -> /e/ (deviceid in body)   --> allowed
+                // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+                // uri -> /e/event_name?u    --> all my devices
+                // uri -> /e/event_name?u (deviceid)    --> deviceid?
+
+                messageName = message.getUriPath().substr(3);
+
+                if (messageName) {
+                  _context6.next = 5;
+                  break;
+                }
+
+                device.sendReply('SubscribeFail', message.getId());
+                return _context6.abrupt('return');
+
+              case 5:
+                query = message.getUriQuery();
+                isFromMyDevices = query && !!query.match('u');
+
+
+                _logger2.default.log('Got subscribe request from device with ID ' + deviceID + ' ' + ('on event: \'' + messageName + '\' ') + ('from my devices only: ' + (isFromMyDevices || false)));
+
+                if (!isFromMyDevices) {
+                  _context6.next = 18;
+                  break;
+                }
+
+                _context6.next = 11;
+                return _this._deviceAttributeRepository.getById(deviceID);
+
+              case 11:
+                deviceAttributes = _context6.sent;
+
+                if (!(!deviceAttributes || !deviceAttributes.ownerID)) {
+                  _context6.next = 15;
+                  break;
+                }
+
+                device.sendReply('SubscribeFail', message.getId());
+                return _context6.abrupt('return');
+
+              case 15:
+
+                _this._eventPublisher.subscribe(messageName, device.onCoreEvent, { userID: deviceAttributes.ownerID }, deviceID);
+                _context6.next = 19;
+                break;
+
+              case 18:
+                _this._eventPublisher.subscribe(messageName, device.onCoreEvent,
+                /* filterOptions */{}, deviceID);
+
+              case 19:
+
+                device.sendReply('SubscribeAck', message.getId());
+
+              case 20:
+              case 'end':
+                return _context6.stop();
+            }
+          }
+        }, _callee6, _this);
+      }));
+
+      return function (_x8, _x9) {
+        return _ref5.apply(this, arguments);
+      };
+    }();
+
     this.getDevice = function (deviceID) {
       return _this._devicesById.get(deviceID);
     };
@@ -442,6 +503,7 @@ var DeviceServer = function () {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = new _CryptoManager2.default(deviceKeyRepository, serverKeyRepository);
+    this._userRepository = userRepository;
     this._eventPublisher = eventPublisher;
   }
 
@@ -468,12 +530,12 @@ var DeviceServer = function () {
   }, {
     key: 'publishSpecialEvent',
     value: function () {
-      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(eventName, data, deviceID) {
-        return _regenerator2.default.wrap(function _callee6$(_context6) {
+      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(eventName, data, deviceID) {
+        return _regenerator2.default.wrap(function _callee7$(_context7) {
           while (1) {
-            switch (_context6.prev = _context6.next) {
+            switch (_context7.prev = _context7.next) {
               case 0:
-                _context6.next = 2;
+                _context7.next = 2;
                 return this._eventPublisher.publish({
                   data: data,
                   deviceID: deviceID,
@@ -484,14 +546,14 @@ var DeviceServer = function () {
 
               case 2:
               case 'end':
-                return _context6.stop();
+                return _context7.stop();
             }
           }
-        }, _callee6, this);
+        }, _callee7, this);
       }));
 
-      function publishSpecialEvent(_x8, _x9, _x10) {
-        return _ref5.apply(this, arguments);
+      function publishSpecialEvent(_x10, _x11, _x12) {
+        return _ref6.apply(this, arguments);
       }
 
       return publishSpecialEvent;
