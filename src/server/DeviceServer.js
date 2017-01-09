@@ -358,7 +358,13 @@ class DeviceServer {
         await this._deviceAttributeRepository.getById(deviceID);
 
       if (!deviceAttributes || !deviceAttributes.ownerID) {
-        device.sendReply('SubscribeFail', message.getId());
+        // not sure if sending 'ok subscribe reply' right in this case, but with
+        // SubscribeFail the device reconnects to the cloud infinitely
+        device.sendReply('SubscribeAck', message.getId());
+        logger.log(
+          `device with ID ${deviceID} wasn't subscribed to` +
+        `${messageName} MY_DEVICES event: the device is unclaimed.`
+        );
         return;
       }
 
