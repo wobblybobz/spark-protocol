@@ -387,7 +387,7 @@ var DeviceServer = function () {
                 _logger2.default.log('Got subscribe request from device with ID ' + deviceID + ' ' + ('on event: \'' + messageName + '\' ') + ('from my devices only: ' + (isFromMyDevices || false)));
 
                 if (!isFromMyDevices) {
-                  _context5.next = 18;
+                  _context5.next = 19;
                   break;
                 }
 
@@ -398,28 +398,31 @@ var DeviceServer = function () {
                 deviceAttributes = _context5.sent;
 
                 if (!(!deviceAttributes || !deviceAttributes.ownerID)) {
-                  _context5.next = 15;
+                  _context5.next = 16;
                   break;
                 }
 
-                device.sendReply('SubscribeFail', message.getId());
+                // not sure if sending 'ok subscribe reply' right in this case, but with
+                // SubscribeFail the device reconnects to the cloud infinitely
+                device.sendReply('SubscribeAck', message.getId());
+                _logger2.default.log('device with ID ' + deviceID + ' wasn\'t subscribed to' + (messageName + ' MY_DEVICES event: the device is unclaimed.'));
                 return _context5.abrupt('return');
 
-              case 15:
+              case 16:
 
                 _this._eventPublisher.subscribe(messageName, device.onCoreEvent, { userID: deviceAttributes.ownerID }, deviceID);
-                _context5.next = 19;
+                _context5.next = 20;
                 break;
 
-              case 18:
+              case 19:
                 _this._eventPublisher.subscribe(messageName, device.onCoreEvent,
                 /* filterOptions */{}, deviceID);
 
-              case 19:
+              case 20:
 
                 device.sendReply('SubscribeAck', message.getId());
 
-              case 20:
+              case 21:
               case 'end':
                 return _context5.stop();
             }
