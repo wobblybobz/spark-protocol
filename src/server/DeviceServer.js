@@ -332,22 +332,23 @@ class DeviceServer {
     if (deviceAttributes.ownerID) {
       return;
     }
-
     // todo if we figure out how to delete claimCode from the device
     // we could make the flow more clean.
-    if (deviceAttributes.claimCode !== claimCode) {
-      const claimRequestUser = await this._userRepository.getByClaimCode(claimCode);
-      if (!claimRequestUser) {
-        return;
-      }
-
-      await this._userRepository.removeClaimCode(claimRequestUser.id, claimCode);
-      await this._deviceAttributeRepository.update({
-        ...deviceAttributes,
-        claimCode,
-        ownerID: claimRequestUser.id,
-      });
+    if (deviceAttributes.claimCode === claimCode) {
+      return;
     }
+
+    const claimRequestUser = await this._userRepository.getByClaimCode(claimCode);
+    if (!claimRequestUser) {
+      return;
+    }
+
+    await this._userRepository.removeClaimCode(claimRequestUser.id, claimCode);
+    await this._deviceAttributeRepository.update({
+      ...deviceAttributes,
+      claimCode,
+      ownerID: claimRequestUser.id,
+    });
   };
 
   _onDeviceSubscribe = async (
@@ -386,7 +387,7 @@ class DeviceServer {
         device.sendReply('SubscribeAck', message.getId());
         logger.log(
           `device with ID ${deviceID} wasn't subscribed to` +
-        `${messageName} MY_DEVICES event: the device is unclaimed.`,
+          `${messageName} MY_DEVICES event: the device is unclaimed.`,
         );
         return;
       }

@@ -377,36 +377,39 @@ var DeviceServer = function () {
                 return _context5.abrupt('return');
 
               case 9:
-                if (!(deviceAttributes.claimCode !== claimCode)) {
-                  _context5.next = 19;
-                  break;
-                }
-
-                _context5.next = 12;
-                return _this._userRepository.getByClaimCode(claimCode);
-
-              case 12:
-                claimRequestUser = _context5.sent;
-
-                if (claimRequestUser) {
-                  _context5.next = 15;
+                if (!(deviceAttributes.claimCode === claimCode)) {
+                  _context5.next = 11;
                   break;
                 }
 
                 return _context5.abrupt('return');
 
-              case 15:
-                _context5.next = 17;
+              case 11:
+                _context5.next = 13;
+                return _this._userRepository.getByClaimCode(claimCode);
+
+              case 13:
+                claimRequestUser = _context5.sent;
+
+                if (claimRequestUser) {
+                  _context5.next = 16;
+                  break;
+                }
+
+                return _context5.abrupt('return');
+
+              case 16:
+                _context5.next = 18;
                 return _this._userRepository.removeClaimCode(claimRequestUser.id, claimCode);
 
-              case 17:
-                _context5.next = 19;
+              case 18:
+                _context5.next = 20;
                 return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
                   claimCode: claimCode,
                   ownerID: claimRequestUser.id
                 }));
 
-              case 19:
+              case 20:
               case 'end':
                 return _context5.stop();
             }

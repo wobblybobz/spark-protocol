@@ -59,20 +59,8 @@ export type User = {
   username: string,
 };
 
-export type UserCredentials = {
-  username: string,
-  password: string,
-};
-
-export type UserRepository = Repository<User> & {
+export type UserRepository = {
   addClaimCode(userID: string, claimCode: string): Promise<User>,
-  createWithCredentials(credentials: UserCredentials): Promise<User>,
-  deleteAccessToken(user: User, accessToken: string): Promise<void>,
-  getByAccessToken(accessToken: string): Promise<?User>,
   getByClaimCode(claimCode: string): Promise<?User>,
-  getByUsername(username: string): Promise<?User>,
-  isUserNameInUse(username: string): Promise<boolean>,
   removeClaimCode(userID: string, claimCode: string): Promise<?User>,
-  saveAccessToken(userId: string, tokenObject: TokenObject): Promise<void>,
-  validateLogin(username: string, password: string): Promise<User>,
 };
