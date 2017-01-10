@@ -24,6 +24,7 @@ import type {
   DeviceAttributes,
   Repository,
   ServerKeyRepository,
+  UserRepository,
 } from '../types';
 import type EventPublisher from '../lib/EventPublisher';
 import CryptoManager from '../lib/CryptoManager';
@@ -51,6 +52,7 @@ class DeviceServer {
   _config: DeviceServerConfig;
   _cryptoManager: CryptoManager;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
+  _userRepository: UserRepository;
   _devicesById: Map<string, Device> = new Map();
   _eventPublisher: EventPublisher;
 
@@ -58,6 +60,7 @@ class DeviceServer {
     deviceAttributeRepository: Repository<DeviceAttributes>,
     deviceKeyRepository: Repository<string>,
     serverKeyRepository: ServerKeyRepository,
+    userRepository: UserRepository,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
   ) {
@@ -68,6 +71,7 @@ class DeviceServer {
       deviceKeyRepository,
       serverKeyRepository,
     );
+    this._userRepository = userRepository;
     this._eventPublisher = eventPublisher;
   }
 
@@ -256,22 +260,10 @@ class DeviceServer {
       userID: deviceAttributes && deviceAttributes.ownerID,
     };
 
-
     const lowerEventName = eventData.name.toLowerCase();
 
     if (lowerEventName.match('spark/device/claim/code')) {
-      const claimCode = message.getPayload().toString();
-
-      if (deviceAttributes && deviceAttributes.claimCode !== claimCode) {
-        await this._deviceAttributeRepository.update({
-          ...deviceAttributes,
-          claimCode,
-        });
-        // todo figure this out
-        // if (global.api) {
-        //   global.api.linkDevice(deviceID, claimCode, this._particleProductId);
-        // }
-      }
+      await this._onDeviceClaimCodeMessage(message, device);
     }
 
     if (lowerEventName.match('spark/device/system/version')) {
@@ -327,6 +319,38 @@ class DeviceServer {
     await this._eventPublisher.publish(eventData);
   };
 
+  _onDeviceClaimCodeMessage = async (
+    message: Message,
+    device: Device,
+  ): Promise<void> => {
+    const claimCode = message.getPayload().toString();
+    const deviceID = device.getID();
+    const deviceAttributes = await this._deviceAttributeRepository.getById(deviceID);
+    if (!deviceAttributes) {
+      return;
+    }
+    if (deviceAttributes.ownerID) {
+      return;
+    }
+    // todo if we figure out how to delete claimCode from the device
+    // we could make the flow more clean.
+    if (deviceAttributes.claimCode === claimCode) {
+      return;
+    }
+
+    const claimRequestUser = await this._userRepository.getByClaimCode(claimCode);
+    if (!claimRequestUser) {
+      return;
+    }
+
+    await this._userRepository.removeClaimCode(claimRequestUser.id, claimCode);
+    await this._deviceAttributeRepository.update({
+      ...deviceAttributes,
+      claimCode,
+      ownerID: claimRequestUser.id,
+    });
+  };
+
   _onDeviceSubscribe = async (
     message: Message,
     device: Device,
@@ -363,7 +387,7 @@ class DeviceServer {
         device.sendReply('SubscribeAck', message.getId());
         logger.log(
           `device with ID ${deviceID} wasn't subscribed to` +
-        `${messageName} MY_DEVICES event: the device is unclaimed.`
+          `${messageName} MY_DEVICES event: the device is unclaimed.`,
         );
         return;
       }

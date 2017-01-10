@@ -40,3 +40,27 @@ export type ServerKeyRepository = {
   }>,
   getPrivateKey: () => Promise<?string>,
 };
+
+export type TokenObject = {
+  accessToken: string,
+  accessTokenExpiresAt: Date,
+  refreshToken: string,
+  refreshTokenExpiresAt: Date,
+  scope: string,
+};
+
+export type User = {
+  accessTokens: Array<TokenObject>,
+  claimCodes: Array<string>,
+  created_at: Date,
+  id: string,
+  passwordHash: string,
+  salt: string,
+  username: string,
+};
+
+export type UserRepository = {
+  addClaimCode(userID: string, claimCode: string): Promise<User>,
+  getByClaimCode(claimCode: string): Promise<?User>,
+  removeClaimCode(userID: string, claimCode: string): Promise<?User>,
+};
