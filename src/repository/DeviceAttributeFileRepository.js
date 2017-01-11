@@ -39,11 +39,9 @@ class DeviceAttributeFileRepository {
     const allData = this._fileManager.getAllData();
 
     if (userID) {
-      return Promise.resolve(
-        allData.filter(
-          (attributes: DeviceAttributes): boolean =>
-            attributes.ownerID === userID,
-        ),
+      return allData.filter(
+        (attributes: DeviceAttributes): boolean =>
+          attributes.ownerID === userID,
       );
     }
     return allData;
