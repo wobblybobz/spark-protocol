@@ -20,6 +20,7 @@
 
 import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
 import DeviceKeyFileRepository from './repository/DeviceKeyFileRepository';
+import ClaimCodeManager from './lib/ClaimCodeManager';
 import EventPublisher from './lib/EventPublisher';
 import DeviceServer from './server/DeviceServer';
 import FileManager from './repository/FileManager';
@@ -30,6 +31,7 @@ import * as settings from './settings';
 import defaultBindings from './defaultBindings';
 
 export {
+  ClaimCodeManager,
   DeviceAttributeFileRepository,
   DeviceKeyFileRepository,
   DeviceServer,

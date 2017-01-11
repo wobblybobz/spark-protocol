@@ -24,8 +24,8 @@ import type {
   DeviceAttributes,
   Repository,
   ServerKeyRepository,
-  UserRepository,
 } from '../types';
+import type ClaimCodeManager from '../lib/ClaimCodeManager';
 import type EventPublisher from '../lib/EventPublisher';
 import CryptoManager from '../lib/CryptoManager';
 import Handshake from '../lib/Handshake';
@@ -49,10 +49,10 @@ type DeviceServerConfig = {|
 
 let connectionIdCounter = 0;
 class DeviceServer {
+  _claimCodeManager: ClaimCodeManager;
   _config: DeviceServerConfig;
   _cryptoManager: CryptoManager;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
-  _userRepository: UserRepository;
   _devicesById: Map<string, Device> = new Map();
   _eventPublisher: EventPublisher;
 
@@ -60,7 +60,7 @@ class DeviceServer {
     deviceAttributeRepository: Repository<DeviceAttributes>,
     deviceKeyRepository: Repository<string>,
     serverKeyRepository: ServerKeyRepository,
-    userRepository: UserRepository,
+    claimCodeManager: ClaimCodeManager,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
   ) {
@@ -71,7 +71,7 @@ class DeviceServer {
       deviceKeyRepository,
       serverKeyRepository,
     );
-    this._userRepository = userRepository;
+    this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
   }
 
@@ -261,7 +261,6 @@ class DeviceServer {
     };
 
     const lowerEventName = eventData.name.toLowerCase();
-
     if (lowerEventName.match('spark/device/claim/code')) {
       await this._onDeviceClaimCodeMessage(message, device);
     }
@@ -326,29 +325,27 @@ class DeviceServer {
     const claimCode = message.getPayload().toString();
     const deviceID = device.getID();
     const deviceAttributes = await this._deviceAttributeRepository.getById(deviceID);
-    if (!deviceAttributes) {
-      return;
-    }
-    if (deviceAttributes.ownerID) {
-      return;
-    }
-    // todo if we figure out how to delete claimCode from the device
-    // we could make the flow more clean.
-    if (deviceAttributes.claimCode === claimCode) {
+
+    if (
+      !deviceAttributes ||
+      deviceAttributes.ownerID ||
+      deviceAttributes.claimCode === claimCode
+    ) {
       return;
     }
 
-    const claimRequestUser = await this._userRepository.getByClaimCode(claimCode);
-    if (!claimRequestUser) {
+    const claimRequestUserID = this._claimCodeManager.getUserIDByClaimCode(claimCode);
+    if (!claimRequestUserID) {
       return;
     }
 
-    await this._userRepository.removeClaimCode(claimRequestUser.id, claimCode);
     await this._deviceAttributeRepository.update({
       ...deviceAttributes,
       claimCode,
-      ownerID: claimRequestUser.id,
+      ownerID: claimRequestUserID,
     });
+
+    this._claimCodeManager.removeClaimCode(claimCode);
   };
 
   _onDeviceSubscribe = async (
