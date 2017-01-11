@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.settings = exports.defaultBindings = exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = undefined;
+exports.settings = exports.defaultBindings = exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = exports.ClaimCodeManager = undefined;
 
 var _DeviceAttributeFileRepository = require('./repository/DeviceAttributeFileRepository');
 
@@ -12,6 +12,10 @@ var _DeviceAttributeFileRepository2 = _interopRequireDefault(_DeviceAttributeFil
 var _DeviceKeyFileRepository = require('./repository/DeviceKeyFileRepository');
 
 var _DeviceKeyFileRepository2 = _interopRequireDefault(_DeviceKeyFileRepository);
+
+var _ClaimCodeManager = require('./lib/ClaimCodeManager');
+
+var _ClaimCodeManager2 = _interopRequireDefault(_ClaimCodeManager);
 
 var _EventPublisher = require('./lib/EventPublisher');
 
@@ -49,26 +53,7 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
-*	Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*	This program is free software; you can redistribute it and/or
-*	modify it under the terms of the GNU Lesser General Public
-*	License as published by the Free Software Foundation, either
-*	version 3 of the License, or (at your option) any later version.
-*
-*	This program is distributed in the hope that it will be useful,
-*	but WITHOUT ANY WARRANTY; without even the implied warranty of
-*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*	Lesser General Public License for more details.
-*
-*	You should have received a copy of the GNU Lesser General Public
-*	License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-*	 
-*
-*/
-
+exports.ClaimCodeManager = _ClaimCodeManager2.default;
 exports.DeviceAttributeFileRepository = _DeviceAttributeFileRepository2.default;
 exports.DeviceKeyFileRepository = _DeviceKeyFileRepository2.default;
 exports.DeviceServer = _DeviceServer2.default;
@@ -78,4 +63,22 @@ exports.JSONFileManager = _JSONFileManager2.default;
 exports.ServerKeyFileRepository = _ServerKeyFileRepository2.default;
 exports.Device = _Device2.default;
 exports.defaultBindings = _defaultBindings2.default;
-exports.settings = settings;
+exports.settings = settings; /*
+                             *	Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                             *
+                             *	This program is free software; you can redistribute it and/or
+                             *	modify it under the terms of the GNU Lesser General Public
+                             *	License as published by the Free Software Foundation, either
+                             *	version 3 of the License, or (at your option) any later version.
+                             *
+                             *	This program is distributed in the hope that it will be useful,
+                             *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+                             *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                             *	Lesser General Public License for more details.
+                             *
+                             *	You should have received a copy of the GNU Lesser General Public
+                             *	License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                             *
+                             *	 
+                             *
+                             */

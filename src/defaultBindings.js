@@ -1,12 +1,13 @@
 // @flow
 
 
-import {Container} from 'constitute';
+import { Container } from 'constitute';
 
 import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
 import DeviceKeyFileRepository from './repository/DeviceKeyFileRepository';
 import DeviceServer from './server/DeviceServer';
 import EventPublisher from './lib/EventPublisher';
+import ClaimCodeManager from './lib/ClaimCodeManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import settings from './settings';
 
@@ -36,6 +37,7 @@ export default (container: Container): void => {
 
   // Utils
   container.bindClass('EventPublisher', EventPublisher, []);
+  container.bindClass('ClaimCodeManager', ClaimCodeManager, []);
 
   // Device server
   container.bindClass(
@@ -45,8 +47,9 @@ export default (container: Container): void => {
       'DeviceAttributeRepository',
       'DeviceKeyRepository',
       'ServerKeyRepository',
+      'ClaimCodeManager',
       'EventPublisher',
-      'SERVER_CONFIG'
+      'SERVER_CONFIG',
     ],
   );
 };
