@@ -4,10 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _promise = require('babel-runtime/core-js/promise');
-
-var _promise2 = _interopRequireDefault(_promise);
-
 var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
@@ -145,9 +141,9 @@ var DeviceAttributeFileRepository = function DeviceAttributeFileRepository(path)
                 break;
               }
 
-              return _context5.abrupt('return', _promise2.default.resolve(allData.filter(function (attributes) {
+              return _context5.abrupt('return', allData.filter(function (attributes) {
                 return attributes.ownerID === userID;
-              })));
+              }));
 
             case 3:
               return _context5.abrupt('return', allData);
@@ -160,7 +156,7 @@ var DeviceAttributeFileRepository = function DeviceAttributeFileRepository(path)
       }, _callee5, _this);
     }));
 
-    return function (_x6) {
+    return function () {
       return _ref5.apply(this, arguments);
     };
   }();
@@ -208,7 +204,7 @@ var DeviceAttributeFileRepository = function DeviceAttributeFileRepository(path)
       }, _callee6, _this);
     }));
 
-    return function (_x8, _x9) {
+    return function (_x7) {
       return _ref6.apply(this, arguments);
     };
   }();
