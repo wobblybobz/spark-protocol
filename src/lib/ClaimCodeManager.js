@@ -2,46 +2,39 @@
 
 import crypto from 'crypto';
 
-type ClaimCodeObject = {
-  claimCode: string,
-  userID: string,
-}
-
 const CLAIM_CODE_LENGTH = 63;
-const CLAIM_CODE_LIVE_TIME = 5000 * 60; // 5 min
+const CLAIM_CODE_TTL = 5000 * 60; // 5 min
 
 class ClaimCodeManager {
-  _claimCodes: Array<ClaimCodeObject> = [];
+  _userIDByClaimCode: Map<string, string> = new Map();
 
-  addClaimCode = (userID: string): string => {
-    const claimCode = crypto
-      .randomBytes(CLAIM_CODE_LENGTH)
-      .toString('base64')
-      .substring(0, CLAIM_CODE_LENGTH);
+  _generateClaimCode = () => crypto
+    .randomBytes(CLAIM_CODE_LENGTH)
+    .toString('base64')
+    .substring(0, CLAIM_CODE_LENGTH);
 
-    this._claimCodes.push({
-      claimCode, userID,
-    });
+  createClaimCode = (userID: string): string => {
+    let claimCode = this._generateClaimCode();
 
-    setTimeout(() => {
-      this.removeClaimCode(claimCode);
-    }, CLAIM_CODE_LIVE_TIME);
+    while (this._userIDByClaimCode.has(claimCode)) {
+      claimCode = this._generateClaimCode();
+    }
+
+    this._userIDByClaimCode.set(claimCode, userID);
+
+    setTimeout(
+      (): void => this.removeClaimCode(claimCode),
+      CLAIM_CODE_TTL,
+    );
 
     return claimCode;
   };
 
-  removeClaimCode = (claimCode: string) => {
-    this._claimCodes = this._claimCodes.filter(
-      (claimCodeObject: ClaimCodeObject) =>
-      claimCodeObject.claimCode !== claimCode,
-    );
-  };
+  removeClaimCode = (claimCode: string): boolean =>
+    this._userIDByClaimCode.delete(claimCode);
 
   getUserIDByClaimCode = (claimCode: string): ?string =>
-    this._claimCodes.find(
-      (claimCodeObject: ClaimCodeObject) =>
-      claimCodeObject.claimCode === claimCode,
-    ).userID
+    this._userIDByClaimCode.get(claimCode)
 }
 
 export default ClaimCodeManager;

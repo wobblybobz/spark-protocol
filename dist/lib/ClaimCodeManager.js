@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _map = require('babel-runtime/core-js/map');
+
+var _map2 = _interopRequireDefault(_map);
+
 var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
@@ -16,38 +20,40 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var CLAIM_CODE_LENGTH = 63;
 
-var CLAIM_CODE_LIVE_TIME = 5000 * 60; // 5 min
+var CLAIM_CODE_TTL = 5000 * 60; // 5 min
 
 var ClaimCodeManager = function ClaimCodeManager() {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, ClaimCodeManager);
-  this._claimCodes = [];
+  this._userIDByClaimCode = new _map2.default();
 
-  this.addClaimCode = function (userID) {
-    var claimCode = _crypto2.default.randomBytes(CLAIM_CODE_LENGTH).toString('base64').substring(0, CLAIM_CODE_LENGTH);
+  this._generateClaimCode = function () {
+    return _crypto2.default.randomBytes(CLAIM_CODE_LENGTH).toString('base64').substring(0, CLAIM_CODE_LENGTH);
+  };
 
-    _this._claimCodes.push({
-      claimCode: claimCode, userID: userID
-    });
+  this.createClaimCode = function (userID) {
+    var claimCode = _this._generateClaimCode();
+
+    while (_this._userIDByClaimCode.has(claimCode)) {
+      claimCode = _this._generateClaimCode();
+    }
+
+    _this._userIDByClaimCode.set(claimCode, userID);
 
     setTimeout(function () {
-      _this.removeClaimCode(claimCode);
-    }, CLAIM_CODE_LIVE_TIME);
+      return _this.removeClaimCode(claimCode);
+    }, CLAIM_CODE_TTL);
 
     return claimCode;
   };
 
   this.removeClaimCode = function (claimCode) {
-    _this._claimCodes = _this._claimCodes.filter(function (claimCodeObject) {
-      return claimCodeObject.claimCode !== claimCode;
-    });
+    return _this._userIDByClaimCode.delete(claimCode);
   };
 
   this.getUserIDByClaimCode = function (claimCode) {
-    return _this._claimCodes.find(function (claimCodeObject) {
-      return claimCodeObject.claimCode === claimCode;
-    }).userID;
+    return _this._userIDByClaimCode.get(claimCode);
   };
 };
 
