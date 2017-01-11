@@ -62,28 +62,30 @@ var _Messages2 = _interopRequireDefault(_Messages);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var connectionIdCounter = 0; /*
-                             *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                             *
-                             *   This program is free software; you can redistribute it and/or
-                             *   modify it under the terms of the GNU Lesser General Public
-                             *   License as published by the Free Software Foundation, either
-                             *   version 3 of the License, or (at your option) any later version.
-                             *
-                             *   This program is distributed in the hope that it will be useful,
-                             *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                             *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                             *   Lesser General Public License for more details.
-                             *
-                             *   You should have received a copy of the GNU Lesser General Public
-                             *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                             *
-                             * 
-                             *
-                             */
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
+
+var connectionIdCounter = 0;
 
 var DeviceServer = function () {
-  function DeviceServer(deviceAttributeRepository, deviceKeyRepository, serverKeyRepository, userRepository, eventPublisher, deviceServerConfig) {
+  function DeviceServer(deviceAttributeRepository, deviceKeyRepository, serverKeyRepository, claimCodeManager, eventPublisher, deviceServerConfig) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
@@ -348,7 +350,7 @@ var DeviceServer = function () {
 
     this._onDeviceClaimCodeMessage = function () {
       var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(message, device) {
-        var claimCode, deviceID, deviceAttributes, claimRequestUser;
+        var claimCode, deviceID, deviceAttributes, claimRequestUserID;
         return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
             switch (_context5.prev = _context5.next) {
@@ -361,7 +363,7 @@ var DeviceServer = function () {
               case 4:
                 deviceAttributes = _context5.sent;
 
-                if (deviceAttributes) {
+                if (!(!deviceAttributes || deviceAttributes.ownerID || deviceAttributes.claimCode === claimCode)) {
                   _context5.next = 7;
                   break;
                 }
@@ -369,47 +371,27 @@ var DeviceServer = function () {
                 return _context5.abrupt('return');
 
               case 7:
-                if (!deviceAttributes.ownerID) {
-                  _context5.next = 9;
+                claimRequestUserID = _this._claimCodeManager.getUserIDByClaimCode(claimCode);
+
+                if (claimRequestUserID) {
+                  _context5.next = 10;
                   break;
                 }
 
                 return _context5.abrupt('return');
 
-              case 9:
-                if (!(deviceAttributes.claimCode === claimCode)) {
-                  _context5.next = 11;
-                  break;
-                }
-
-                return _context5.abrupt('return');
-
-              case 11:
-                _context5.next = 13;
-                return _this._userRepository.getByClaimCode(claimCode);
-
-              case 13:
-                claimRequestUser = _context5.sent;
-
-                if (claimRequestUser) {
-                  _context5.next = 16;
-                  break;
-                }
-
-                return _context5.abrupt('return');
-
-              case 16:
-                _context5.next = 18;
-                return _this._userRepository.removeClaimCode(claimRequestUser.id, claimCode);
-
-              case 18:
-                _context5.next = 20;
+              case 10:
+                _context5.next = 12;
                 return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
                   claimCode: claimCode,
-                  ownerID: claimRequestUser.id
+                  ownerID: claimRequestUserID
                 }));
 
-              case 20:
+              case 12:
+
+                _this._claimCodeManager.removeClaimCode(claimCode);
+
+              case 13:
               case 'end':
                 return _context5.stop();
             }
@@ -509,7 +491,7 @@ var DeviceServer = function () {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = new _CryptoManager2.default(deviceKeyRepository, serverKeyRepository);
-    this._userRepository = userRepository;
+    this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
   }
 
