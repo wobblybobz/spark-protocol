@@ -118,11 +118,12 @@ function Flasher(client) {
 	this._lastCrc = null;
 	this._protocolVersion = 0;
 	this._missedChunks = new _set2.default();
-	this._fastOtaEnabled = true;
+	this._fastOtaEnabled = false;
 	this._ignoreMissedChunks = false;
 
 	this.startFlashBuffer = function () {
 		var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(buffer) {
+			var address = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '0x0';
 			return _regenerator2.default.wrap(function _callee$(_context) {
 				while (1) {
 					switch (_context.prev = _context.next) {
@@ -142,7 +143,7 @@ function Flasher(client) {
 
 							_this._prepare(buffer);
 							_context.next = 7;
-							return _this._beginUpdate(buffer);
+							return _this._beginUpdate(buffer, address);
 
 						case 7:
 							_context.next = 9;
@@ -178,7 +179,7 @@ function Flasher(client) {
 			}, _callee, _this, [[0, 14]]);
 		}));
 
-		return function (_x) {
+		return function (_x, _x2) {
 			return _ref.apply(this, arguments);
 		};
 	}();
@@ -213,7 +214,7 @@ function Flasher(client) {
 	};
 
 	this._beginUpdate = function () {
-		var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(buffer) {
+		var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(buffer, address) {
 			var maxTries, tryBeginUpdate;
 			return _regenerator2.default.wrap(function _callee3$(_context3) {
 				while (1) {
@@ -240,7 +241,7 @@ function Flasher(client) {
 													// NOTE: this is 6 because it's double the ChunkMissed 3 second delay
 													// The 90 second delay is crazy but try it just in case.
 													delay = maxTries > 0 ? 6 : 90;
-													sentStatus = _this._sendBeginUpdateMessage(buffer);
+													sentStatus = _this._sendBeginUpdateMessage(buffer, address);
 
 													maxTries--;
 
@@ -324,12 +325,12 @@ function Flasher(client) {
 			}, _callee3, _this);
 		}));
 
-		return function (_x2) {
+		return function (_x4, _x5) {
 			return _ref2.apply(this, arguments);
 		};
 	}();
 
-	this._sendBeginUpdateMessage = function (fileBuffer) {
+	this._sendBeginUpdateMessage = function (fileBuffer, address) {
 		//(MDM Proposal) Optional payload to enable fast OTA and file placement:
 		//u8  flags    0x01 - Fast OTA available - when set the server can
 		//  provide fast OTA transfer
@@ -347,7 +348,7 @@ function Flasher(client) {
 		var chunkSize = _this._chunkSize;
 		var fileSize = fileBuffer.length;
 		var destFlag = 0; //TODO: reserved for later
-		var destAddr = 0; //TODO: reserved for later
+		var destAddr = parseInt(address);
 
 		if (_this._fastOtaEnabled) {
 			_logger2.default.log('fast ota enabled! ', _this._getLogInfo());
@@ -360,6 +361,13 @@ function Flasher(client) {
 		bufferBuilder.pushUInt32(fileSize);
 		bufferBuilder.pushUInt8(destFlag);
 		bufferBuilder.pushUInt32(destAddr);
+
+		console.log();
+		console.log();
+		console.log(bufferBuilder.toBuffer());
+		console.log(fileBuffer[0], fileBuffer[1], fileBuffer[2], fileBuffer[3]);
+		console.log();
+		console.log();
 
 		//UpdateBegin — sent by Server to initiate an OTA firmware update
 		return !!_this._client.sendMessage('UpdateBegin', null, bufferBuilder.toBuffer(), _this);
@@ -524,7 +532,7 @@ function Flasher(client) {
 								}, _callee5, _this);
 							}));
 
-							return function (_x3) {
+							return function (_x6) {
 								return _ref6.apply(this, arguments);
 							};
 						}()));
@@ -589,7 +597,7 @@ function Flasher(client) {
 			}, _callee7, _this);
 		}));
 
-		return function () {
+		return function (_x7) {
 			return _ref7.apply(this, arguments);
 		};
 	}();

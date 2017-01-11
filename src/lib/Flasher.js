@@ -58,7 +58,7 @@ class Flasher {
 	//
 	// OTA tweaks
 	//
-	_fastOtaEnabled: boolean = true;
+	_fastOtaEnabled: boolean = false;
 	_ignoreMissedChunks: boolean = false;
 
 	constructor(client: Device) {
@@ -67,6 +67,7 @@ class Flasher {
 
 	startFlashBuffer = async (
 		buffer: Buffer,
+		address: string = '0x0',
 	): Promise<void> => {
     try {
       if (!this._claimConnection()) {
@@ -76,7 +77,7 @@ class Flasher {
   		this._startTime = new Date();
 
   		this._prepare(buffer);
-      await this._beginUpdate(buffer);
+      await this._beginUpdate(buffer, address);
       await Promise.race([
         // Fail after 60 of trying to flash
         new Promise((resolve, reject) => setTimeout(
@@ -122,7 +123,7 @@ class Flasher {
 		return true;
 	};
 
-	_beginUpdate = async (buffer: Buffer): Promise<*> => {
+	_beginUpdate = async (buffer: Buffer, address: string): Promise<*> => {
 		let maxTries = 3;
 
 		const tryBeginUpdate = async () => {
@@ -133,7 +134,7 @@ class Flasher {
       // NOTE: this is 6 because it's double the ChunkMissed 3 second delay
       // The 90 second delay is crazy but try it just in case.
       let delay = maxTries > 0 ? 6 : 90;
-      const sentStatus = this._sendBeginUpdateMessage(buffer);
+      const sentStatus = this._sendBeginUpdateMessage(buffer, address);
       maxTries--;
 
 			// did we fail to send out the UpdateBegin message?
@@ -167,7 +168,7 @@ class Flasher {
 						if (maxTries <= 0) {
 							return;
 						}
-						
+
             tryBeginUpdate();
             resolve();
           },
@@ -193,7 +194,7 @@ class Flasher {
 		await tryBeginUpdate();
 	};
 
-  _sendBeginUpdateMessage = (fileBuffer: Buffer): boolean => {
+  _sendBeginUpdateMessage = (fileBuffer: Buffer, address: string): boolean => {
     //(MDM Proposal) Optional payload to enable fast OTA and file placement:
     //u8  flags    0x01 - Fast OTA available - when set the server can
     //  provide fast OTA transfer
@@ -211,7 +212,7 @@ class Flasher {
     const chunkSize = this._chunkSize;
     const fileSize = fileBuffer.length;
     const destFlag = 0;   //TODO: reserved for later
-    const destAddr = 0;   //TODO: reserved for later
+    const destAddr = parseInt(address);
 
     if (this._fastOtaEnabled) {
       logger.log('fast ota enabled! ', this._getLogInfo());
@@ -224,6 +225,13 @@ class Flasher {
     bufferBuilder.pushUInt32(fileSize);
     bufferBuilder.pushUInt8(destFlag);
     bufferBuilder.pushUInt32(destAddr);
+
+		console.log();
+		console.log();
+		console.log(bufferBuilder.toBuffer());
+		console.log(fileBuffer[0],fileBuffer[1],fileBuffer[2],fileBuffer[3]);
+		console.log();
+		console.log();
 
     //UpdateBegin — sent by Server to initiate an OTA firmware update
     return !!this._client.sendMessage(

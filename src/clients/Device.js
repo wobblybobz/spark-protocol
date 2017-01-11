@@ -114,6 +114,7 @@ class Device extends EventEmitter {
   _sendCounter: number = 0;
   _sendToken: number = 0;
   _socket: Socket;
+  _systemInformation: ?Object;
   _tokens: {[key: string]: string} = {};
   _handshake: Handshake;
 
@@ -408,6 +409,8 @@ class Device extends EventEmitter {
       return -1;
     }
 
+    console.log('MMMMMM', message);
+
     this._cipherStream.write(message);
 
     return token || 0;
@@ -696,7 +699,10 @@ class Device extends EventEmitter {
     );
   };
 
-  flash = async (binary: ?Buffer): Promise<string> => {
+  flash = async (
+    binary: ?Buffer,
+    address: string = '0x0',
+  ): Promise<string> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
@@ -711,7 +717,7 @@ class Device extends EventEmitter {
       throw new Error('Update failed - File was too small!');
     }
 
-    if (binary && binary.length > MAX_BINARY_SIZE) {
+    if (binary && binary.length > MAX_BINARY_SIZE && address === '0x0') {
       logger.log(
         `flash failed! - file is too BIG ${binary.length}`,
         { deviceID: this._id },
@@ -729,7 +735,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
-      await flasher.startFlashBuffer(binary);
+      await flasher.startFlashBuffer(binary, address);
 
       logger.log(
         'flash device finished! - sending api event',
@@ -923,7 +929,7 @@ class Device extends EventEmitter {
 
       //got a description, is it any good?
       const data = systemMessage.getPayload();
-      const firstFunctionState = JSON.parse(data.toString());
+      const systemInformation = JSON.parse(data.toString());
 
       // In the newer firmware the application data comes in a later message.
       // We run a race to see if the function state comes in the first response.
@@ -935,23 +941,27 @@ class Device extends EventEmitter {
             return JSON.parse(data.toString());
           }),
         new Promise((resolve, reject) => {
-          if (firstFunctionState.f && firstFunctionState.v) {
-            resolve(firstFunctionState);
+          if (systemInformation.f && systemInformation.v) {
+            resolve(systemInformation);
           }
         }),
-      ])
+      ]);
 
       if (functionState && functionState.v) {
         //'v':{'temperature':2}
         functionState.v = Messages.translateIntTypes(functionState.v);
       }
 
+      this._systemInformation = systemInformation;
       this._deviceFunctionState = functionState;
     } catch (error) {
       throw error;
     }
   };
 
+  getSystemInformation = (): ?Object => {
+    return this._systemInformation;
+  };
 
   //-------------
   // Core Events / Spark.publish / Spark.subscribe
