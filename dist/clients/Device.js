@@ -533,7 +533,7 @@ var Device = function (_EventEmitter) {
         }, _callee4, _this2);
       }));
 
-      return function (_x, _x2, _x3, _x4) {
+      return function (_x, _x2, _x3) {
         return _ref4.apply(this, arguments);
       };
     }();
@@ -671,7 +671,7 @@ var Device = function (_EventEmitter) {
         }, _callee6, _this2);
       }));
 
-      return function (_x5) {
+      return function (_x4) {
         return _ref6.apply(this, arguments);
       };
     }();
@@ -716,7 +716,7 @@ var Device = function (_EventEmitter) {
         }, _callee7, _this2);
       }));
 
-      return function (_x6, _x7) {
+      return function (_x5, _x6) {
         return _ref7.apply(this, arguments);
       };
     }();
@@ -786,7 +786,7 @@ var Device = function (_EventEmitter) {
         }, _callee8, _this2);
       }));
 
-      return function (_x8, _x9) {
+      return function (_x7, _x8) {
         return _ref8.apply(this, arguments);
       };
     }();
@@ -823,7 +823,7 @@ var Device = function (_EventEmitter) {
         }, _callee9, _this2);
       }));
 
-      return function (_x10) {
+      return function (_x9) {
         return _ref9.apply(this, arguments);
       };
     }();
@@ -881,7 +881,7 @@ var Device = function (_EventEmitter) {
         }, _callee10, _this2, [[4, 14]]);
       }));
 
-      return function (_x11, _x12) {
+      return function (_x10) {
         return _ref10.apply(this, arguments);
       };
     }();
@@ -1013,7 +1013,7 @@ var Device = function (_EventEmitter) {
         }, _callee11, _this2);
       }));
 
-      return function (_x14, _x15) {
+      return function (_x12, _x13) {
         return _ref11.apply(this, arguments);
       };
     }();
@@ -1133,10 +1133,8 @@ var Device = function (_EventEmitter) {
 
       var rawFunction = function rawFunction(message) {
         try {
-          message.setMaxAge(ttl >= 0 ? ttl : 60);
-          if (publishedAt) {
-            message.setTimestamp((0, _moment2.default)(publishedAt).toDate());
-          }
+          message.setMaxAge(ttl);
+          message.setTimestamp((0, _moment2.default)(publishedAt).toDate());
         } catch (error) {
           _logger2.default.error('onCoreHeard - ' + error.message);
         }

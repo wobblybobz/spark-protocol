@@ -27,6 +27,7 @@ import nullthrows from 'nullthrows';
 import uuid from 'uuid';
 
 const ALL_EVENTS = '*all*';
+const DEFAULT_EVENT_TTL = 60;
 
 type FilterOptions = {
   deviceID?: string,
@@ -68,6 +69,7 @@ class EventPublisher extends EventEmitter {
   ): void => {
     const event: Event = {
       ...eventData,
+      ttl: eventData.ttl || DEFAULT_EVENT_TTL,
       publishedAt: moment().toISOString(),
     };
 

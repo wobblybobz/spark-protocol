@@ -71,6 +71,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 */
 
 var ALL_EVENTS = '*all*';
+var DEFAULT_EVENT_TTL = 60;
 
 var EventPublisher = function (_EventEmitter) {
   (0, _inherits3.default)(EventPublisher, _EventEmitter);
@@ -103,6 +104,7 @@ var EventPublisher = function (_EventEmitter) {
       };
     }, _this.publish = function (eventData) {
       var event = (0, _extends3.default)({}, eventData, {
+        ttl: eventData.ttl || DEFAULT_EVENT_TTL,
         publishedAt: (0, _moment2.default)().toISOString()
       });
 

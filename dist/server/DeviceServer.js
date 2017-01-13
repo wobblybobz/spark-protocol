@@ -299,7 +299,7 @@ var DeviceServer = function () {
                   deviceID: deviceID,
                   isPublic: isPublic,
                   name: message.getUriPath().substr(3),
-                  ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
+                  ttl: message.getMaxAge() > 0 && message.getMaxAge(),
                   userID: deviceAttributes && deviceAttributes.ownerID
                 };
                 eventName = eventData.name.toLowerCase();
@@ -600,8 +600,7 @@ var DeviceServer = function () {
                   data: data,
                   deviceID: deviceID,
                   isPublic: false,
-                  name: eventName,
-                  ttl: 60
+                  name: eventName
                 });
 
               case 2:

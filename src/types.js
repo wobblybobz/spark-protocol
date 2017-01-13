@@ -13,6 +13,7 @@ export type DeviceAttributes = {
 };
 
 export type Event = EventData & {
+  ttl: number,
   publishedAt: Date,
 };
 
@@ -21,7 +22,7 @@ export type EventData = {
   deviceID?: ?string,
   isPublic: boolean,
   name: string,
-  ttl: number,
+  ttl?: number,
   userID?: ?string,
 };
 
