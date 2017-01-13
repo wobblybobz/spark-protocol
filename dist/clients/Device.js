@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.DEVICE_MESSAGE_EVENTS_NAMES = exports.DEVICE_EVENT_NAMES = undefined;
+exports.DEVICE_MESSAGE_EVENTS_NAMES = exports.SYSTEM_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = undefined;
 
 var _promise = require('babel-runtime/core-js/promise');
 
@@ -103,10 +103,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * How high do our counters go before we wrap around to 0?
  * (CoAP maxes out at a 16 bit int)
  */
-var COUNTER_MAX = 65536;
-/**
- * How big can our tokens be in CoAP messages?
- */
 /*
 *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 *
@@ -127,6 +123,10 @@ var COUNTER_MAX = 65536;
 *
 */
 
+var COUNTER_MAX = 65536;
+/**
+ * How big can our tokens be in CoAP messages?
+ */
 var TOKEN_COUNTER_MAX = 256;
 var KEEP_ALIVE_TIMEOUT = _settings2.default.keepaliveTimeout;
 var SOCKET_TIMEOUT = _settings2.default.socketTimeout;
@@ -141,7 +141,22 @@ var DEVICE_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = {
   READY: 'ready'
 };
 
-// this constants should be consistent with message names in
+var SYSTEM_EVENT_NAMES = exports.SYSTEM_EVENT_NAMES = {
+  CLAIM_CODE: 'spark/device/claim/code',
+  FLASH_STATUS: 'spark/flash/status',
+  GET_IP: 'spark/device/ip',
+  GET_NAME: 'spark/device/name',
+  GET_RANDOM_BUFFER: 'spark/device/random',
+  IDENTITY: 'spark/device/ident/0',
+  LAST_RESET: 'spark/device/last_reset', // This should just have a friendly string in its payload.
+  MAX_BINARY: 'spark/hardware/max_binary',
+  OTA_CHUNK_SIZE: 'spark/hardware/ota_chunk_size',
+  RESET: 'spark/device/reset', // send this to reset passing "safe mode"/"dfu"/"reboot"
+  SAFE_MODE: 'spark/device/safemode',
+  SPARK_SUBSYSTEM: 'spark/cc3000-patch-version'
+};
+
+// These constants should be consistent with message names in
 // MessageSpecifications.js
 var DEVICE_MESSAGE_EVENTS_NAMES = exports.DEVICE_MESSAGE_EVENTS_NAMES = {
   GET_TIME: 'GetTime',
@@ -445,8 +460,6 @@ var Device = function (_EventEmitter) {
         _logger2.default.error('Client - sendMessage before READY', { deviceID: _this._id, messageName: messageName });
         return -1;
       }
-
-      console.log('MMMMMM', message);
 
       _this._cipherStream.write(message);
 
@@ -1128,7 +1141,8 @@ var Device = function (_EventEmitter) {
         return message;
       };
 
-      var messageName = isPublic ? 'PublicEvent' : 'PrivateEvent';
+      var messageName = isPublic ? DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT : DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT;
+
       // const userID = (this._userId || '').toLowerCase() + '/';
       // name = name ? name.toString() : name;
       // if (name && name.indexOf && (name.indexOf(userID)===0)) {
@@ -1138,7 +1152,7 @@ var Device = function (_EventEmitter) {
       _this.sendMessage(messageName, {
         _raw: rawFunction,
         event_name: name.toString()
-      }, data && data.toString());
+      }, data && new Buffer(data) || null);
     };
 
     _this._hasFunctionState = function () {
@@ -1341,9 +1355,6 @@ var Device = function (_EventEmitter) {
 
   // TODO rework and figure out how to implement subscription with `MY_DEVICES`
   // right way
-
-
-  // eslint-disable-next-line no-confusing-arrow
 
 
   // eslint-disable-next-line no-confusing-arrow

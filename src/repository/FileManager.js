@@ -16,7 +16,7 @@ class FileManager {
     }
   }
 
-  createFile(fileName: string, data: string): void {
+  createFile(fileName: string, data: string | Buffer): void {
     if (fs.existsSync(path.join(this._path, fileName))) {
       return;
     }
@@ -62,7 +62,7 @@ class FileManager {
     return fs.readFileSync(filePath);
   }
 
-  writeFile(fileName: string, data: string): void {
+  writeFile(fileName: string, data: string | Buffer): void {
 		fs.writeFileSync(
       path.join(this._path, fileName),
       data,

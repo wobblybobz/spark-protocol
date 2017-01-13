@@ -43,8 +43,44 @@ type HoganTemplate = {
   subs: Object,
 };
 
+export type MessageType =
+  'Hello' |
+  'KeyChange' |
+  'UpdateBegin' |
+  'UpdateAbort' |
+  'Chunk' |
+  'ChunkMissed' |
+  'UpdateDone' |
+  'FunctionCall' |
+  'VariableRequest' |
+  'PrivateEvent' |
+  'PublicEvent' |
+  'Subscribe' |
+  'Describe' |
+  'GetTime' |
+  'RaiseYourHand' |
+  'EventAck' |
+  'EventSlowdown' |
+  'SubscribeAck' |
+  'SubscribeFail' |
+  'GetTimeReturn' |
+  'RaiseYourHandReturn' |
+  'ChunkMissedAck' |
+  'DescribeReturn' |
+  'KeyChanged' |
+  'UpdateReady' |
+  'ChunkReceived' |
+  'ChunkReceivedError' |
+  'FunctionReturn' |
+  'FunctionReturnError' |
+  'VariableValue' |
+  'VariableValueError' |
+  'Ping' |
+  'PingAck' |
+  'SocketPing';
+
 // TODO: Check firmware and make sure everything is mapped here
-const MessageSpecifications: Array<[string, MessageSpecificationType]> = [
+const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
     [
       'Hello',
       {
@@ -69,6 +105,13 @@ const MessageSpecifications: Array<[string, MessageSpecificationType]> = [
         Response: 'UpdateReady',
         type: Message.Type.CON,
         uri: 'u',
+      }
+    ],
+    [
+      'UpdateAbort',
+      {
+        code: Message.Code.BAD_REQUEST,
+        type: Message.Type.NON,
       }
     ],
     [

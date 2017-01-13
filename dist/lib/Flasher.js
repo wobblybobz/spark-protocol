@@ -12,6 +12,14 @@ var _from = require('babel-runtime/core-js/array/from');
 
 var _from2 = _interopRequireDefault(_from);
 
+var _parseInt = require('babel-runtime/core-js/number/parse-int');
+
+var _parseInt2 = _interopRequireDefault(_parseInt);
+
+var _isNan = require('babel-runtime/core-js/number/is-nan');
+
+var _isNan2 = _interopRequireDefault(_isNan);
+
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
@@ -52,6 +60,10 @@ var _Device = require('../clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
 
+var _ProtocolErrors = require('./ProtocolErrors');
+
+var _ProtocolErrors2 = _interopRequireDefault(_ProtocolErrors);
+
 var _h = require('h5.buffers');
 
 var _h2 = _interopRequireDefault(_h);
@@ -80,26 +92,27 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 //UpdateDone — sent by Server to indicate all firmware chunks have been sent
 //
 
-var CHUNK_SIZE = 256; /*
-                      *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                      *
-                      *   This program is free software; you can redistribute it and/or
-                      *   modify it under the terms of the GNU Lesser General Public
-                      *   License as published by the Free Software Foundation, either
-                      *   version 3 of the License, or (at your option) any later version.
-                      *
-                      *   This program is distributed in the hope that it will be useful,
-                      *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                      *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                      *   Lesser General Public License for more details.
-                      *
-                      *   You should have received a copy of the GNU Lesser General Public
-                      *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                      *
-                      * 
-                      *
-                      */
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
 
+var CHUNK_SIZE = 512;
 var MAX_CHUNK_SIZE = 594;
 var MAX_MISSED_CHUNKS = 10;
 
@@ -266,6 +279,8 @@ function Flasher(client) {
 															failReason = _Messages2.default.fromBinary(message.getPayload(), 'byte');
 														}
 
+														failReason = !(0, _isNan2.default)(failReason) ? _ProtocolErrors2.default.get((0, _parseInt2.default)(failReason)) || failReason : failReason;
+
 														throw new Error('aborted ' + failReason);
 													}),
 													// Try to update multiple times
@@ -347,7 +362,8 @@ function Flasher(client) {
 		var flags = 0; //fast ota available
 		var chunkSize = _this._chunkSize;
 		var fileSize = fileBuffer.length;
-		var destFlag = 0; //TODO: reserved for later
+		//TODO: This should be a parameter https://github.com/spark/firmware/blob/develop/communication/src/file_transfer.h#L28-L32
+		var destFlag = 0;
 		var destAddr = parseInt(address);
 
 		if (_this._fastOtaEnabled) {
@@ -362,19 +378,12 @@ function Flasher(client) {
 		bufferBuilder.pushUInt8(destFlag);
 		bufferBuilder.pushUInt32(destAddr);
 
-		console.log();
-		console.log();
-		console.log(bufferBuilder.toBuffer());
-		console.log(fileBuffer[0], fileBuffer[1], fileBuffer[2], fileBuffer[3]);
-		console.log();
-		console.log();
-
 		//UpdateBegin — sent by Server to initiate an OTA firmware update
 		return !!_this._client.sendMessage('UpdateBegin', null, bufferBuilder.toBuffer(), _this);
 	};
 
 	this._sendFile = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
-		var canUseFastOTA, message, counter;
+		var canUseFastOTA, messageToken, message, counter;
 		return _regenerator2.default.wrap(function _callee4$(_context4) {
 			while (1) {
 				switch (_context4.prev = _context4.next) {
@@ -405,9 +414,9 @@ function Flasher(client) {
 							break;
 						}
 
-						_this._sendChunk(_this._chunkIndex);
-						_this._readNextChunk();
+						messageToken = _this._sendChunk(_this._chunkIndex);
 
+						_this._readNextChunk();
 						// We don't need to wait for the response if using FastOTA.
 
 						if (!canUseFastOTA) {
@@ -419,7 +428,7 @@ function Flasher(client) {
 
 					case 10:
 						_context4.next = 12;
-						return _this._client.listenFor('ChunkReceived', null, null);
+						return _this._client.listenFor('ChunkReceived', null, messageToken);
 
 					case 12:
 						message = _context4.sent;
@@ -488,7 +497,7 @@ function Flasher(client) {
 						_context6.next = 5;
 						return _promise2.default.all(missedChunks.map(function () {
 							var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(chunkIndex) {
-								var offset, message;
+								var offset, messageToken, message;
 								return _regenerator2.default.wrap(function _callee5$(_context5) {
 									while (1) {
 										switch (_context5.prev = _context5.next) {
@@ -499,7 +508,7 @@ function Flasher(client) {
 												_this._chunkIndex = chunkIndex;
 
 												_this._readNextChunk();
-												_this._sendChunk(chunkIndex);
+												messageToken = _this._sendChunk(chunkIndex);
 
 												// We don't need to wait for the response if using FastOTA.
 
@@ -512,7 +521,7 @@ function Flasher(client) {
 
 											case 7:
 												_context5.next = 9;
-												return _this._client.listenFor('ChunkReceived', null, null);
+												return _this._client.listenFor('ChunkReceived', null, messageToken);
 
 											case 9:
 												message = _context5.sent;
@@ -565,50 +574,33 @@ function Flasher(client) {
 	};
 
 	this._sendChunk = function () {
-		var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {
-			var chunkIndex = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
-			var encodedCrc, writeCoapUri;
-			return _regenerator2.default.wrap(function _callee7$(_context7) {
-				while (1) {
-					switch (_context7.prev = _context7.next) {
-						case 0:
-							encodedCrc = _Messages2.default.toBinary((0, _nullthrows2.default)(_this._lastCrc), 'crc');
+		var chunkIndex = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
-							writeCoapUri = function writeCoapUri(message) {
-								message.addOption(new _Option2.default(_h3.Message.Option.URI_PATH, new Buffer('c')));
-								message.addOption(new _Option2.default(_h3.Message.Option.URI_QUERY, encodedCrc));
-								if (_this._fastOtaEnabled && _this._protocolVersion > 0) {
-									var indexBinary = _Messages2.default.toBinary(chunkIndex, 'uint16');
-									message.addOption(new _Option2.default(_h3.Message.Option.URI_QUERY, indexBinary));
-								}
-								return message;
-							};
+		var encodedCrc = _Messages2.default.toBinary((0, _nullthrows2.default)(_this._lastCrc), 'crc');
 
-							_this._client.sendMessage('Chunk', {
-								crc: encodedCrc,
-								_writeCoapUri: writeCoapUri
-							}, _this._chunk, _this);
-
-						case 3:
-						case 'end':
-							return _context7.stop();
-					}
-				}
-			}, _callee7, _this);
-		}));
-
-		return function (_x7) {
-			return _ref7.apply(this, arguments);
+		var writeCoapUri = function writeCoapUri(message) {
+			message.addOption(new _Option2.default(_h3.Message.Option.URI_PATH, new Buffer('c')));
+			message.addOption(new _Option2.default(_h3.Message.Option.URI_QUERY, encodedCrc));
+			if (_this._fastOtaEnabled && _this._protocolVersion > 0) {
+				var indexBinary = _Messages2.default.toBinary(chunkIndex, 'uint16');
+				message.addOption(new _Option2.default(_h3.Message.Option.URI_QUERY, indexBinary));
+			}
+			return message;
 		};
-	}();
 
-	this._onAllChunksDone = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8() {
-		return _regenerator2.default.wrap(function _callee8$(_context8) {
+		return _this._client.sendMessage('Chunk', {
+			crc: encodedCrc,
+			_writeCoapUri: writeCoapUri
+		}, _this._chunk, _this);
+	};
+
+	this._onAllChunksDone = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {
+		return _regenerator2.default.wrap(function _callee7$(_context7) {
 			while (1) {
-				switch (_context8.prev = _context8.next) {
+				switch (_context7.prev = _context7.next) {
 					case 0:
 						if (_this._client.sendMessage('UpdateDone', null, null, _this)) {
-							_context8.next = 2;
+							_context7.next = 2;
 							break;
 						}
 
@@ -616,10 +608,10 @@ function Flasher(client) {
 
 					case 2:
 					case 'end':
-						return _context8.stop();
+						return _context7.stop();
 				}
 			}
-		}, _callee8, _this);
+		}, _callee7, _this);
 	}));
 
 	this._cleanup = function () {
@@ -638,32 +630,32 @@ function Flasher(client) {
 		}
 	};
 
-	this._waitForMissedChunks = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9() {
-		return _regenerator2.default.wrap(function _callee9$(_context9) {
+	this._waitForMissedChunks = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8() {
+		return _regenerator2.default.wrap(function _callee8$(_context8) {
 			while (1) {
-				switch (_context9.prev = _context9.next) {
+				switch (_context8.prev = _context8.next) {
 					case 0:
 						if (!(_this._protocolVersion <= 0)) {
-							_context9.next = 2;
+							_context8.next = 2;
 							break;
 						}
 
-						return _context9.abrupt('return');
+						return _context8.abrupt('return');
 
 					case 2:
-						return _context9.abrupt('return', new _promise2.default(function (resolve, reject) {
+						return _context8.abrupt('return', new _promise2.default(function (resolve, reject) {
 							return setTimeout(function () {
-								console.log('finished waiting');
+								_logger2.default.log('finished waiting');
 								resolve();
 							}, 3 * 1000);
 						}));
 
 					case 3:
 					case 'end':
-						return _context9.stop();
+						return _context8.stop();
 				}
 			}
-		}, _callee9, _this);
+		}, _callee8, _this);
 	}));
 
 	this._getLogInfo = function () {

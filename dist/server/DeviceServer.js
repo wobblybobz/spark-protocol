@@ -140,15 +140,15 @@ var DeviceServer = function () {
                           });
 
                           device.on(_Device.DEVICE_EVENT_NAMES.FLASH_STARTED, function () {
-                            return _this.publishSpecialEvent('spark/flash/status', 'started', device.getID());
+                            return _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'started', device.getID());
                           });
 
                           device.on(_Device.DEVICE_EVENT_NAMES.FLASH_SUCCESS, function () {
-                            return _this.publishSpecialEvent('spark/flash/status', 'success', device.getID());
+                            return _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'success', device.getID());
                           });
 
                           device.on(_Device.DEVICE_EVENT_NAMES.FLASH_FAILED, function () {
-                            return _this.publishSpecialEvent('spark/flash/status', 'failed', device.getID());
+                            return _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'failed', device.getID());
                           });
 
                           _context.next = 14;
@@ -197,7 +197,7 @@ var DeviceServer = function () {
         _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
         _this.publishSpecialEvent('particle/status', 'offline', deviceID);
-        _logger2.default.log('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + connectionKey);
+        _logger2.default.log('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + ('' + connectionKey));
       }
     };
 
@@ -259,7 +259,7 @@ var DeviceServer = function () {
 
     this._onDeviceSentMessage = function () {
       var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(message, isPublic, device) {
-        var deviceID, deviceAttributes, eventData, lowerEventName, deviceSystemVersion, eatMessage, isEventPublic;
+        var deviceID, deviceAttributes, eventData, eventName, deviceSystemVersion, token, systemMessage;
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
@@ -278,64 +278,91 @@ var DeviceServer = function () {
                   ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
                   userID: deviceAttributes && deviceAttributes.ownerID
                 };
-                lowerEventName = eventData.name.toLowerCase();
+                eventName = eventData.name.toLowerCase();
 
-                if (!lowerEventName.match('spark/device/claim/code')) {
-                  _context4.next = 9;
-                  break;
-                }
+                // TODO: I don't actually see this event anywhere in the firmware
 
-                _context4.next = 9;
-                return _this._onDeviceClaimCodeMessage(message, device);
-
-              case 9:
-                if (!lowerEventName.match('spark/device/system/version')) {
-                  _context4.next = 13;
+                if (!eventName.match('spark/device/system/version')) {
+                  _context4.next = 10;
                   break;
                 }
 
                 deviceSystemVersion = message.getPayload().toString();
-                _context4.next = 13;
+                _context4.next = 10;
                 return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
                   // TODO should it be this key?:
                   spark_system_version: deviceSystemVersion
                 }));
 
+              case 10:
+                if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
+                  _context4.next = 13;
+                  break;
+                }
+
+                _context4.next = 13;
+                return _this._onDeviceClaimCodeMessage(message, device);
+
               case 13:
-                if (!lowerEventName.match('spark')) {
-                  _context4.next = 20;
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_IP)) {}
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_NAME)) {}
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {}
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.IDENTITY)) {
+                  // TODO - https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
+                }
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.LAST_RESET)) {
+                  // This should be sent to the stream in DeviceServer
+                }
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.MAX_BINARY)) {}
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {}
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.RESET)) {}
+
+                if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
+                  _context4.next = 26;
                   break;
                 }
 
-                // allow some kinds of message through.
-                eatMessage = true;
+                token = device.sendMessage('Describe');
+                _context4.next = 25;
+                return device.listenFor('DescribeReturn', null, token);
 
-                // if we do let these through, make them private.
+              case 25:
+                systemMessage = _context4.sent;
 
-                isEventPublic = false;
+              case 26:
 
-                // TODO: (old code todo)
-                // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {}
+                // todo
+                // get patch version from payload
+                // compare with version on disc
+                // if device version is old, do OTA update with patch
 
-                if (lowerEventName === 'spark/cc3000-patch-version') {
-                  // set_cc3000_version(this._id, obj.data);
-                  // eat_message = false;
-                }
 
-                if (!eatMessage) {
-                  _context4.next = 20;
+                // Any "spark" event should have been handled by now
+
+                if (!eventName.startsWith('spark')) {
+                  _context4.next = 30;
                   break;
                 }
 
-                // short-circuit
+                // TODO: there are only a few types of messages that shouldn't be streamed
+                // so only do this in edge cases
                 device.sendReply('EventAck', message.getId());
                 return _context4.abrupt('return');
 
-              case 20:
-                _context4.next = 22;
+              case 30:
+                _context4.next = 32;
                 return _this._eventPublisher.publish(eventData);
 
-              case 22:
+              case 32:
               case 'end':
                 return _context4.stop();
             }

@@ -22,6 +22,7 @@ import type { Socket } from 'net';
 import type { Duplex } from 'stream';
 import type { Event } from '../types';
 import type Handshake from '../lib/Handshake';
+import type { MessageType } from '../lib/MessageSpecifications';
 
 import EventEmitter from 'events';
 import moment from 'moment';
@@ -84,7 +85,22 @@ export const DEVICE_EVENT_NAMES = {
   READY: 'ready',
 };
 
-// this constants should be consistent with message names in
+export const SYSTEM_EVENT_NAMES = {
+  CLAIM_CODE: 'spark/device/claim/code',
+  FLASH_STATUS: 'spark/flash/status',
+  GET_IP: 'spark/device/ip',
+  GET_NAME: 'spark/device/name',
+  GET_RANDOM_BUFFER: 'spark/device/random',
+  IDENTITY: 'spark/device/ident/0',
+  LAST_RESET: 'spark/device/last_reset', // This should just have a friendly string in its payload.
+  MAX_BINARY: 'spark/hardware/max_binary',
+  OTA_CHUNK_SIZE: 'spark/hardware/ota_chunk_size',
+  RESET: 'spark/device/reset',  // send this to reset passing "safe mode"/"dfu"/"reboot"
+  SAFE_MODE: 'spark/device/safemode',
+  SPARK_SUBSYSTEM: 'spark/cc3000-patch-version',
+};
+
+// These constants should be consistent with message names in
 // MessageSpecifications.js
 export const DEVICE_MESSAGE_EVENTS_NAMES = {
   GET_TIME: 'GetTime',
@@ -115,7 +131,7 @@ class Device extends EventEmitter {
   _sendToken: number = 0;
   _socket: Socket;
   _systemInformation: ?Object;
-  _tokens: {[key: string]: string} = {};
+  _tokens: {[key: string]: MessageType} = {};
   _handshake: Handshake;
 
   constructor(
@@ -325,7 +341,7 @@ class Device extends EventEmitter {
   };
 
   sendReply = (
-    messageName: string,
+    messageName: MessageType,
     id: number,
     data: ?Buffer,
     token: ?number,
@@ -367,7 +383,7 @@ class Device extends EventEmitter {
 
 
   sendMessage = (
-    messageName: string,
+    messageName: MessageType,
     params: ?Object,
     data: ?Buffer,
     requester?: Object,
@@ -409,8 +425,6 @@ class Device extends EventEmitter {
       return -1;
     }
 
-    console.log('MMMMMM', message);
-
     this._cipherStream.write(message);
 
     return token || 0;
@@ -424,7 +438,7 @@ class Device extends EventEmitter {
    *  sendMessage)
    */
   listenFor = async (
-    eventName: string,
+    eventName: MessageType,
     uri: ?string,
     token: ?number,
     ..._:void[]
@@ -521,7 +535,7 @@ class Device extends EventEmitter {
    * @param name
    * @param sendToken
    */
-  _useToken = (name: string, sendToken: number) => {
+  _useToken = (name: MessageType, sendToken: number) => {
     const key = utilities.toHexString(sendToken);
 
     if (this._tokens[key]) {
@@ -987,7 +1001,10 @@ class Device extends EventEmitter {
       return message;
     };
 
-    const messageName = isPublic ? 'PublicEvent' : 'PrivateEvent';
+    const messageName = isPublic
+      ? DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT
+      : DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT;
+
     // const userID = (this._userId || '').toLowerCase() + '/';
     // name = name ? name.toString() : name;
     // if (name && name.indexOf && (name.indexOf(userID)===0)) {
@@ -1000,7 +1017,7 @@ class Device extends EventEmitter {
         _raw: rawFunction,
         event_name: name.toString(),
       },
-      data && data.toString(),
+      data && new Buffer(data) || null,
     );
   };
 
@@ -1036,8 +1053,6 @@ class Device extends EventEmitter {
   // eslint-disable-next-line no-confusing-arrow
   getID = (): string => this._id;
 
-
-  // eslint-disable-next-line no-confusing-arrow
   getRemoteIPAddress = (): string =>
     this._socket.remoteAddress
       ? this._socket.remoteAddress.toString()

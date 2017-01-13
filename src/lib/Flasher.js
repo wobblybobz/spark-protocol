@@ -25,6 +25,7 @@ import logger from '../lib/logger';
 import utilities from '../lib/utilities';
 import BufferStream from './BufferStream';
 import Device from '../clients/Device';
+import ProtocolErrors from './ProtocolErrors';
 
 import buffers from 'h5.buffers';
 import { Message } from 'h5.coap';
@@ -40,7 +41,7 @@ import nullthrows from 'nullthrows';
 //UpdateDone — sent by Server to indicate all firmware chunks have been sent
 //
 
-const CHUNK_SIZE = 256;
+const CHUNK_SIZE = 512;
 const MAX_CHUNK_SIZE = 594;
 const MAX_MISSED_CHUNKS = 10;
 
@@ -160,6 +161,10 @@ class Flasher {
   					failReason = messages.fromBinary(message.getPayload(), 'byte');
   				}
 
+					failReason = !Number.isNaN(failReason)
+						? ProtocolErrors.get(Number.parseInt(failReason)) || failReason
+						: failReason;
+
   				throw new Error('aborted ' + failReason);
   			}),
         // Try to update multiple times
@@ -211,7 +216,8 @@ class Flasher {
     let flags = 0;	//fast ota available
     const chunkSize = this._chunkSize;
     const fileSize = fileBuffer.length;
-    const destFlag = 0;   //TODO: reserved for later
+		//TODO: This should be a parameter https://github.com/spark/firmware/blob/develop/communication/src/file_transfer.h#L28-L32
+    const destFlag = 0;
     const destAddr = parseInt(address);
 
     if (this._fastOtaEnabled) {
@@ -225,13 +231,6 @@ class Flasher {
     bufferBuilder.pushUInt32(fileSize);
     bufferBuilder.pushUInt8(destFlag);
     bufferBuilder.pushUInt32(destAddr);
-
-		console.log();
-		console.log();
-		console.log(bufferBuilder.toBuffer());
-		console.log(fileBuffer[0],fileBuffer[1],fileBuffer[2],fileBuffer[3]);
-		console.log();
-		console.log();
 
     //UpdateBegin — sent by Server to initiate an OTA firmware update
     return !!this._client.sendMessage(
@@ -265,9 +264,8 @@ class Flasher {
 
 		this._readNextChunk();
 		while (this._chunk) {
-			this._sendChunk(this._chunkIndex);
+			const messageToken = this._sendChunk(this._chunkIndex);
 			this._readNextChunk();
-
 			// We don't need to wait for the response if using FastOTA.
 			if (canUseFastOTA) {
 				continue;
@@ -276,9 +274,8 @@ class Flasher {
 			const message = await this._client.listenFor(
 				'ChunkReceived',
 				null,
-				null,
+				messageToken,
 			);
-
 			if (!messages.statusIsOkay(message)) {
 				throw new Error('\'ChunkReceived\' failed.');
 			}
@@ -309,7 +306,7 @@ class Flasher {
 			this._chunkIndex = chunkIndex;
 
 			this._readNextChunk();
-			this._sendChunk(chunkIndex);
+			const messageToken = this._sendChunk(chunkIndex);
 
 			// We don't need to wait for the response if using FastOTA.
 			if (!canUseFastOTA) {
@@ -319,7 +316,7 @@ class Flasher {
 			const message = await this._client.listenFor(
 				'ChunkReceived',
 				null,
-				null,
+				messageToken,
 			);
 
 			if (!messages.statusIsOkay(message)) {
@@ -349,7 +346,7 @@ class Flasher {
 		this._lastCrc = chunk ? crc32.unsigned(chunk) : null;
 	}
 
-	_sendChunk = async (chunkIndex: ?number = 0): Promise<*> => {
+	_sendChunk = (chunkIndex: ?number = 0): number => {
 		const encodedCrc = messages.toBinary(
 			nullthrows(this._lastCrc),
 			'crc',
@@ -372,7 +369,7 @@ class Flasher {
       return message;
     };
 
-		this._client.sendMessage(
+		return this._client.sendMessage(
 			'Chunk',
 			{
 				crc: encodedCrc,
@@ -420,7 +417,7 @@ class Flasher {
 
 		return new Promise((resolve, reject) => setTimeout(
 			() => {
-				console.log('finished waiting');
+				logger.log('finished waiting');
 				resolve();
 			},
 			3 * 1000,

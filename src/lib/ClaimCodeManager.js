@@ -23,7 +23,7 @@ class ClaimCodeManager {
     this._userIDByClaimCode.set(claimCode, userID);
 
     setTimeout(
-      (): void => this.removeClaimCode(claimCode),
+      (): void => {this.removeClaimCode(claimCode)},
       CLAIM_CODE_TTL,
     );
 

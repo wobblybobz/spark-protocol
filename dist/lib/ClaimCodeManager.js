@@ -42,7 +42,7 @@ var ClaimCodeManager = function ClaimCodeManager() {
     _this._userIDByClaimCode.set(claimCode, userID);
 
     setTimeout(function () {
-      return _this.removeClaimCode(claimCode);
+      _this.removeClaimCode(claimCode);
     }, CLAIM_CODE_TTL);
 
     return claimCode;

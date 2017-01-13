@@ -59,6 +59,9 @@ var MessageSpecifications = [['Hello', {
   Response: 'UpdateReady',
   type: _h.Message.Type.CON,
   uri: 'u'
+}], ['UpdateAbort', {
+  code: _h.Message.Code.BAD_REQUEST,
+  type: _h.Message.Type.NON
 }], ['Chunk', {
   code: _h.Message.Code.POST,
   Response: 'ChunkReceived',

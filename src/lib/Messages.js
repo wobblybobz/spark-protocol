@@ -21,7 +21,10 @@
 *
 */
 
-import type {MessageSpecificationType} from './MessageSpecifications';
+import type {
+  MessageSpecificationType,
+  MessageType,
+} from './MessageSpecifications';
 
 import fs from 'fs';
 import settings from '../settings';
@@ -45,7 +48,7 @@ const _getRouteKey = (code: string, path: string): string => {
 }
 
 class Messages {
-  _specifications: Map<string, MessageSpecificationType> =
+  _specifications: Map<MessageType, MessageSpecificationType> =
     new Map(MessageSpecifications);
 
   /**
@@ -91,7 +94,7 @@ class Messages {
     return this._routes.get(uri);
   };
 
-  getResponseType = (name: string): ?string => {
+  getResponseType = (name: MessageType): ?string => {
     const specification = this._specifications.get(name);
     return specification ? specification.Response : null;
   };
@@ -100,7 +103,7 @@ class Messages {
     return message.getCode() < Message.Code.BAD_REQUEST;
   };
 
-  isNonTypeMessage = (messageName: string): boolean => {
+  isNonTypeMessage = (messageName: MessageType): boolean => {
     const specification = this._specifications.get(messageName);
     if (!specification) {
       return false;
@@ -120,7 +123,7 @@ class Messages {
    * @returns {*}
    */
   wrap = (
-    messageName: string,
+    messageName: MessageType,
     messageCounterId: number,
     params: ?Object,
     data: ?Buffer,

@@ -40,6 +40,7 @@ import Messages from '../lib/Messages';
 import {
   DEVICE_EVENT_NAMES,
   DEVICE_MESSAGE_EVENTS_NAMES,
+  SYSTEM_EVENT_NAMES,
 } from '../clients/Device';
 
 type DeviceServerConfig = {|
@@ -152,7 +153,7 @@ class DeviceServer {
       device.on(
         DEVICE_EVENT_NAMES.FLASH_STARTED,
         (): Promise<void> => this.publishSpecialEvent(
-          'spark/flash/status',
+          SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'started',
           device.getID(),
         ),
@@ -161,7 +162,7 @@ class DeviceServer {
       device.on(
         DEVICE_EVENT_NAMES.FLASH_SUCCESS,
         (): Promise<void> => this.publishSpecialEvent(
-          'spark/flash/status',
+          SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'success',
           device.getID(),
         ),
@@ -170,7 +171,7 @@ class DeviceServer {
       device.on(
         DEVICE_EVENT_NAMES.FLASH_FAILED,
         (): Promise<void> => this.publishSpecialEvent(
-          'spark/flash/status',
+          SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'failed',
           device.getID(),
         ),
@@ -180,7 +181,7 @@ class DeviceServer {
 
       logger.log(
         `Connection from: ${device.getRemoteIPAddress()} - ` +
-        `Connection ID: ${connectionIdCounter}`,
+          `Connection ID: ${connectionIdCounter}`,
       );
     } catch (error) {
       logger.error(`Device startup failed: ${error.message}`);
@@ -195,7 +196,10 @@ class DeviceServer {
       this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
       this.publishSpecialEvent('particle/status', 'offline', deviceID);
-      logger.log(`Session ended for device with ID: ${deviceID} with connectionKey: ${connectionKey}`);
+      logger.log(
+        `Session ended for device with ID: ${deviceID} with connectionKey: ` +
+          `${connectionKey}`,
+      );
     }
   };
 
@@ -260,12 +264,10 @@ class DeviceServer {
       userID: deviceAttributes && deviceAttributes.ownerID,
     };
 
-    const lowerEventName = eventData.name.toLowerCase();
-    if (lowerEventName.match('spark/device/claim/code')) {
-      await this._onDeviceClaimCodeMessage(message, device);
-    }
+    const eventName = eventData.name.toLowerCase();
 
-    if (lowerEventName.match('spark/device/system/version')) {
+    // TODO: I don't actually see this event anywhere in the firmware
+    if (eventName.match('spark/device/system/version')) {
       const deviceSystemVersion = message.getPayload().toString();
 
       await this._deviceAttributeRepository.update({
@@ -275,44 +277,58 @@ class DeviceServer {
       });
     }
 
-    // TODO figure this out
-    // if (lowerEventName.indexOf('spark/device/safemode') === 0) {
-    //   const token = device.sendMessage('Describe');
-    //   const systemMessage = await device.listenFor(
-    //     'DescribeReturn',
-    //     null,
-    //     token,
-    //   );
-    //
-    //   if (global.api) {
-    //     global.api.safeMode(
-    //       deviceID,
-    //       systemMessage.getPayload().toString(),
-    //     );
-    //   }
-    // }
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
+      await this._onDeviceClaimCodeMessage(message, device);
+    }
 
-    // TODO implement this eat message more clean
-    // if the event name starts with spark (upper or lower), then eat it.
-    if (lowerEventName.match('spark')) {
-      // allow some kinds of message through.
-      let eatMessage = true;
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_IP)) {
+    }
 
-      // if we do let these through, make them private.
-      const isEventPublic = false;
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME)) {
+    }
 
-      // TODO: (old code todo)
-      // if the message is 'cc3000-radio-version', save to the core_state collection for this core?
-      if (lowerEventName === 'spark/cc3000-patch-version') {
-        // set_cc3000_version(this._id, obj.data);
-        // eat_message = false;
-      }
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {
+    }
 
-      if (eatMessage) {
-        // short-circuit
-        device.sendReply('EventAck', message.getId());
-        return;
-      }
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.IDENTITY)) {
+      // TODO - https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
+    }
+
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.LAST_RESET)) {
+      // This should be sent to the stream in DeviceServer
+    }
+
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.MAX_BINARY)) {
+    }
+
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {
+    }
+
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.RESET)) {
+    }
+
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)) {
+      const token = device.sendMessage('Describe');
+      const systemMessage = await device.listenFor(
+        'DescribeReturn',
+        null,
+        token,
+      );
+    }
+
+    if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
+      // todo
+      // get patch version from payload
+      // compare with version on disc
+      // if device version is old, do OTA update with patch
+    }
+
+    // Any "spark" event should have been handled by now
+    if (eventName.startsWith('spark')) {
+      // TODO: there are only a few types of messages that shouldn't be streamed
+      // so only do this in edge cases
+      device.sendReply('EventAck', message.getId());
+      return;
     }
 
     await this._eventPublisher.publish(eventData);
@@ -370,8 +386,8 @@ class DeviceServer {
 
     logger.log(
       `Got subscribe request from device with ID ${deviceID} ` +
-      `on event: '${messageName}' ` +
-      `from my devices only: ${isFromMyDevices || false}`,
+        `on event: '${messageName}' ` +
+        `from my devices only: ${isFromMyDevices || false}`,
     );
 
     if (isFromMyDevices) {

@@ -17,7 +17,7 @@ export type Event = EventData & {
 };
 
 export type EventData = {
-  data: ?Object | string,
+  data: ?string,
   deviceID?: ?string,
   isPublic: boolean,
   name: string,
