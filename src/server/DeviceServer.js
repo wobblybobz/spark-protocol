@@ -198,7 +198,11 @@ class DeviceServer {
       this._devicesById.delete(deviceID);
       this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
-      this.publishSpecialEvent('particle/status', 'offline', deviceID);
+      this.publishSpecialEvent(
+        SYSTEM_EVENT_NAMES.SPARK_STATUS,
+        'offline',
+        deviceID,
+      );
       logger.log(
         `Session ended for device with ID: ${deviceID} with connectionKey: ` +
           `${connectionKey}`,
@@ -246,7 +250,12 @@ class DeviceServer {
       deviceAttributes,
     );
 
-    this.publishSpecialEvent('particle/status', 'online', deviceID);
+
+    this.publishSpecialEvent(
+      SYSTEM_EVENT_NAMES.SPARK_STATUS,
+      'online',
+      deviceID,
+    );
   };
 
   _onDeviceSentMessage = async (
@@ -314,11 +323,15 @@ class DeviceServer {
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.IDENTITY)) {
-        // TODO - https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
+        // TODO - open up for possibility of retrieving multiple ID datums
+        // This is mostly for electron - You can get the IMEI and IICCID this way
+        // https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
+        // https://github.com/spark/firmware/commit/73df5a4ac4c64f008f63a495d50f866d724c6201
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.LAST_RESET)) {
         // This should be sent to the stream in DeviceServer
+        console.log('LAST_RESET', eventData.data)
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.MAX_BINARY)) {
@@ -329,16 +342,12 @@ class DeviceServer {
         device.setOtaChunkSize(Number.parseInt(nullthrows(eventData.data)));
       }
 
-      if (eventName.startsWith(SYSTEM_EVENT_NAMES.RESET)) {
-        // ???
-      }
-
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)) {
         FirmwareManager.runOtaSystemUpdates(device);
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
-        // todo
+        // TODO: Test this with a Core device
         // get patch version from payload
         // compare with version on disc
         // if device version is old, do OTA update with patch
@@ -346,14 +355,10 @@ class DeviceServer {
 
       // Any "spark" event should have been handled by now
       if (eventName.startsWith('spark')) {
-        // TODO: there are only a few types of messages that shouldn't be streamed
-        // so only do this in edge cases
-
-        // Maybe look for `E` which means private event?
-        if (!isPublic) {
-          device.sendReply('EventAck', message.getId());
-          return;
-        }
+        // These should always be private but let's make sure. This way
+        // if you are listening to a specific device you only see the system
+        // events from it.
+        eventData.isPublic = false;
       }
 
       await this._eventPublisher.publish(eventData);

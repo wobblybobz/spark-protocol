@@ -4,10 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _toConsumableArray2 = require('babel-runtime/helpers/toConsumableArray');
-
-var _toConsumableArray3 = _interopRequireDefault(_toConsumableArray2);
-
 var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
@@ -69,40 +65,8 @@ var utilities = function utilities() {
   (0, _classCallCheck3.default)(this, utilities);
 };
 
-utilities.bufferCompare = function (left, right) {
-  if (left === null && right === null) {
-    return true;
-  } else if (left === null || right === null) {
-    return false;
-  }
-
-  if (!Buffer.isBuffer(left)) {
-    left = new Buffer(left);
-  }
-  if (!Buffer.isBuffer(right)) {
-    right = new Buffer(right);
-  }
-
-  return Buffer.compare(left, right) == 0;
-};
-
 utilities.toHexString = function (value) {
   return (value < 10 ? '0' : '') + value.toString(16);
-};
-
-utilities.convertDERtoPEM = function (buffer) {
-  if (!buffer || !buffer.length) {
-    return null;
-  }
-
-  var bufferString = buffer.toString('base64');
-  try {
-    var lines = ['-----BEGIN PUBLIC KEY-----'].concat((0, _toConsumableArray3.default)(bufferString.match(/.{1,64}/g) || []), ['-----END PUBLIC KEY-----']);
-    return lines.join('\n');
-  } catch (exception) {
-    _logger2.default.error('error converting DER to PEM, was: ' + bufferString + ' ' + exception);
-  }
-  return null;
 };
 
 ;

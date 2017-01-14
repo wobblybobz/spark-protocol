@@ -6,7 +6,6 @@ import crypto from 'crypto';
 import CryptoStream from './CryptoStream';
 import logger from './logger';
 import ursa from 'ursa';
-import utilities from './utilities';
 
 const HASH_TYPE = 'sha1';
 const SIGN_TYPE = 'sha256';
@@ -138,23 +137,6 @@ class CryptoManager {
 
   sign = async (hash: Buffer): Promise<Buffer> =>
     (await this._getServerPrivateKey()).privateEncrypt(hash);
-
-  verify = (
-    publicKey: Object,
-    hash: Buffer,
-    signature: Buffer,
-  ): boolean => {
-    try {
-      const decryptedSignature = publicKey.publicDecrypt(signature);
-
-      // todo refactor utils?
-      return utilities.bufferCompare(hash, decryptedSignature);
-    }
-    catch (error) {
-      logger.error(`hash verify error: ${error.message}`);
-    }
-    return false;
-  };
 }
 
 export default CryptoManager;

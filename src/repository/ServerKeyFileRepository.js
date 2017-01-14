@@ -18,18 +18,13 @@ class ServerKeyFileRepository {
     privateKeyPem: Buffer,
     publicKeyPem: Buffer,
   }> => {
-    // todo clean up
     const extIdx = this._serverKeyFileName.lastIndexOf('.');
-    // const derFilename =
-    //   `${this._serverKeyFileName.substring(0, extIdx)}.der`;
     const pubPemFilename =
       `${this._serverKeyFileName.substring(0, extIdx)}.pub.pem`;
 
     this._fileManager.createFile(this._serverKeyFileName, privateKeyPem);
     this._fileManager.createFile(pubPemFilename, publicKeyPem);
 
-    //DER FORMATTED KEY for the core hardware
-    //TODO: fs.writeFileSync(derFilename, keys.toPrivatePem('binary'));
     return { privateKeyPem, publicKeyPem };
   };
 

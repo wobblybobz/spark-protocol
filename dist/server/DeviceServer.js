@@ -210,7 +210,7 @@ var DeviceServer = function () {
         _this._devicesById.delete(deviceID);
         _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
-        _this.publishSpecialEvent('particle/status', 'offline', deviceID);
+        _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'offline', deviceID);
         _logger2.default.log('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + ('' + connectionKey));
       }
     };
@@ -256,7 +256,7 @@ var DeviceServer = function () {
 
                 _this._deviceAttributeRepository.update(deviceAttributes);
 
-                _this.publishSpecialEvent('particle/status', 'online', deviceID);
+                _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID);
 
               case 10:
               case 'end':
@@ -348,11 +348,15 @@ var DeviceServer = function () {
                 }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.IDENTITY)) {
-                  // TODO - https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
+                  // TODO - open up for possibility of retrieving multiple ID datums
+                  // This is mostly for electron - You can get the IMEI and IICCID this way
+                  // https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
+                  // https://github.com/spark/firmware/commit/73df5a4ac4c64f008f63a495d50f866d724c6201
                 }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.LAST_RESET)) {
                   // This should be sent to the stream in DeviceServer
+                  console.log('LAST_RESET', eventData.data);
                 }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.MAX_BINARY)) {
@@ -363,56 +367,44 @@ var DeviceServer = function () {
                   device.setOtaChunkSize((0, _parseInt2.default)((0, _nullthrows2.default)(eventData.data)));
                 }
 
-                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.RESET)) {
-                  // ???
-                }
-
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
                   _FirmwareManager2.default.runOtaSystemUpdates(device);
                 }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {}
-                // todo
+                // TODO: Test this with a Core device
                 // get patch version from payload
                 // compare with version on disc
                 // if device version is old, do OTA update with patch
 
 
                 // Any "spark" event should have been handled by now
-
-                if (!eventName.startsWith('spark')) {
-                  _context4.next = 26;
-                  break;
+                if (eventName.startsWith('spark')) {
+                  // These should always be private but let's make sure. This way
+                  // if you are listening to a specific device you only see the system
+                  // events from it.
+                  eventData.isPublic = false;
                 }
 
-                if (isPublic) {
-                  _context4.next = 26;
-                  break;
-                }
-
-                device.sendReply('EventAck', message.getId());
-                return _context4.abrupt('return');
-
-              case 26:
-                _context4.next = 28;
+                _context4.next = 24;
                 return _this._eventPublisher.publish(eventData);
 
-              case 28:
-                _context4.next = 33;
+              case 24:
+                _context4.next = 29;
                 break;
 
-              case 30:
-                _context4.prev = 30;
+              case 26:
+                _context4.prev = 26;
                 _context4.t0 = _context4['catch'](0);
 
                 console.log(_context4.t0);
 
-              case 33:
+              case 29:
               case 'end':
                 return _context4.stop();
             }
           }
-        }, _callee4, _this, [[0, 30]]);
+        }, _callee4, _this, [[0, 26]]);
       }));
 
       return function (_x3, _x4, _x5) {

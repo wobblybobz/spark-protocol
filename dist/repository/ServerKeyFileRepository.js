@@ -34,19 +34,13 @@ var ServerKeyFileRepository = function ServerKeyFileRepository(serverKeysDir, se
         while (1) {
           switch (_context.prev = _context.next) {
             case 0:
-              // todo clean up
               extIdx = _this._serverKeyFileName.lastIndexOf('.');
-              // const derFilename =
-              //   `${this._serverKeyFileName.substring(0, extIdx)}.der`;
-
               pubPemFilename = _this._serverKeyFileName.substring(0, extIdx) + '.pub.pem';
 
 
               _this._fileManager.createFile(_this._serverKeyFileName, privateKeyPem);
               _this._fileManager.createFile(pubPemFilename, publicKeyPem);
 
-              //DER FORMATTED KEY for the core hardware
-              //TODO: fs.writeFileSync(derFilename, keys.toPrivatePem('binary'));
               return _context.abrupt('return', { privateKeyPem: privateKeyPem, publicKeyPem: publicKeyPem });
 
             case 5:

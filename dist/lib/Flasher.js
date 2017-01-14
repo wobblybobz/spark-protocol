@@ -48,10 +48,6 @@ var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
-var _utilities = require('../lib/utilities');
-
-var _utilities2 = _interopRequireDefault(_utilities);
-
 var _BufferStream = require('./BufferStream');
 
 var _BufferStream2 = _interopRequireDefault(_BufferStream);
@@ -63,6 +59,10 @@ var _Device2 = _interopRequireDefault(_Device);
 var _ProtocolErrors = require('./ProtocolErrors');
 
 var _ProtocolErrors2 = _interopRequireDefault(_ProtocolErrors);
+
+var _FileTransferStore = require('./FileTransferStore');
+
+var _FileTransferStore2 = _interopRequireDefault(_FileTransferStore);
 
 var _h = require('h5.buffers');
 
@@ -92,27 +92,26 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 //UpdateDone — sent by Server to indicate all firmware chunks have been sent
 //
 
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
-*/
+var CHUNK_SIZE = 256; /*
+                      *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                      *
+                      *   This program is free software; you can redistribute it and/or
+                      *   modify it under the terms of the GNU Lesser General Public
+                      *   License as published by the Free Software Foundation, either
+                      *   version 3 of the License, or (at your option) any later version.
+                      *
+                      *   This program is distributed in the hope that it will be useful,
+                      *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                      *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                      *   Lesser General Public License for more details.
+                      *
+                      *   You should have received a copy of the GNU Lesser General Public
+                      *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                      *
+                      * 
+                      *
+                      */
 
-var CHUNK_SIZE = 256;
 var MAX_MISSED_CHUNKS = 10;
 var MAX_BINARY_SIZE = 108000; // According to the forums this is the max size for core.
 
@@ -137,7 +136,8 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
 	this.startFlashBuffer = function () {
 		var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(buffer) {
-			var address = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : '0x0';
+			var fileTransferStore = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _FileTransferStore2.default.FIRMWARE;
+			var address = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '0x0';
 			return _regenerator2.default.wrap(function _callee$(_context) {
 				while (1) {
 					switch (_context.prev = _context.next) {
@@ -177,7 +177,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
 							_this._prepare(buffer);
 							_context.next = 13;
-							return _this._beginUpdate(buffer, address);
+							return _this._beginUpdate(buffer, fileTransferStore, address);
 
 						case 13:
 							_context.next = 15;
@@ -213,7 +213,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 			}, _callee, _this, [[6, 20]]);
 		}));
 
-		return function (_x, _x2) {
+		return function (_x) {
 			return _ref.apply(this, arguments);
 		};
 	}();
@@ -248,7 +248,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 	};
 
 	this._beginUpdate = function () {
-		var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(buffer, address) {
+		var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(buffer, fileTransferStore, address) {
 			var maxTries, tryBeginUpdate;
 			return _regenerator2.default.wrap(function _callee3$(_context3) {
 				while (1) {
@@ -275,7 +275,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 													// NOTE: this is 6 because it's double the ChunkMissed 3 second delay
 													// The 90 second delay is crazy but try it just in case.
 													delay = maxTries > 0 ? 6 : 90;
-													sentStatus = _this._sendBeginUpdateMessage(buffer, address);
+													sentStatus = _this._sendBeginUpdateMessage(buffer, fileTransferStore, address);
 
 													maxTries--;
 
@@ -361,12 +361,12 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 			}, _callee3, _this);
 		}));
 
-		return function (_x4, _x5) {
+		return function (_x4, _x5, _x6) {
 			return _ref2.apply(this, arguments);
 		};
 	}();
 
-	this._sendBeginUpdateMessage = function (fileBuffer, address) {
+	this._sendBeginUpdateMessage = function (fileBuffer, fileTransferStore, address) {
 		//(MDM Proposal) Optional payload to enable fast OTA and file placement:
 		//u8  flags    0x01 - Fast OTA available - when set the server can
 		//  provide fast OTA transfer
@@ -383,8 +383,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 		var flags = 0; //fast ota available
 		var chunkSize = _this._chunkSize;
 		var fileSize = fileBuffer.length;
-		//TODO: This should be a parameter https://github.com/spark/firmware/blob/develop/communication/src/file_transfer.h#L28-L32
-		var destFlag = 0;
+		var destFlag = fileTransferStore;
 		var destAddr = parseInt(address);
 
 		if (_this._fastOtaEnabled) {
@@ -562,7 +561,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 								}, _callee5, _this);
 							}));
 
-							return function (_x6) {
+							return function (_x7) {
 								return _ref6.apply(this, arguments);
 							};
 						}()));

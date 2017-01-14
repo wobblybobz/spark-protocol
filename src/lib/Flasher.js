@@ -19,13 +19,14 @@
 */
 
 import type {ReadStream} from 'fs';
+import type {FileTransferStoreType} from './FileTransferStore'
 
 import messages from './Messages';
 import logger from '../lib/logger';
-import utilities from '../lib/utilities';
 import BufferStream from './BufferStream';
 import Device from '../clients/Device';
 import ProtocolErrors from './ProtocolErrors';
+import FileTransferStore from './FileTransferStore'
 
 import buffers from 'h5.buffers';
 import { Message } from 'h5.coap';
@@ -71,6 +72,7 @@ class Flasher {
 
 	startFlashBuffer = async (
 		buffer: ?Buffer,
+		fileTransferStore: FileTransferStoreType = FileTransferStore.FIRMWARE,
 		address: string = '0x0',
 	): Promise<void> => {
     if (!buffer || buffer.length === 0) {
@@ -99,7 +101,7 @@ class Flasher {
   		this._startTime = new Date();
 
   		this._prepare(buffer);
-      await this._beginUpdate(buffer, address);
+      await this._beginUpdate(buffer, fileTransferStore, address);
       await Promise.race([
         // Fail after 60 of trying to flash
         new Promise((resolve, reject) => setTimeout(
@@ -145,7 +147,11 @@ class Flasher {
 		return true;
 	};
 
-	_beginUpdate = async (buffer: Buffer, address: string): Promise<*> => {
+	_beginUpdate = async (
+		buffer: Buffer,
+		fileTransferStore: FileTransferStoreType,
+		address: string,
+	): Promise<*> => {
 		let maxTries = 3;
 
 		const tryBeginUpdate = async () => {
@@ -156,7 +162,11 @@ class Flasher {
       // NOTE: this is 6 because it's double the ChunkMissed 3 second delay
       // The 90 second delay is crazy but try it just in case.
       let delay = maxTries > 0 ? 6 : 90;
-      const sentStatus = this._sendBeginUpdateMessage(buffer, address);
+      const sentStatus = this._sendBeginUpdateMessage(
+				buffer,
+				fileTransferStore,
+				address,
+			);
       maxTries--;
 
 			// did we fail to send out the UpdateBegin message?
@@ -220,7 +230,11 @@ class Flasher {
 		await tryBeginUpdate();
 	};
 
-  _sendBeginUpdateMessage = (fileBuffer: Buffer, address: string): boolean => {
+  _sendBeginUpdateMessage = (
+		fileBuffer: Buffer,
+		fileTransferStore: FileTransferStoreType,
+		address: string,
+	): boolean => {
     //(MDM Proposal) Optional payload to enable fast OTA and file placement:
     //u8  flags    0x01 - Fast OTA available - when set the server can
     //  provide fast OTA transfer
@@ -237,8 +251,7 @@ class Flasher {
     let flags = 0;	//fast ota available
     const chunkSize = this._chunkSize;
     const fileSize = fileBuffer.length;
-		//TODO: This should be a parameter https://github.com/spark/firmware/blob/develop/communication/src/file_transfer.h#L28-L32
-    const destFlag = 0;
+    const destFlag = fileTransferStore;
     const destAddr = parseInt(address);
 
     if (this._fastOtaEnabled) {

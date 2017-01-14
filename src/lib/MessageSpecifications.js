@@ -58,13 +58,13 @@ export type MessageType =
   'Subscribe' |
   'Describe' |
   'GetTime' |
-  'RaiseYourHand' |
+  'SignalStart' |
   'EventAck' |
   'EventSlowdown' |
   'SubscribeAck' |
   'SubscribeFail' |
   'GetTimeReturn' |
-  'RaiseYourHandReturn' |
+  'SignalStartReturn' |
   'ChunkMissedAck' |
   'DescribeReturn' |
   'KeyChanged' |
@@ -79,7 +79,6 @@ export type MessageType =
   'PingAck' |
   'SocketPing';
 
-// TODO: Check firmware and make sure everything is mapped here
 const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
     [
       'Hello',
@@ -208,10 +207,10 @@ const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
       }
     ],
     [
-      'RaiseYourHand',
+      'SignalStart',
       {
         code: Message.Code.PUT,
-        Response: 'RaiseYourHandReturn',
+        Response: 'SignalStartReturn',
         type: Message.Type.CON,
         uri: 's',
       }
@@ -265,7 +264,7 @@ const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
       }
     ],
     [
-      'RaiseYourHandReturn',
+      'SignalStartReturn',
       {
         code: Message.Code.CHANGED,
         type: Message.Type.ACK,

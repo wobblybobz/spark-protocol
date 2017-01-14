@@ -387,48 +387,32 @@ var Messages = function Messages() {
     return bufferBuilder.toBuffer();
   };
 
-  this.buildArguments = function (value, args) {
-    console.log('TODO: Type `buildArguments`');
+  this.buildArguments = function (requestArgs, args) {
     try {
-      var bufferBuilder = new _h2.BufferBuilder();
-      args.filter(function (arg) {
-        return arg;
-      }).forEach(function (arg, index) {
-        if (index > 0) {
-          _this.toBinary('&', 'string', bufferBuilder);
-        }
+      var _ret = function () {
+        var bufferBuilder = new _h2.BufferBuilder();
+        var requestArgsKey = (0, _keys2.default)(requestArgs)[0];
+        args.filter(function (arg) {
+          return arg;
+        }).forEach(function (arg, index) {
+          if (index > 0) {
+            _this.toBinary('&', 'string', bufferBuilder);
+          }
 
-        var name = arg[0] || (0, _keys2.default)(value)[0];
-        var type = arg[1];
-        var val = value[name];
+          var name = arg[0] || requestArgsKey;
+          var type = arg[1];
+          var val = requestArgs[name];
 
-        _this.toBinary(val, type, bufferBuilder);
-      });
-      return bufferBuilder.toBuffer();
+          _this.toBinary(val, type, bufferBuilder);
+        });
+        return {
+          v: bufferBuilder.toBuffer()
+        };
+      }();
+
+      if ((typeof _ret === 'undefined' ? 'undefined' : (0, _typeof3.default)(_ret)) === "object") return _ret.v;
     } catch (exception) {
       _logger2.default.error('buildArguments: ', exception);
-    }
-
-    return null;
-  };
-
-  this.parseArguments = function (args, descriptions) {
-    try {
-      if (!args || args.length !== descriptions.length) {
-        return null;
-      }
-
-      return descriptions.filter(function (description) {
-        return description;
-      }).map(function (description, index) {
-        var type = description[1];
-        args = (0, _nullthrows2.default)(args);
-        var value = index < args.length ? args[index] : '';
-
-        _this.fromBinary(new Buffer(value, 'binary'), type);
-      });
-    } catch (exception) {
-      _logger2.default.error('parseArguments: ', exception);
     }
 
     return null;

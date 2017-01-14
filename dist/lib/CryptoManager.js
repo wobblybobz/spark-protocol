@@ -36,13 +36,10 @@ var _ursa = require('ursa');
 
 var _ursa2 = _interopRequireDefault(_ursa);
 
-var _utilities = require('./utilities');
-
-var _utilities2 = _interopRequireDefault(_utilities);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var HASH_TYPE = 'sha1';
+
 var SIGN_TYPE = 'sha256';
 
 var CryptoManager = function CryptoManager(deviceKeyRepository, serverKeyRepository) {
@@ -280,18 +277,6 @@ var CryptoManager = function CryptoManager(deviceKeyRepository, serverKeyReposit
       return _ref6.apply(this, arguments);
     };
   }();
-
-  this.verify = function (publicKey, hash, signature) {
-    try {
-      var decryptedSignature = publicKey.publicDecrypt(signature);
-
-      // todo refactor utils?
-      return _utilities2.default.bufferCompare(hash, decryptedSignature);
-    } catch (error) {
-      _logger2.default.error('hash verify error: ' + error.message);
-    }
-    return false;
-  };
 
   this._deviceKeyRepository = deviceKeyRepository;
   this._serverKeyRepository = serverKeyRepository;

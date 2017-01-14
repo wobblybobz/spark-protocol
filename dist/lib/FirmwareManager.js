@@ -133,12 +133,13 @@ FirmwareManager.runOtaSystemUpdates = function () {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            _context.next = 2;
+            _context.t0 = _nullthrows2.default;
+            _context.next = 3;
             return device.getSystemInformation();
 
-          case 2:
-            _context.t0 = _context.sent;
-            systemInformation = (0, _nullthrows2.default)(_context.t0);
+          case 3:
+            _context.t1 = _context.sent;
+            systemInformation = (0, _context.t0)(_context.t1);
             parser = new _binaryVersionReader.HalDescribeParser();
             platformID = systemInformation.p;
             systemVersion = parser.getSystemVersion(systemInformation);
@@ -149,44 +150,44 @@ FirmwareManager.runOtaSystemUpdates = function () {
             });
 
             if (modules) {
-              _context.next = 10;
+              _context.next = 11;
               break;
             }
 
             throw new Error('Could not find any system modules for OTA update');
 
-          case 10:
+          case 11:
             moduleToUpdate = modules.find(function (module) {
               return module.version < FIRMWARE_VERSION;
             });
 
             if (modules) {
-              _context.next = 13;
+              _context.next = 14;
               break;
             }
 
             throw new Error('All modules appear to be updated.');
 
-          case 13:
+          case 14:
             otaUpdateConfig = FirmwareManager.getOtaUpdateConfig(platformID);
 
             if (otaUpdateConfig) {
-              _context.next = 16;
+              _context.next = 17;
               break;
             }
 
             throw new Error('Could not find OTA update config for device');
 
-          case 16:
+          case 17:
             moduleIndex = modules.indexOf(moduleToUpdate);
             config = otaUpdateConfig[moduleIndex];
             systemFile = _fs2.default.readFileSync(_settings2.default.BINARIES_DIRECTORY + '/' + config.binaryFileName);
 
             console.log('FLASHING', systemFile.length, config.binaryFileName);
-            _context.next = 22;
+            _context.next = 23;
             return device.flash(systemFile);
 
-          case 22:
+          case 23:
           case 'end':
             return _context.stop();
         }

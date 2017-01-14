@@ -23,6 +23,7 @@ import type { Duplex } from 'stream';
 import type { Event } from '../types';
 import type Handshake from '../lib/Handshake';
 import type { MessageType } from '../lib/MessageSpecifications';
+import type {FileTransferStoreType} from '../lib/FileTransferStore';
 
 import EventEmitter from 'events';
 import moment from 'moment';
@@ -32,12 +33,19 @@ import { Message } from 'h5.coap';
 import settings from '../settings';
 import CryptoManager from '../lib/CryptoManager';
 import Messages from '../lib/Messages';
+import FileTransferStore from '../lib/FileTransferStore';
 
-import utilities from '../lib/utilities';
 import Flasher from '../lib/Flasher';
 import logger from '../lib/logger';
 import { BufferReader } from 'h5.buffers';
 import nullthrows from 'nullthrows';
+
+
+type DeviceDescription = {
+  firmware_version: number,
+  product_id: number,
+  state: ?Object,
+};
 
 // Hello — sent first by Core then by Server immediately after handshake, never again
 // Ignored — sent by either side to respond to a message with a bad counter value.
@@ -96,6 +104,7 @@ export const SYSTEM_EVENT_NAMES = {
   RESET: 'spark/device/reset',  // send this to reset passing "safe mode"/"dfu"/"reboot"
   SAFE_MODE: 'spark/device/safemode',
   SPARK_SUBSYSTEM: 'spark/cc3000-patch-version',
+  SPARK_STATUS: 'spark/status',
 };
 
 // These constants should be consistent with message names in
@@ -175,12 +184,10 @@ class Device extends EventEmitter {
       (): void => this.disconnect('socket timeout'),
     );
 
-    await this.handshake();
+    await this.startHandshake();
   };
 
-  // TODO now we have handshake method and this._handshake module
-  // rename one of these.
-  handshake = async (): Promise<*> => {
+  startHandshake = async (): Promise<*> => {
     // when the handshake is done, we can expect two stream properties,
     // '_decipherStream' and '_cipherStream'
     try {
@@ -279,7 +286,6 @@ class Device extends EventEmitter {
    * Deals with messages coming from the core over our secure connection
    * @param data
    */
-  // TODO figure out and clean this method
   routeMessage = (data: Buffer) => {
     const message = Messages.unwrap(data);
     if (!message) {
@@ -319,8 +325,6 @@ class Device extends EventEmitter {
     this._incrementReceiveCounter();
     if (message.isEmpty() && message.isConfirmable()) {
       this._lastCorePing = new Date();
-      // var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
-      // logger.log('core ping @ ', delta, ' seconds ', { deviceID: this._id });
       this.sendReply('PingAck', message.getId());
       return;
     }
@@ -451,7 +455,7 @@ class Device extends EventEmitter {
     token: ?number,
     ..._:void[]
   ): Promise<*> => {
-    const tokenHex = token ? utilities.toHexString(token) : null;
+    const tokenHex = token ? this._toHexString(token) : null;
     const beVerbose = settings.showVerboseDeviceLogs;
 
     return new Promise((resolve, reject) => {
@@ -544,7 +548,7 @@ class Device extends EventEmitter {
    * @param sendToken
    */
   _useToken = (name: MessageType, sendToken: number) => {
-    const key = utilities.toHexString(sendToken);
+    const key = this._toHexString(sendToken);
 
     if (this._tokens[key]) {
       throw new Error(
@@ -560,7 +564,7 @@ class Device extends EventEmitter {
    * @param sendToken
    */
   _clearToken = (sendToken: number): void => {
-    const key = utilities.toHexString(sendToken);
+    const key = this._toHexString(sendToken);
 
     if (this._tokens[key]) {
       delete this._tokens[key];
@@ -578,8 +582,7 @@ class Device extends EventEmitter {
     return Messages.getResponseType(request);
   };
 
-  // todo make return type annotation
-  getDescription = async (): Promise<*> => {
+  getDescription = async (): Promise<DeviceDescription> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
@@ -629,30 +632,10 @@ class Device extends EventEmitter {
     return this._transformVariableResult(name, message);
   };
 
-  // TODO refactor, make sure if we need this at all
-  setVariableValue = async (
-    name: string,
-    data: Buffer,
-  ): Promise<*> => {
-    const isBusy = !this._isSocketAvailable(null);
-    if (isBusy) {
-      throw new Error('This device is locked during the flashing process.');
-    }
-
-    // TODO: data type!
-    const payload = Messages.toBinary(data);
-    const token = this.sendMessage('VariableRequest', { name }, payload);
-
-    // are we expecting a response?
-    // watches the messages coming back in, listens for a message of this type
-    // with
-    return await this.listenFor('VariableValue', null, token);
-  };
-
   // call function on device firmware
   callFunction = async (
     functionName: string,
-    functionArguments: Object,
+    functionArguments: {[key: string]: string},
   ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
@@ -710,12 +693,12 @@ class Device extends EventEmitter {
     }
 
     const token = this.sendMessage(
-      'RaiseYourHand',
+      'SignalStart',
       { _writeCoapUri: Messages.raiseYourHandUrlGenerator(shouldShowSignal) },
       null,
     );
     return await this.listenFor(
-      'RaiseYourHandReturn',
+      'SignalStartReturn',
       null,
       token,
     );
@@ -723,6 +706,7 @@ class Device extends EventEmitter {
 
   flash = async (
     binary: ?Buffer,
+    fileTransferStore: FileTransferStoreType = FileTransferStore.FIRMWARE,
     address: string = '0x0',
   ): Promise<string> => {
     const isBusy = !this._isSocketAvailable(null);
@@ -739,7 +723,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
-      await flasher.startFlashBuffer(binary, address);
+      await flasher.startFlashBuffer(binary, fileTransferStore, address);
 
       logger.log(
         'flash device finished! - sending api event',
@@ -880,15 +864,16 @@ class Device extends EventEmitter {
    */
   _transformArguments = async (
     name: string,
-    args: ?Object,
+    args: {[key: string]: string},
   ): Promise<?Buffer> => {
-    //logger.log('transform args', { deviceID: this._id });
+    console.log(args);
+    console.log(args);
+console.log(args);
     if (!args) {
       return null;
     }
 
     await this._ensureWeHaveIntrospectionData();
-    //TODO: lowercase function keys on new state format
     name = name.toLowerCase();
     const deviceFunctionState = nullthrows(this._deviceFunctionState);
 
@@ -913,7 +898,9 @@ class Device extends EventEmitter {
     if (!functionState || !functionState.args) {
         return null;
     }
-
+    console.log(args);
+    console.log(args);
+console.log(args);
     return Messages.buildArguments(args, functionState.args);
   };
 
@@ -974,8 +961,7 @@ class Device extends EventEmitter {
   onCoreEvent = (event: Event) => {
     this.sendCoreEvent(event);
   };
-  // TODO rework and figure out how to implement subscription with `MY_DEVICES`
-  // right way
+
   sendCoreEvent = (event: Event): void => {
     const { data, isPublic, name, publishedAt, ttl } = event;
 
@@ -1039,6 +1025,10 @@ class Device extends EventEmitter {
         )
       )
     );
+  };
+
+  _toHexString = (value: number): string => {
+    return (value < 10 ? '0' : '') + value.toString(16);
   };
 
   // eslint-disable-next-line no-confusing-arrow

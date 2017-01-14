@@ -20,7 +20,6 @@ var _hogan2 = _interopRequireDefault(_hogan);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// TODO: Check firmware and make sure everything is mapped here
 /*
 *   Copyright (C) 2013-2014 Spark Labs, Inc. All rights reserved. -  https://www.spark.io/
 *
@@ -112,9 +111,9 @@ var MessageSpecifications = [['Hello', {
   Response: 'GetTimeReturn',
   type: _h.Message.Type.CON,
   uri: 't'
-}], ['RaiseYourHand', {
+}], ['SignalStart', {
   code: _h.Message.Code.PUT,
-  Response: 'RaiseYourHandReturn',
+  Response: 'SignalStartReturn',
   type: _h.Message.Type.CON,
   uri: 's'
 }],
@@ -144,7 +143,7 @@ var MessageSpecifications = [['Hello', {
 }], ['GetTimeReturn', {
   code: _h.Message.Code.CONTENT,
   type: _h.Message.Type.ACK
-}], ['RaiseYourHandReturn', {
+}], ['SignalStartReturn', {
   code: _h.Message.Code.CHANGED,
   type: _h.Message.Type.ACK
 }], ['ChunkMissedAck', {

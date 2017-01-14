@@ -26,7 +26,6 @@ import type CryptoStream from './CryptoStream';
 import type CryptoManager from './CryptoManager';
 
 
-import utilities from './utilities';
 import ChunkingStream from './ChunkingStream';
 import logger from './logger';
 import buffers from 'h5.buffers';
@@ -74,28 +73,18 @@ import nullthrows from 'nullthrows';
      */
 
 
-// TODO rename to device?
-type HandshakeStage =
-  'done' |
-  'get-core-key' |
-  'get-hello' |
-  'read-core-id' |
-  'send-hello' |
-  'send-nonce' |
-  'send-session-key';
-
 //statics
 const NONCE_BYTES = 40;
 const ID_BYTES = 12;
 const SESSION_BYTES = 40;
 const GLOBAL_TIMEOUT = 10;
+const DECIPHER_STREAM_TIMEOUT = 30;
 
-// TODO make Handshake module stateless.
 class Handshake {
-  _client: Device;
+  _device: Device;
   _cryptoManager: CryptoManager;
   _socket: Socket;
-  _handshakeStage: HandshakeStage = 'send-nonce';
+  _isSendingHello: boolean = false;
   _reject: ?Function;
   _deviceID: string;
   _pendingBuffers: Array<Buffer> = [];
@@ -106,7 +95,7 @@ class Handshake {
   }
 
   start = async (device: Device): Promise<*> => {
-    this._client = device;
+    this._device = device;
     this._socket = device._socket;
 
     return Promise.race([
@@ -115,7 +104,7 @@ class Handshake {
       new Promise((resolve, reject) => this._reject = reject),
     ]).catch((error) => {
       var logInfo = {
-        cache_key: this._client && this._client._connectionKey,
+        cache_key: this._device && this._device._connectionKey,
         ip: this._socket && this._socket.remoteAddress
           ? this._socket.remoteAddress.toString()
           : 'unknown',
@@ -129,35 +118,33 @@ class Handshake {
   };
 
   _runHandshake = async (): Promise<*> => {
-      const nonce = await this._sendNonce();
-      const data = await this._onSocketDataAvailable();
+    const nonce = await this._sendNonce();
+    const data = await this._onSocketDataAvailable();
 
-      const {
-        deviceID,
-        deviceProvidedPem,
-      } = await this._readDeviceHandshakeData(nonce, data);
-      this._deviceID = deviceID;
-      const publicKey = await this._getDevicePublicKey(deviceID, deviceProvidedPem);
+    const {
+      deviceID,
+      deviceProvidedPem,
+    } = await this._readDeviceHandshakeData(nonce, data);
+    this._deviceID = deviceID;
+    const publicKey = await this._getDevicePublicKey(deviceID, deviceProvidedPem);
 
-      const {
-        cipherStream,
-        decipherStream,
-      } = await this._sendSessionKey(publicKey);
+    const {
+      cipherStream,
+      decipherStream,
+    } = await this._sendSessionKey(publicKey);
 
-      const handshakeBuffer = await Promise.race([
-        this._onDecipherStreamReadable(decipherStream),
-        this._onDecipherStreamTimeout(),
-      ]);
+    const handshakeBuffer = await Promise.race([
+      this._onDecipherStreamReadable(decipherStream),
+      this._onDecipherStreamTimeout(),
+    ]);
 
-      this._finished();
-
-      return {
-        deviceID,
-        cipherStream,
-        decipherStream,
-        handshakeBuffer,
-        pendingBuffers: [...this._pendingBuffers],
-      };
+    return {
+      deviceID,
+      cipherStream,
+      decipherStream,
+      handshakeBuffer,
+      pendingBuffers: [...this._pendingBuffers],
+    };
   };
 
   _startGlobalTimeout = (): Promise<*> => {
@@ -194,8 +181,6 @@ class Handshake {
   };
 
   _sendNonce = async (): Promise<Buffer> => {
-    this._handshakeStage = 'send-nonce';
-
     const nonce = await this._cryptoManager.getRandomBytes(NONCE_BYTES);
     this._socket.write(nonce);
 
@@ -241,18 +226,56 @@ class Handshake {
       decryptedHandshakeData.length
     );
 
-    if (!utilities.bufferCompare(nonceBuffer, nonce)) {
+    if (!nonceBuffer.equals(nonce)) {
       throw new Error('nonces didn\`t match');
     }
 
-    // todo move method to CryptoManager?
-		const deviceProvidedPem = utilities.convertDERtoPEM(deviceKeyBuffer);
+		const deviceProvidedPem = this._convertDERtoPEM(deviceKeyBuffer);
 		const deviceID = deviceIDBuffer.toString('hex');
 
-		// todo remove stages;
-    this._handshakeStage = 'read-core-id';
-
     return { deviceID, deviceProvidedPem };
+  };
+
+
+  /**
+   * base64 encodes raw binary into
+   * "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHzg9dPG03Kv4NkS3N0xJfU8lT1M+s9HTs75
+      DE1tpwXfU4GkfaLLr04j6jFpMeeggKCgWJsKyIAR9CNlVHC1IUYeejEJQCe6JReTQlq9F6bioK
+      84nc9QsFTpiCIqeTAZE4t6Di5pF8qrUgQvREHrl4Nw0DR7ECODgxc/r5+XFh9wIDAQAB"
+   * then formats into PEM format:
+   *
+   * //-----BEGIN PUBLIC KEY-----
+   * //MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHzg9dPG03Kv4NkS3N0xJfU8lT
+   * //1M+s9HTs75DE1tpwXfU4GkfaLLr04j6jFpMeeggKCgWJsKyIAR9CNlVHC1IUYeej
+   * //EJQCe6JReTQlq9F6bioK84nc9QsFTpiCIqeTAZE4t6Di5pF8qrUgQvREHrl4Nw0D
+   * //R7ECODgxc/r5+XFh9wIDAQAB
+   * //-----END PUBLIC KEY-----
+   *
+   * @param buf
+   * @returns {*}
+   */
+  _convertDERtoPEM = (buffer: ?Buffer): ?string => {
+  	if (!buffer || !buffer.length) {
+  		return null;
+  	}
+
+    const bufferString = buffer.toString('base64');
+  	try {
+  		const lines = [
+        '-----BEGIN PUBLIC KEY-----',
+        ...(bufferString.match(/.{1,64}/g) || []),
+        '-----END PUBLIC KEY-----',
+      ];
+  		return lines.join('\n');
+  	} catch(exception) {
+  		logger.error(
+        'error converting DER to PEM, was: ' +
+          bufferString +
+          ' ' +
+          exception,
+      );
+  	}
+  	return null;
   };
 
 
@@ -273,7 +296,6 @@ class Handshake {
       throw new Error(`no public key found for device: ${deviceID}`);
     }
 
-    this._handshakeStage = 'get-core-key';
     return publicKey;
   };
 
@@ -328,67 +350,29 @@ class Handshake {
       cipherStream.pipe(this._socket);
     }
 
-    this._handshakeStage = 'send-session-key';
-
     return { cipherStream, decipherStream };
   };
 
-  // TODO - Remove this callback once it resolves. When the stream is passed
-  // into the Device, it should be rebound there to listen for the keep-alive
-  // pings.
   _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> => {
     return new Promise((resolve, reject) => {
       const callback = () => {
         const chunk = ((decipherStream.read(): any): Buffer);
-        if (this._handshakeStage === 'send-hello') {
-          this._queueEarlyData(this._handshakeStage, chunk);
-        } else {
-          resolve(chunk);
-          decipherStream.removeListener('readable', callback);
-        }
+        resolve(chunk);
+        decipherStream.removeListener('readable', callback);
       };
       decipherStream.on('readable', callback);
     });
   };
 
-  _queueEarlyData = (name: HandshakeStage, data: Buffer): void => {
-    if (!data) {
-      return;
-    }
-    this._pendingBuffers.push(data);
-    logger.error('recovering from early data! ', {
-      step: name,
-      data: (data) ? data.toString('hex') : data,
-      cache_key: this._client._connectionKey
-    });
-  };
-
   _onDecipherStreamTimeout = (): Promise<*> => {
     return new Promise(
-      (resolve, reject) => setTimeout(() => reject(), 30 * 1000),
+      (resolve, reject) => setTimeout(
+        () => reject(),
+        DECIPHER_STREAM_TIMEOUT * 1000,
+      ),
     );
   };
 
-  _finished = (): void => {
-    this._handshakeStage = 'done';
-  };
-/*
-  _flushEarlyData = (): void => {
-    if (!this._pendingBuffers) {
-      return;
-    }
-
-    this._pendingBuffers.map(data => this._routeToClient(data));
-    this._pendingBuffers = null;
-  }
-
-  _routeToClient = (data: Buffer): void => {
-    if (!data) {
-      return;
-    }
-    process.nextTick(() => this._client.routeMessage(data));
-  }
-*/
   _handshakeFail = (message: string): void => {
     this._reject && this._reject(message);
   }

@@ -24,10 +24,6 @@ var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _utilities = require('./utilities');
-
-var _utilities2 = _interopRequireDefault(_utilities);
-
 var _ChunkingStream = require('./ChunkingStream');
 
 var _ChunkingStream2 = _interopRequireDefault(_ChunkingStream);
@@ -45,9 +41,6 @@ var _nullthrows = require('nullthrows');
 var _nullthrows2 = _interopRequireDefault(_nullthrows);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-//statics
-
 
 /*
  Handshake protocol v1
@@ -90,38 +83,38 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
      * Core reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Server must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
      */
 
-// TODO rename to device?
-var NONCE_BYTES = 40; /*
-                      *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                      *
-                      *   This program is free software; you can redistribute it and/or
-                      *   modify it under the terms of the GNU Lesser General Public
-                      *   License as published by the Free Software Foundation, either
-                      *   version 3 of the License, or (at your option) any later version.
-                      *
-                      *   This program is distributed in the hope that it will be useful,
-                      *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                      *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                      *   Lesser General Public License for more details.
-                      *
-                      *   You should have received a copy of the GNU Lesser General Public
-                      *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                      *
-                      * 
-                      *
-                      */
+//statics
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
 
+var NONCE_BYTES = 40;
 var ID_BYTES = 12;
 var SESSION_BYTES = 40;
 var GLOBAL_TIMEOUT = 10;
-
-// TODO make Handshake module stateless.
+var DECIPHER_STREAM_TIMEOUT = 30;
 
 var Handshake = function Handshake(cryptoManager) {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, Handshake);
-  this._handshakeStage = 'send-nonce';
+  this._isSendingHello = false;
   this._pendingBuffers = [];
   this._useChunkingStream = true;
 
@@ -131,14 +124,14 @@ var Handshake = function Handshake(cryptoManager) {
         while (1) {
           switch (_context.prev = _context.next) {
             case 0:
-              _this._client = device;
+              _this._device = device;
               _this._socket = device._socket;
 
               return _context.abrupt('return', _promise2.default.race([_this._runHandshake(), _this._startGlobalTimeout(), new _promise2.default(function (resolve, reject) {
                 return _this._reject = reject;
               })]).catch(function (error) {
                 var logInfo = {
-                  cache_key: _this._client && _this._client._connectionKey,
+                  cache_key: _this._device && _this._device._connectionKey,
                   ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown',
                   deviceID: _this._deviceID || null
                 };
@@ -204,10 +197,6 @@ var Handshake = function Handshake(cryptoManager) {
 
           case 22:
             handshakeBuffer = _context2.sent;
-
-
-            _this._finished();
-
             return _context2.abrupt('return', {
               deviceID: deviceID,
               cipherStream: cipherStream,
@@ -216,7 +205,7 @@ var Handshake = function Handshake(cryptoManager) {
               pendingBuffers: [].concat((0, _toConsumableArray3.default)(_this._pendingBuffers))
             });
 
-          case 25:
+          case 24:
           case 'end':
             return _context2.stop();
         }
@@ -262,19 +251,17 @@ var Handshake = function Handshake(cryptoManager) {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            _this._handshakeStage = 'send-nonce';
-
-            _context3.next = 3;
+            _context3.next = 2;
             return _this._cryptoManager.getRandomBytes(NONCE_BYTES);
 
-          case 3:
+          case 2:
             nonce = _context3.sent;
 
             _this._socket.write(nonce);
 
             return _context3.abrupt('return', nonce);
 
-          case 6:
+          case 5:
           case 'end':
             return _context3.stop();
         }
@@ -320,7 +307,7 @@ var Handshake = function Handshake(cryptoManager) {
               decryptedHandshakeData.copy(deviceIDBuffer, 0, NONCE_BYTES, NONCE_BYTES + ID_BYTES);
               decryptedHandshakeData.copy(deviceKeyBuffer, 0, NONCE_BYTES + ID_BYTES, decryptedHandshakeData.length);
 
-              if (_utilities2.default.bufferCompare(nonceBuffer, nonce)) {
+              if (nonceBuffer.equals(nonce)) {
                 _context4.next = 15;
                 break;
               }
@@ -328,18 +315,11 @@ var Handshake = function Handshake(cryptoManager) {
               throw new Error('nonces didn\`t match');
 
             case 15:
-
-              // todo move method to CryptoManager?
-              deviceProvidedPem = _utilities2.default.convertDERtoPEM(deviceKeyBuffer);
+              deviceProvidedPem = _this._convertDERtoPEM(deviceKeyBuffer);
               deviceID = deviceIDBuffer.toString('hex');
-
-              // todo remove stages;
-
-              _this._handshakeStage = 'read-core-id';
-
               return _context4.abrupt('return', { deviceID: deviceID, deviceProvidedPem: deviceProvidedPem });
 
-            case 19:
+            case 18:
             case 'end':
               return _context4.stop();
           }
@@ -351,6 +331,21 @@ var Handshake = function Handshake(cryptoManager) {
       return _ref6.apply(this, arguments);
     };
   }();
+
+  this._convertDERtoPEM = function (buffer) {
+    if (!buffer || !buffer.length) {
+      return null;
+    }
+
+    var bufferString = buffer.toString('base64');
+    try {
+      var lines = ['-----BEGIN PUBLIC KEY-----'].concat((0, _toConsumableArray3.default)(bufferString.match(/.{1,64}/g) || []), ['-----END PUBLIC KEY-----']);
+      return lines.join('\n');
+    } catch (exception) {
+      _logger2.default.error('error converting DER to PEM, was: ' + bufferString + ' ' + exception);
+    }
+    return null;
+  };
 
   this._getDevicePublicKey = function () {
     var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(deviceID, deviceProvidedPem) {
@@ -385,11 +380,9 @@ var Handshake = function Handshake(cryptoManager) {
               throw new Error('no public key found for device: ' + deviceID);
 
             case 9:
-
-              _this._handshakeStage = 'get-core-key';
               return _context5.abrupt('return', publicKey);
 
-            case 11:
+            case 10:
             case 'end':
               return _context5.stop();
           }
@@ -463,11 +456,9 @@ var Handshake = function Handshake(cryptoManager) {
                 cipherStream.pipe(_this._socket);
               }
 
-              _this._handshakeStage = 'send-session-key';
-
               return _context6.abrupt('return', { cipherStream: cipherStream, decipherStream: decipherStream });
 
-            case 17:
+            case 16:
             case 'end':
               return _context6.stop();
           }
@@ -484,26 +475,10 @@ var Handshake = function Handshake(cryptoManager) {
     return new _promise2.default(function (resolve, reject) {
       var callback = function callback() {
         var chunk = decipherStream.read();
-        if (_this._handshakeStage === 'send-hello') {
-          _this._queueEarlyData(_this._handshakeStage, chunk);
-        } else {
-          resolve(chunk);
-          decipherStream.removeListener('readable', callback);
-        }
+        resolve(chunk);
+        decipherStream.removeListener('readable', callback);
       };
       decipherStream.on('readable', callback);
-    });
-  };
-
-  this._queueEarlyData = function (name, data) {
-    if (!data) {
-      return;
-    }
-    _this._pendingBuffers.push(data);
-    _logger2.default.error('recovering from early data! ', {
-      step: name,
-      data: data ? data.toString('hex') : data,
-      cache_key: _this._client._connectionKey
     });
   };
 
@@ -511,12 +486,8 @@ var Handshake = function Handshake(cryptoManager) {
     return new _promise2.default(function (resolve, reject) {
       return setTimeout(function () {
         return reject();
-      }, 30 * 1000);
+      }, DECIPHER_STREAM_TIMEOUT * 1000);
     });
-  };
-
-  this._finished = function () {
-    _this._handshakeStage = 'done';
   };
 
   this._handshakeFail = function (message) {
@@ -526,27 +497,23 @@ var Handshake = function Handshake(cryptoManager) {
   this._cryptoManager = cryptoManager;
 }
 
-// TODO - Remove this callback once it resolves. When the stream is passed
-// into the Device, it should be rebound there to listen for the keep-alive
-// pings.
-
-/*
-  _flushEarlyData = (): void => {
-    if (!this._pendingBuffers) {
-      return;
-    }
-
-    this._pendingBuffers.map(data => this._routeToClient(data));
-    this._pendingBuffers = null;
-  }
-
-  _routeToClient = (data: Buffer): void => {
-    if (!data) {
-      return;
-    }
-    process.nextTick(() => this._client.routeMessage(data));
-  }
-*/
+/**
+ * base64 encodes raw binary into
+ * "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHzg9dPG03Kv4NkS3N0xJfU8lT1M+s9HTs75
+    DE1tpwXfU4GkfaLLr04j6jFpMeeggKCgWJsKyIAR9CNlVHC1IUYeejEJQCe6JReTQlq9F6bioK
+    84nc9QsFTpiCIqeTAZE4t6Di5pF8qrUgQvREHrl4Nw0DR7ECODgxc/r5+XFh9wIDAQAB"
+ * then formats into PEM format:
+ *
+ * //-----BEGIN PUBLIC KEY-----
+ * //MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHzg9dPG03Kv4NkS3N0xJfU8lT
+ * //1M+s9HTs75DE1tpwXfU4GkfaLLr04j6jFpMeeggKCgWJsKyIAR9CNlVHC1IUYeej
+ * //EJQCe6JReTQlq9F6bioK84nc9QsFTpiCIqeTAZE4t6Di5pF8qrUgQvREHrl4Nw0D
+ * //R7ECODgxc/r5+XFh9wIDAQAB
+ * //-----END PUBLIC KEY-----
+ *
+ * @param buf
+ * @returns {*}
+ */
 ;
 
 exports.default = Handshake;
