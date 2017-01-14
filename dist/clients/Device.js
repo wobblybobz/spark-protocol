@@ -130,8 +130,6 @@ var COUNTER_MAX = 65536;
 var TOKEN_COUNTER_MAX = 256;
 var KEEP_ALIVE_TIMEOUT = _settings2.default.keepaliveTimeout;
 var SOCKET_TIMEOUT = _settings2.default.socketTimeout;
-var MAX_BINARY_SIZE = 108000; // According to the forums this is the max size.
-
 
 var DEVICE_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = {
   DISCONNECT: 'disconnect',
@@ -188,6 +186,8 @@ var Device = function (_EventEmitter) {
     _this._disconnectCounter = 0;
     _this._id = '';
     _this._lastCorePing = new Date();
+    _this._maxBinarySize = null;
+    _this._otaChunkSize = null;
     _this._particleProductId = 0;
     _this._platformId = 0;
     _this._productFirmwareVersion = 0;
@@ -195,6 +195,15 @@ var Device = function (_EventEmitter) {
     _this._sendCounter = 0;
     _this._sendToken = 0;
     _this._tokens = {};
+
+    _this.setMaxBinarySize = function (maxBinarySize) {
+      _this._maxBinarySize = maxBinarySize;
+    };
+
+    _this.setOtaChunkSize = function (maxBinarySize) {
+      _this._otaChunkSize = maxBinarySize;
+    };
+
     _this.startupProtocol = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
       return _regenerator2.default.wrap(function _callee$(_context) {
         while (1) {
@@ -837,37 +846,17 @@ var Device = function (_EventEmitter) {
                 throw new Error('This device is locked during the flashing process.');
 
               case 3:
-                if (!(!binary || binary.length === 0)) {
-                  _context10.next = 6;
-                  break;
-                }
-
-                _logger2.default.log('flash failed! - file is empty! ', { deviceID: _this._id });
-
-                throw new Error('Update failed - File was too small!');
-
-              case 6:
-                if (!(binary && binary.length > MAX_BINARY_SIZE && address === '0x0')) {
-                  _context10.next = 9;
-                  break;
-                }
-
-                _logger2.default.log('flash failed! - file is too BIG ' + binary.length, { deviceID: _this._id });
-
-                throw new Error('Update failed - File was too big!');
-
-              case 9:
-                flasher = new _Flasher2.default(_this);
-                _context10.prev = 10;
+                flasher = new _Flasher2.default(_this, _this._maxBinarySize, _this._otaChunkSize);
+                _context10.prev = 4;
 
                 _logger2.default.log('flash device started! - sending api event', { deviceID: _this._id });
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
-                _context10.next = 15;
+                _context10.next = 9;
                 return flasher.startFlashBuffer(binary, address);
 
-              case 15:
+              case 9:
 
                 _logger2.default.log('flash device finished! - sending api event', { deviceID: _this._id });
 
@@ -875,21 +864,21 @@ var Device = function (_EventEmitter) {
 
                 return _context10.abrupt('return', 'Update finished');
 
-              case 20:
-                _context10.prev = 20;
-                _context10.t0 = _context10['catch'](10);
+              case 14:
+                _context10.prev = 14;
+                _context10.t0 = _context10['catch'](4);
 
                 _logger2.default.log('flash device failed! - sending api event', { deviceID: _this._id, error: _context10.t0 });
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
                 throw new Error('Update failed: ' + _context10.t0.message);
 
-              case 25:
+              case 19:
               case 'end':
                 return _context10.stop();
             }
           }
-        }, _callee10, _this2, [[10, 20]]);
+        }, _callee10, _this2, [[4, 14]]);
       }));
 
       return function (_x11, _x12) {
@@ -1111,10 +1100,24 @@ var Device = function (_EventEmitter) {
         }
       }, _callee13, _this2, [[2, 6]]);
     }));
+    _this.getSystemInformation = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee14() {
+      return _regenerator2.default.wrap(function _callee14$(_context14) {
+        while (1) {
+          switch (_context14.prev = _context14.next) {
+            case 0:
+              _context14.next = 2;
+              return _this._ensureWeHaveIntrospectionData();
 
-    _this.getSystemInformation = function () {
-      return _this._systemInformation;
-    };
+            case 2:
+              return _context14.abrupt('return', _this._systemInformation);
+
+            case 3:
+            case 'end':
+              return _context14.stop();
+          }
+        }
+      }, _callee14, _this2);
+    }));
 
     _this.onCoreEvent = function (event) {
       _this.sendCoreEvent(event);

@@ -41,13 +41,14 @@ import nullthrows from 'nullthrows';
 //UpdateDone — sent by Server to indicate all firmware chunks have been sent
 //
 
-const CHUNK_SIZE = 512;
-const MAX_CHUNK_SIZE = 594;
+const CHUNK_SIZE = 256;
 const MAX_MISSED_CHUNKS = 10;
+const MAX_BINARY_SIZE = 108000; // According to the forums this is the max size for core.
 
 class Flasher {
 	_chunk: ?Buffer = null;
 	_chunkSize: number = CHUNK_SIZE;
+	_maxBinarySize: number = MAX_BINARY_SIZE;
 	_chunkIndex: number;
 	_client: Device;
 	_fileStream: ?BufferStream = null;
@@ -59,17 +60,37 @@ class Flasher {
 	//
 	// OTA tweaks
 	//
-	_fastOtaEnabled: boolean = false;
+	_fastOtaEnabled: boolean = true;
 	_ignoreMissedChunks: boolean = false;
 
-	constructor(client: Device) {
+	constructor(client: Device, maxBinarySize: ?number, otaChunkSize: ?number) {
 		this._client = client;
+		this._maxBinarySize = maxBinarySize || MAX_BINARY_SIZE;
+		this._chunkSize = otaChunkSize || CHUNK_SIZE;
 	}
 
 	startFlashBuffer = async (
-		buffer: Buffer,
+		buffer: ?Buffer,
 		address: string = '0x0',
 	): Promise<void> => {
+    if (!buffer || buffer.length === 0) {
+      logger.log(
+        'flash failed! - file is empty! ',
+        { deviceID: this._client.getID() },
+      );
+
+      throw new Error('Update failed - File was empty!');
+    }
+
+    if (buffer && buffer.length > this._maxBinarySize) {
+      logger.log(
+        `flash failed! - file is too BIG ${buffer.length}`,
+        { deviceID: this._client.getID() },
+      );
+
+      throw new Error('Update failed - File was too big!');
+    }
+
     try {
       if (!this._claimConnection()) {
   			return;

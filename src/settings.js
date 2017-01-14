@@ -22,12 +22,13 @@
 import path from 'path';
 
 export default {
-  DEVICE_DIRECTORY: path.join(__dirname, './data/deviceKeys'),
+  BINARIES_DIRECTORY: path.join(__dirname, '../data/binaries'),
+  DEVICE_DIRECTORY: path.join(__dirname, '../data/deviceKeys'),
   SERVER_CONFIG: {
     host: 'localhost',
     port: 5683,
   },
-  SERVER_KEYS_DIRECTORY: path.join(__dirname, './data/users'),
+  SERVER_KEYS_DIRECTORY: path.join(__dirname, '../data/users'),
   SERVER_KEY_FILENAME: 'default_key.pem',
 
   environment: 'prn',

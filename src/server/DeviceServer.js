@@ -20,6 +20,7 @@
 
 import type { Socket } from 'net';
 import type { Message } from 'h5.coap';
+import { HalDescribeParser } from 'binary-version-reader';
 import type {
   DeviceAttributes,
   Repository,
@@ -31,10 +32,12 @@ import CryptoManager from '../lib/CryptoManager';
 import Handshake from '../lib/Handshake';
 
 import net from 'net';
+import crypto from 'crypto';
 import nullthrows from 'nullthrows';
 import moment from 'moment';
 import Device from '../clients/Device';
 
+import FirmwareManager from '../lib/FirmwareManager';
 import logger from '../lib/logger';
 import Messages from '../lib/Messages';
 import {
@@ -251,87 +254,112 @@ class DeviceServer {
     isPublic: boolean,
     device: Device,
   ): Promise<void> => {
-    const deviceID = device.getID();
-    const deviceAttributes =
-      await this._deviceAttributeRepository.getById(deviceID);
+    try {
+      const deviceID = device.getID();
+      const deviceAttributes =
+        await this._deviceAttributeRepository.getById(deviceID);
 
-    const eventData = {
-      data: message.getPayloadLength() === 0 ? null : message.getPayload().toString(),
-      deviceID,
-      isPublic,
-      name: message.getUriPath().substr(3),
-      ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
-      userID: deviceAttributes && deviceAttributes.ownerID,
-    };
+      if (!deviceAttributes) {
+        throw new Error(
+          `Could not find device attributes for device: ${deviceID}`,
+        );
+      }
 
-    const eventName = eventData.name.toLowerCase();
+      const eventData = {
+        data: message.getPayloadLength() === 0 ? null : message.getPayload().toString(),
+        deviceID,
+        isPublic,
+        name: message.getUriPath().substr(3),
+        ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
+        userID: deviceAttributes && deviceAttributes.ownerID,
+      };
 
-    // TODO: I don't actually see this event anywhere in the firmware
-    if (eventName.match('spark/device/system/version')) {
-      const deviceSystemVersion = message.getPayload().toString();
+      const eventName = eventData.name.toLowerCase();
 
-      await this._deviceAttributeRepository.update({
-        ...deviceAttributes,
-        // TODO should it be this key?:
-        spark_system_version: deviceSystemVersion,
-      });
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
+        await this._onDeviceClaimCodeMessage(message, device);
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_IP)) {
+        const ipAddress = device.getRemoteIPAddress();
+
+        this._eventPublisher.publish({
+          data: ipAddress,
+          name: SYSTEM_EVENT_NAMES.GET_NAME,
+          userID: eventName.userID,
+        });
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME)) {
+        const name = deviceAttributes.name;
+
+        this._eventPublisher.publish({
+          data: name,
+          name: SYSTEM_EVENT_NAMES.GET_NAME,
+          userID: eventName.userID,
+        });
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {
+        const cryptoString = crypto
+          .randomBytes(40)
+          .toString('base64')
+          .substring(0, 40);
+
+        this._eventPublisher.publish({
+          data: cryptoString,
+          name: SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER,
+          userID: eventName.userID,
+        });
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.IDENTITY)) {
+        // TODO - https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.LAST_RESET)) {
+        // This should be sent to the stream in DeviceServer
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.MAX_BINARY)) {
+        device.setMaxBinarySize(Number.parseInt(nullthrows(eventData.data)));
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {
+        device.setOtaChunkSize(Number.parseInt(nullthrows(eventData.data)));
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.RESET)) {
+        // ???
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)) {
+        FirmwareManager.runOtaSystemUpdates(device);
+      }
+
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
+        // todo
+        // get patch version from payload
+        // compare with version on disc
+        // if device version is old, do OTA update with patch
+      }
+
+      // Any "spark" event should have been handled by now
+      if (eventName.startsWith('spark')) {
+        // TODO: there are only a few types of messages that shouldn't be streamed
+        // so only do this in edge cases
+
+        // Maybe look for `E` which means private event?
+        if (!isPublic) {
+          device.sendReply('EventAck', message.getId());
+          return;
+        }
+      }
+
+      await this._eventPublisher.publish(eventData);
+    } catch (error) {
+      console.log(error);
     }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-      await this._onDeviceClaimCodeMessage(message, device);
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_IP)) {
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME)) {
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.IDENTITY)) {
-      // TODO - https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.LAST_RESET)) {
-      // This should be sent to the stream in DeviceServer
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.MAX_BINARY)) {
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.RESET)) {
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)) {
-      const token = device.sendMessage('Describe');
-      const systemMessage = await device.listenFor(
-        'DescribeReturn',
-        null,
-        token,
-      );
-    }
-
-    if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
-      // todo
-      // get patch version from payload
-      // compare with version on disc
-      // if device version is old, do OTA update with patch
-    }
-
-    // Any "spark" event should have been handled by now
-    if (eventName.startsWith('spark')) {
-      // TODO: there are only a few types of messages that shouldn't be streamed
-      // so only do this in edge cases
-      device.sendReply('EventAck', message.getId());
-      return;
-    }
-
-    await this._eventPublisher.publish(eventData);
   };
 
   _onDeviceClaimCodeMessage = async (

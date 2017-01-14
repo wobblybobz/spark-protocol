@@ -74,8 +74,6 @@ const COUNTER_MAX = 65536;
 const TOKEN_COUNTER_MAX = 256;
 const KEEP_ALIVE_TIMEOUT = settings.keepaliveTimeout;
 const SOCKET_TIMEOUT = settings.socketTimeout;
-const MAX_BINARY_SIZE = 108000; // According to the forums this is the max size.
-
 
 export const DEVICE_EVENT_NAMES = {
   DISCONNECT: 'disconnect',
@@ -122,6 +120,8 @@ class Device extends EventEmitter {
   _disconnectCounter: number = 0;
   _id: string = '';
   _lastCorePing: Date = new Date();
+  _maxBinarySize: ?number = null;
+  _otaChunkSize: ?number = null;
   _owningFlasher: ?Flasher;
   _particleProductId: number = 0;
   _platformId: number = 0;
@@ -145,6 +145,14 @@ class Device extends EventEmitter {
     this._socket = socket;
     this._handshake = handshake;
   }
+
+  setMaxBinarySize = (maxBinarySize: number): void => {
+    this._maxBinarySize = maxBinarySize;
+  };
+
+  setOtaChunkSize = (maxBinarySize: number): void => {
+    this._otaChunkSize = maxBinarySize;
+  };
 
   /**
    * configure our socket and start the handshake
@@ -722,25 +730,7 @@ class Device extends EventEmitter {
       throw new Error('This device is locked during the flashing process.');
     }
 
-    if (!binary || (binary.length === 0)) {
-      logger.log(
-        'flash failed! - file is empty! ',
-        { deviceID: this._id },
-      );
-
-      throw new Error('Update failed - File was too small!');
-    }
-
-    if (binary && binary.length > MAX_BINARY_SIZE && address === '0x0') {
-      logger.log(
-        `flash failed! - file is too BIG ${binary.length}`,
-        { deviceID: this._id },
-      );
-
-      throw new Error('Update failed - File was too big!');
-    }
-
-    const flasher = new Flasher(this);
+    const flasher = new Flasher(this, this._maxBinarySize, this._otaChunkSize);
     try {
       logger.log(
         'flash device started! - sending api event',
@@ -973,7 +963,8 @@ class Device extends EventEmitter {
     }
   };
 
-  getSystemInformation = (): ?Object => {
+  getSystemInformation = async (): ?Object => {
+    await this._ensureWeHaveIntrospectionData();
     return this._systemInformation;
   };
 

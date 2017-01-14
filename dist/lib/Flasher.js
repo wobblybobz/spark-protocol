@@ -112,26 +112,27 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 *
 */
 
-var CHUNK_SIZE = 512;
-var MAX_CHUNK_SIZE = 594;
+var CHUNK_SIZE = 256;
 var MAX_MISSED_CHUNKS = 10;
+var MAX_BINARY_SIZE = 108000; // According to the forums this is the max size for core.
 
 var Flasher =
 
 //
 // OTA tweaks
 //
-function Flasher(client) {
+function Flasher(client, maxBinarySize, otaChunkSize) {
 	var _this = this;
 
 	(0, _classCallCheck3.default)(this, Flasher);
 	this._chunk = null;
 	this._chunkSize = CHUNK_SIZE;
+	this._maxBinarySize = MAX_BINARY_SIZE;
 	this._fileStream = null;
 	this._lastCrc = null;
 	this._protocolVersion = 0;
 	this._missedChunks = new _set2.default();
-	this._fastOtaEnabled = false;
+	this._fastOtaEnabled = true;
 	this._ignoreMissedChunks = false;
 
 	this.startFlashBuffer = function () {
@@ -141,25 +142,45 @@ function Flasher(client) {
 				while (1) {
 					switch (_context.prev = _context.next) {
 						case 0:
-							_context.prev = 0;
+							if (!(!buffer || buffer.length === 0)) {
+								_context.next = 3;
+								break;
+							}
+
+							_logger2.default.log('flash failed! - file is empty! ', { deviceID: _this._client.getID() });
+
+							throw new Error('Update failed - File was empty!');
+
+						case 3:
+							if (!(buffer && buffer.length > _this._maxBinarySize)) {
+								_context.next = 6;
+								break;
+							}
+
+							_logger2.default.log('flash failed! - file is too BIG ' + buffer.length, { deviceID: _this._client.getID() });
+
+							throw new Error('Update failed - File was too big!');
+
+						case 6:
+							_context.prev = 6;
 
 							if (_this._claimConnection()) {
-								_context.next = 3;
+								_context.next = 9;
 								break;
 							}
 
 							return _context.abrupt('return');
 
-						case 3:
+						case 9:
 
 							_this._startTime = new Date();
 
 							_this._prepare(buffer);
-							_context.next = 7;
+							_context.next = 13;
 							return _this._beginUpdate(buffer, address);
 
-						case 7:
-							_context.next = 9;
+						case 13:
+							_context.next = 15;
 							return _promise2.default.race([
 							// Fail after 60 of trying to flash
 							new _promise2.default(function (resolve, reject) {
@@ -168,28 +189,28 @@ function Flasher(client) {
 								}, 60 * 1000);
 							}), _this._sendFile()]);
 
-						case 9:
-							_context.next = 11;
+						case 15:
+							_context.next = 17;
 							return _this._onAllChunksDone();
 
-						case 11:
+						case 17:
 							_this._cleanup();
-							_context.next = 18;
+							_context.next = 24;
 							break;
 
-						case 14:
-							_context.prev = 14;
-							_context.t0 = _context['catch'](0);
+						case 20:
+							_context.prev = 20;
+							_context.t0 = _context['catch'](6);
 
 							_this._cleanup();
 							throw _context.t0;
 
-						case 18:
+						case 24:
 						case 'end':
 							return _context.stop();
 					}
 				}
-			}, _callee, _this, [[0, 14]]);
+			}, _callee, _this, [[6, 20]]);
 		}));
 
 		return function (_x, _x2) {
@@ -700,6 +721,8 @@ function Flasher(client) {
 	};
 
 	this._client = client;
+	this._maxBinarySize = maxBinarySize || MAX_BINARY_SIZE;
+	this._chunkSize = otaChunkSize || CHUNK_SIZE;
 }
 
 /**

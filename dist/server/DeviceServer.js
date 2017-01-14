@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _parseInt = require('babel-runtime/core-js/number/parse-int');
+
+var _parseInt2 = _interopRequireDefault(_parseInt);
+
 var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
@@ -28,6 +32,8 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
+var _binaryVersionReader = require('binary-version-reader');
+
 var _CryptoManager = require('../lib/CryptoManager');
 
 var _CryptoManager2 = _interopRequireDefault(_CryptoManager);
@@ -40,6 +46,10 @@ var _net = require('net');
 
 var _net2 = _interopRequireDefault(_net);
 
+var _crypto = require('crypto');
+
+var _crypto2 = _interopRequireDefault(_crypto);
+
 var _nullthrows = require('nullthrows');
 
 var _nullthrows2 = _interopRequireDefault(_nullthrows);
@@ -51,6 +61,10 @@ var _moment2 = _interopRequireDefault(_moment);
 var _Device = require('../clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
+
+var _FirmwareManager = require('../lib/FirmwareManager');
+
+var _FirmwareManager2 = _interopRequireDefault(_FirmwareManager);
 
 var _logger = require('../lib/logger');
 
@@ -259,17 +273,27 @@ var DeviceServer = function () {
 
     this._onDeviceSentMessage = function () {
       var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(message, isPublic, device) {
-        var deviceID, deviceAttributes, eventData, eventName, deviceSystemVersion, token, systemMessage;
+        var deviceID, deviceAttributes, eventData, eventName, ipAddress, name, cryptoString;
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
+                _context4.prev = 0;
                 deviceID = device.getID();
-                _context4.next = 3;
+                _context4.next = 4;
                 return _this._deviceAttributeRepository.getById(deviceID);
 
-              case 3:
+              case 4:
                 deviceAttributes = _context4.sent;
+
+                if (deviceAttributes) {
+                  _context4.next = 7;
+                  break;
+                }
+
+                throw new Error('Could not find device attributes for device: ' + deviceID);
+
+              case 7:
                 eventData = {
                   data: message.getPayloadLength() === 0 ? null : message.getPayload().toString(),
                   deviceID: deviceID,
@@ -280,36 +304,48 @@ var DeviceServer = function () {
                 };
                 eventName = eventData.name.toLowerCase();
 
-                // TODO: I don't actually see this event anywhere in the firmware
-
-                if (!eventName.match('spark/device/system/version')) {
-                  _context4.next = 10;
-                  break;
-                }
-
-                deviceSystemVersion = message.getPayload().toString();
-                _context4.next = 10;
-                return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
-                  // TODO should it be this key?:
-                  spark_system_version: deviceSystemVersion
-                }));
-
-              case 10:
                 if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-                  _context4.next = 13;
+                  _context4.next = 12;
                   break;
                 }
 
-                _context4.next = 13;
+                _context4.next = 12;
                 return _this._onDeviceClaimCodeMessage(message, device);
 
-              case 13:
+              case 12:
 
-                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_IP)) {}
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_IP)) {
+                  ipAddress = device.getRemoteIPAddress();
 
-                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_NAME)) {}
 
-                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {}
+                  _this._eventPublisher.publish({
+                    data: ipAddress,
+                    name: _Device.SYSTEM_EVENT_NAMES.GET_NAME,
+                    userID: eventName.userID
+                  });
+                }
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_NAME)) {
+                  name = deviceAttributes.name;
+
+
+                  _this._eventPublisher.publish({
+                    data: name,
+                    name: _Device.SYSTEM_EVENT_NAMES.GET_NAME,
+                    userID: eventName.userID
+                  });
+                }
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {
+                  cryptoString = _crypto2.default.randomBytes(40).toString('base64').substring(0, 40);
+
+
+                  _this._eventPublisher.publish({
+                    data: cryptoString,
+                    name: _Device.SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER,
+                    userID: eventName.userID
+                  });
+                }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.IDENTITY)) {
                   // TODO - https://github.com/spark/firmware/blob/develop/system/src/system_cloud_internal.cpp#L682-L685
@@ -319,25 +355,21 @@ var DeviceServer = function () {
                   // This should be sent to the stream in DeviceServer
                 }
 
-                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.MAX_BINARY)) {}
-
-                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {}
-
-                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.RESET)) {}
-
-                if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
-                  _context4.next = 26;
-                  break;
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.MAX_BINARY)) {
+                  device.setMaxBinarySize((0, _parseInt2.default)((0, _nullthrows2.default)(eventData.data)));
                 }
 
-                token = device.sendMessage('Describe');
-                _context4.next = 25;
-                return device.listenFor('DescribeReturn', null, token);
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {
+                  device.setOtaChunkSize((0, _parseInt2.default)((0, _nullthrows2.default)(eventData.data)));
+                }
 
-              case 25:
-                systemMessage = _context4.sent;
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.RESET)) {
+                  // ???
+                }
 
-              case 26:
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
+                  _FirmwareManager2.default.runOtaSystemUpdates(device);
+                }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {}
                 // todo
@@ -349,25 +381,38 @@ var DeviceServer = function () {
                 // Any "spark" event should have been handled by now
 
                 if (!eventName.startsWith('spark')) {
-                  _context4.next = 30;
+                  _context4.next = 26;
                   break;
                 }
 
-                // TODO: there are only a few types of messages that shouldn't be streamed
-                // so only do this in edge cases
+                if (isPublic) {
+                  _context4.next = 26;
+                  break;
+                }
+
                 device.sendReply('EventAck', message.getId());
                 return _context4.abrupt('return');
 
-              case 30:
-                _context4.next = 32;
+              case 26:
+                _context4.next = 28;
                 return _this._eventPublisher.publish(eventData);
 
-              case 32:
+              case 28:
+                _context4.next = 33;
+                break;
+
+              case 30:
+                _context4.prev = 30;
+                _context4.t0 = _context4['catch'](0);
+
+                console.log(_context4.t0);
+
+              case 33:
               case 'end':
                 return _context4.stop();
             }
           }
-        }, _callee4, _this);
+        }, _callee4, _this, [[0, 30]]);
       }));
 
       return function (_x3, _x4, _x5) {
