@@ -12,13 +12,14 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 exports.default = {
   BINARIES_DIRECTORY: _path2.default.join(__dirname, '../data/binaries'),
+  DEFAULT_EVENT_TTL: 60,
   DEVICE_DIRECTORY: _path2.default.join(__dirname, '../data/deviceKeys'),
   SERVER_CONFIG: {
     host: 'localhost',
     port: 5683
   },
-  SERVER_KEYS_DIRECTORY: _path2.default.join(__dirname, '../data/users'),
   SERVER_KEY_FILENAME: 'default_key.pem',
+  SERVER_KEYS_DIRECTORY: _path2.default.join(__dirname, '../data/users'),
 
   environment: 'prn',
 

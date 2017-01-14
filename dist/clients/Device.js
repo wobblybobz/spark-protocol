@@ -1094,10 +1094,8 @@ var Device = function (_EventEmitter) {
 
       var rawFunction = function rawFunction(message) {
         try {
-          message.setMaxAge(ttl >= 0 ? ttl : 60);
-          if (publishedAt) {
-            message.setTimestamp((0, _moment2.default)(publishedAt).toDate());
-          }
+          message.setMaxAge(ttl);
+          message.setTimestamp((0, _moment2.default)(publishedAt).toDate());
         } catch (error) {
           _logger2.default.error('onCoreHeard - ' + error.message);
         }

@@ -967,10 +967,8 @@ console.log(args);
 
     const rawFunction = (message: Message): void => {
       try {
-        message.setMaxAge((ttl >= 0) ? ttl : 60);
-        if (publishedAt) {
-          message.setTimestamp(moment(publishedAt).toDate());
-        }
+        message.setMaxAge(ttl);
+        message.setTimestamp(moment(publishedAt).toDate());
       } catch (error) {
         logger.error(`onCoreHeard - ${error.message}`);
       }

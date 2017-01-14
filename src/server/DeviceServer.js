@@ -184,7 +184,7 @@ class DeviceServer {
 
       logger.log(
         `Connection from: ${device.getRemoteIPAddress()} - ` +
-          `Connection ID: ${connectionIdCounter}`,
+        `Connection ID: ${connectionIdCounter}`,
       );
     } catch (error) {
       logger.error(`Device startup failed: ${error.message}`);
@@ -205,7 +205,7 @@ class DeviceServer {
       );
       logger.log(
         `Session ended for device with ID: ${deviceID} with connectionKey: ` +
-          `${connectionKey}`,
+        `${connectionKey}`,
       );
     }
   };
@@ -279,7 +279,7 @@ class DeviceServer {
         deviceID,
         isPublic,
         name: message.getUriPath().substr(3),
-        ttl: message.getMaxAge() > 0 ? message.getMaxAge() : 60,
+        ttl: message.getMaxAge(),
         userID: deviceAttributes && deviceAttributes.ownerID,
       };
 
@@ -419,8 +419,8 @@ class DeviceServer {
 
     logger.log(
       `Got subscribe request from device with ID ${deviceID} ` +
-        `on event: '${messageName}' ` +
-        `from my devices only: ${isFromMyDevices || false}`,
+      `on event: '${messageName}' ` +
+      `from my devices only: ${isFromMyDevices || false}`,
     );
 
     if (isFromMyDevices) {
@@ -469,7 +469,6 @@ class DeviceServer {
       deviceID,
       isPublic: false,
       name: eventName,
-      ttl: 60,
     });
   }
 }
