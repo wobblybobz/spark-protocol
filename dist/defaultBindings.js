@@ -36,7 +36,7 @@ var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-exports.default = function (container) {
+var defaultBindings = function defaultBindings(container) {
   // Settings
   container.bindValue('DEVICE_DIRECTORY', _settings2.default.DEVICE_DIRECTORY);
   container.bindValue('SERVER_CONFIG', _settings2.default.SERVER_CONFIG);
@@ -55,3 +55,5 @@ exports.default = function (container) {
   // Device server
   container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'DeviceKeyRepository', 'ServerKeyRepository', 'ClaimCodeManager', 'EventPublisher', 'SERVER_CONFIG']);
 };
+
+exports.default = defaultBindings;

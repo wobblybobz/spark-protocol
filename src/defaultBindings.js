@@ -11,7 +11,7 @@ import ClaimCodeManager from './lib/ClaimCodeManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import settings from './settings';
 
-export default (container: Container): void => {
+const defaultBindings = (container: Container): void => {
   // Settings
   container.bindValue('DEVICE_DIRECTORY', settings.DEVICE_DIRECTORY);
   container.bindValue('SERVER_CONFIG', settings.SERVER_CONFIG);
@@ -53,3 +53,5 @@ export default (container: Container): void => {
     ],
   );
 };
+
+export default defaultBindings;
