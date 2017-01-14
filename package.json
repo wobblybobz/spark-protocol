@@ -24,12 +24,15 @@
     "binary-version-reader": "^0.5.0",
     "buffer-crc32": "~0.2.3",
     "constitute": "^1.6.2",
+    "github": "^8.1.0",
     "h5.buffers": "~0.1.1",
     "h5.coap": "git+https://github.com/morkai/h5.coap.git",
     "hogan.js": "*",
     "mkdirp": "^0.5.1",
     "moment": "*",
     "nullthrows": "^1.0.0",
+    "request": "^2.79.0",
+    "rmfr": "^1.0.1",
     "ursa": "*",
     "uuid": "^3.0.1",
     "when": "*",
@@ -52,8 +55,5 @@
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-sorting": "^0.3.0",
     "flow-bin": "^0.37.0",
-    "github": "^8.1.0",
-    "request": "^2.79.0",
-    "rmfr": "^1.0.1"
   }
 }
