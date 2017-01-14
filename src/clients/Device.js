@@ -985,7 +985,7 @@ class Device extends EventEmitter {
   };
   // TODO rework and figure out how to implement subscription with `MY_DEVICES`
   // right way
-  sendCoreEvent = (event: Event) => {
+  sendCoreEvent = (event: Event): void => {
     const { data, isPublic, name, publishedAt, ttl } = event;
 
     const rawFunction = (message: Message): void => {
