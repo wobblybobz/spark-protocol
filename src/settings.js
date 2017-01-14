@@ -23,6 +23,7 @@ import path from 'path';
 
 export default {
   BINARIES_DIRECTORY: path.join(__dirname, '../data/binaries'),
+  DEFAULT_EVENT_TTL: 60,
   DEVICE_DIRECTORY: path.join(__dirname, '../data/deviceKeys'),
   SERVER_CONFIG: {
     host: 'localhost',

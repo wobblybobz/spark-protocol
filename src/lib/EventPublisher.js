@@ -25,9 +25,9 @@ import moment from 'moment';
 import logger from './logger';
 import nullthrows from 'nullthrows';
 import uuid from 'uuid';
+import { DEFAULT_EVENT_TTL } from '../settings';
 
 const ALL_EVENTS = '*all*';
-const DEFAULT_EVENT_TTL = 60;
 
 type FilterOptions = {
   deviceID?: string,
@@ -67,9 +67,13 @@ class EventPublisher extends EventEmitter {
   publish = (
     eventData: EventData,
   ): void => {
+    const ttl = (eventData.ttl && eventData.ttl > 0)
+      ? eventData.ttl
+      : DEFAULT_EVENT_TTL;
+
     const event: Event = {
       ...eventData,
-      ttl: eventData.ttl || DEFAULT_EVENT_TTL,
+      ttl,
       publishedAt: moment().toISOString(),
     };
 

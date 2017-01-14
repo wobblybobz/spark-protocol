@@ -48,30 +48,29 @@ var _uuid = require('uuid');
 
 var _uuid2 = _interopRequireDefault(_uuid);
 
+var _settings = require('../settings');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
-*/
-
-var ALL_EVENTS = '*all*';
-var DEFAULT_EVENT_TTL = 60;
+var ALL_EVENTS = '*all*'; /*
+                          *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                          *
+                          *   This program is free software; you can redistribute it and/or
+                          *   modify it under the terms of the GNU Lesser General Public
+                          *   License as published by the Free Software Foundation, either
+                          *   version 3 of the License, or (at your option) any later version.
+                          *
+                          *   This program is distributed in the hope that it will be useful,
+                          *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                          *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                          *   Lesser General Public License for more details.
+                          *
+                          *   You should have received a copy of the GNU Lesser General Public
+                          *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                          *
+                          * 
+                          *
+                          */
 
 var EventPublisher = function (_EventEmitter) {
   (0, _inherits3.default)(EventPublisher, _EventEmitter);
@@ -103,8 +102,10 @@ var EventPublisher = function (_EventEmitter) {
         eventHandler(event);
       };
     }, _this.publish = function (eventData) {
+      var ttl = eventData.ttl && eventData.ttl > 0 ? eventData.ttl : _settings.DEFAULT_EVENT_TTL;
+
       var event = (0, _extends3.default)({}, eventData, {
-        ttl: eventData.ttl || DEFAULT_EVENT_TTL,
+        ttl: ttl,
         publishedAt: (0, _moment2.default)().toISOString()
       });
 

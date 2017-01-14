@@ -299,7 +299,7 @@ var DeviceServer = function () {
                   deviceID: deviceID,
                   isPublic: isPublic,
                   name: message.getUriPath().substr(3),
-                  ttl: message.getMaxAge() > 0 && message.getMaxAge(),
+                  ttl: message.getMaxAge(),
                   userID: deviceAttributes && deviceAttributes.ownerID
                 };
                 eventName = eventData.name.toLowerCase();
