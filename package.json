@@ -16,8 +16,9 @@
   "license": "LGPL-3.0",
   "scripts": {
     "lint": "eslint -- .",
-    "postinstall": "babel-node ./scripts/update-firmware-binaries",
-    "start": "babel ./src --out-dir ./dist --watch"
+    "postinstall": "npm run update-firmware",
+    "start": "babel ./src --out-dir ./dist --watch",
+    "update-firmware": "babel-node ./scripts/update-firmware-binaries"
   },
   "dependencies": {
     "binary-version-reader": "^0.5.0",
