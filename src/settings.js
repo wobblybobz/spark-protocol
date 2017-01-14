@@ -18,7 +18,6 @@
 *
 */
 
-
 import path from 'path';
 
 export default {
@@ -29,8 +28,8 @@ export default {
     host: 'localhost',
     port: 5683,
   },
-  SERVER_KEYS_DIRECTORY: path.join(__dirname, '../data/users'),
   SERVER_KEY_FILENAME: 'default_key.pem',
+  SERVER_KEYS_DIRECTORY: path.join(__dirname, '../data/users'),
 
   environment: 'prn',
 
