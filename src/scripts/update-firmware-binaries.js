@@ -6,7 +6,7 @@ import github from 'github';
 import mkdirp from 'mkdirp';
 import request from 'request';
 import rmfr from 'rmfr';
-import settings from '../src/settings';
+import settings from '../settings';
 import nullthrows from 'nullthrows';
 
 type Asset = {
@@ -17,7 +17,7 @@ type Asset = {
 const GITHUB_USER = 'spark';
 const GITHUB_FIRMWARE_REPOSITORY = 'firmware';
 const GITHUB_CLI_REPOSITORY = 'particle-cli';
-const FILE_GEN_DIRECTORY = path.join(__dirname, '../third-party/');
+const FILE_GEN_DIRECTORY = path.join(__dirname, '../../third-party/');
 const MAPPING_FILE =  FILE_GEN_DIRECTORY + 'versions.json';
 const SPECIFICATIONS_FILE = FILE_GEN_DIRECTORY + 'specifications.js';
 const SETTINGS_FILE = FILE_GEN_DIRECTORY + 'settings.json';

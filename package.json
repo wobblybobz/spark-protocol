@@ -18,7 +18,7 @@
     "lint": "eslint -- .",
     "postinstall": "npm run update-firmware",
     "start": "babel ./src --out-dir ./dist --watch",
-    "update-firmware": "babel-node ./scripts/update-firmware-binaries"
+    "update-firmware": "node ./dist/scripts/update-firmware-binaries"
   },
   "dependencies": {
     "binary-version-reader": "^0.5.0",
