@@ -4,10 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _typeof2 = require('babel-runtime/helpers/typeof');
-
-var _typeof3 = _interopRequireDefault(_typeof2);
-
 var _parseInt = require('babel-runtime/core-js/number/parse-int');
 
 var _parseInt2 = _interopRequireDefault(_parseInt);
@@ -304,8 +300,6 @@ var DeviceServer = function () {
 
     this._onDeviceSentMessage = function () {
       var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(message, isPublic, device) {
-        var _ret2;
-
         return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
             switch (_context5.prev = _context5.next) {
@@ -346,49 +340,38 @@ var DeviceServer = function () {
                           // All spark events except special events should be hidden from the
                           // event stream.
 
-                          if (!eventName.startsWith('spark')) {
-                            _context4.next = 15;
-                            break;
+                          if (eventName.startsWith('spark')) {
+                            // These should always be private but let's make sure. This way
+                            // if you are listening to a specific device you only see the system
+                            // events from it.
+                            eventData.isPublic = false;
+
+                            shouldSwallowEvent = !SPECIAL_EVENTS.some(function (specialEvent) {
+                              return eventName.startsWith(specialEvent);
+                            });
+                            if (shouldSwallowEvent) {
+                              device.sendReply('EventAck', message.getId());
+                            }
                           }
 
-                          // These should always be private but let's make sure. This way
-                          // if you are listening to a specific device you only see the system
-                          // events from it.
-                          eventData.isPublic = false;
-
-                          shouldSwallowEvent = !SPECIAL_EVENTS.some(function (specialEvent) {
-                            return eventName.startsWith(specialEvent);
-                          });
-
-                          if (!shouldSwallowEvent) {
-                            _context4.next = 15;
-                            break;
-                          }
-
-                          device.sendReply('EventAck', message.getId());
-                          return _context4.abrupt('return', {
-                            v: void 0
-                          });
-
-                        case 15:
                           if (shouldSwallowEvent) {
-                            _context4.next = 18;
+                            _context4.next = 13;
                             break;
                           }
 
-                          _context4.next = 18;
+                          _context4.next = 13;
                           return _this._eventPublisher.publish(eventData);
 
-                        case 18:
+                        case 13:
                           if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-                            _context4.next = 21;
+                            _context4.next = 16;
                             break;
                           }
 
-                          _context4.next = 21;
+                          _context4.next = 16;
                           return _this._onDeviceClaimCodeMessage(message, device);
 
-                        case 21:
+                        case 16:
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_IP)) {
                             ipAddress = device.getRemoteIPAddress();
@@ -444,22 +427,22 @@ var DeviceServer = function () {
                           }
 
                           if (!(eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE) && !deviceAttributes.isCellular)) {
-                            _context4.next = 39;
+                            _context4.next = 36;
                             break;
                           }
 
                           console.log(eventData.data);
                           _context4.t0 = _nullthrows2.default;
-                          _context4.next = 33;
+                          _context4.next = 28;
                           return device.getSystemInformation();
 
-                        case 33:
+                        case 28:
                           _context4.t1 = _context4.sent;
                           systemInformation = (0, _context4.t0)(_context4.t1);
-                          _context4.next = 37;
+                          _context4.next = 32;
                           return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
 
-                        case 37:
+                        case 32:
                           config = _context4.sent;
 
 
@@ -467,9 +450,10 @@ var DeviceServer = function () {
                           // Lets the user know if it's the system update part 1/2/3
                           config.moduleIndex + 1, device.getID());
 
-                          // await device.flash(config.systemFile);
+                          _context4.next = 36;
+                          return device.flash(config.systemFile);
 
-                        case 39:
+                        case 36:
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
                             // TODO: Test this with a Core device
@@ -478,7 +462,7 @@ var DeviceServer = function () {
                             // if device version is old, do OTA update with patch
                           }
 
-                        case 40:
+                        case 37:
                         case 'end':
                           return _context4.stop();
                       }
@@ -487,31 +471,21 @@ var DeviceServer = function () {
                 })(), 't0', 2);
 
               case 2:
-                _ret2 = _context5.t0;
-
-                if (!((typeof _ret2 === 'undefined' ? 'undefined' : (0, _typeof3.default)(_ret2)) === "object")) {
-                  _context5.next = 5;
-                  break;
-                }
-
-                return _context5.abrupt('return', _ret2.v);
-
-              case 5:
-                _context5.next = 10;
+                _context5.next = 7;
                 break;
 
-              case 7:
-                _context5.prev = 7;
+              case 4:
+                _context5.prev = 4;
                 _context5.t1 = _context5['catch'](0);
 
                 console.log(_context5.t1.message, _context5.t1.stack);
 
-              case 10:
+              case 7:
               case 'end':
                 return _context5.stop();
             }
           }
-        }, _callee5, _this, [[0, 7]]);
+        }, _callee5, _this, [[0, 4]]);
       }));
 
       return function (_x3, _x4, _x5) {

@@ -331,7 +331,6 @@ class DeviceServer {
         );
         if (shouldSwallowEvent) {
           device.sendReply('EventAck', message.getId());
-          return;
         }
       }
 
@@ -415,7 +414,7 @@ class DeviceServer {
           device.getID(),
         )
 
-        // await device.flash(config.systemFile);
+        await device.flash(config.systemFile);
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
