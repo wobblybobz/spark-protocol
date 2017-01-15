@@ -478,9 +478,12 @@ class DeviceServer {
     const isFromMyDevices = query && !!query.match('u');
 
     logger.log(
-      `Got subscribe request from device with ID ${deviceID} ` +
-      `on event: '${messageName}' ` +
-      `from my devices only: ${isFromMyDevices || false}`,
+      'Subscribe Request:',
+      {
+        deviceID,
+        messageName,
+        isFromMyDevices,
+      },
     );
 
     if (isFromMyDevices) {

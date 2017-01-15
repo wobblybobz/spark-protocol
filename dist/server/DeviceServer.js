@@ -578,7 +578,11 @@ var DeviceServer = function () {
                 isFromMyDevices = query && !!query.match('u');
 
 
-                _logger2.default.log('Got subscribe request from device with ID ' + deviceID + ' ' + ('on event: \'' + messageName + '\' ') + ('from my devices only: ' + (isFromMyDevices || false)));
+                _logger2.default.log('Subscribe Request:', {
+                  deviceID: deviceID,
+                  messageName: messageName,
+                  isFromMyDevices: isFromMyDevices
+                });
 
                 if (!isFromMyDevices) {
                   _context7.next = 19;
