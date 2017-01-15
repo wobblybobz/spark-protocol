@@ -86,7 +86,13 @@ var EventPublisher = function (_EventEmitter) {
       args[_key] = arguments[_key];
     }
 
-    return _ret = (_temp = (_this = (0, _possibleConstructorReturn3.default)(this, (_ref = EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call.apply(_ref, [this].concat(args))), _this), _this._subscriptionsByID = new _map2.default(), _this._filterEvents = function (eventHandler, filterOptions) {
+    return _ret = (_temp = (_this = (0, _possibleConstructorReturn3.default)(this, (_ref = EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call.apply(_ref, [this].concat(args))), _this), _this._subscriptionsByID = new _map2.default(), _this._emitWithPrefix = function (eventName, event) {
+      _this.eventNames().filter(function (eventNamePrefix) {
+        return eventName.startsWith(eventNamePrefix);
+      }).forEach(function (eventNamePrefix) {
+        return _this.emit(eventNamePrefix, event);
+      });
+    }, _this._filterEvents = function (eventHandler, filterOptions) {
       return function (event) {
         var userID = filterOptions.userID,
             deviceID = filterOptions.deviceID;
@@ -109,10 +115,10 @@ var EventPublisher = function (_EventEmitter) {
         publishedAt: (0, _moment2.default)().toISOString()
       });
 
-      _this.emit(eventData.name, event);
+      _this._emitWithPrefix(eventData.name, event);
       _this.emit(ALL_EVENTS, event);
     }, _this.subscribe = function () {
-      var eventName = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ALL_EVENTS;
+      var eventNamePrefix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ALL_EVENTS;
       var eventHandler = arguments[1];
       var filterOptions = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
       var subscriberID = arguments[3];
@@ -126,19 +132,19 @@ var EventPublisher = function (_EventEmitter) {
 
       _this._subscriptionsByID.set(subscriptionID, {
         listener: listener,
-        eventName: eventName,
+        eventNamePrefix: eventNamePrefix,
         id: subscriptionID,
         subscriberID: subscriberID
       });
 
-      _this.on(eventName, listener);
+      _this.on(eventNamePrefix, listener);
       return subscriptionID;
     }, _this.unsubscribe = function (subscriptionID) {
       var _nullthrows = (0, _nullthrows3.default)(_this._subscriptionsByID.get(subscriptionID)),
-          eventName = _nullthrows.eventName,
+          eventNamePrefix = _nullthrows.eventNamePrefix,
           listener = _nullthrows.listener;
 
-      _this.removeListener(eventName, listener);
+      _this.removeListener(eventNamePrefix, listener);
       _this._subscriptionsByID.delete(subscriptionID);
     }, _this.unsubscribeBySubscriberID = function (subscriberID) {
       _this._subscriptionsByID.forEach(function (subscription) {

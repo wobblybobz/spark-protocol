@@ -35,7 +35,7 @@ type FilterOptions = {
 };
 
 type Subscription = {
-  eventName: string,
+  eventNamePrefix: string,
   id: string,
   listener: (event: Event) => void,
   subscriberID?: string,
@@ -43,6 +43,18 @@ type Subscription = {
 
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
+
+  _emitWithPrefix = (eventName: string, event: Event): void => {
+    this.eventNames()
+      .filter(
+        (eventNamePrefix: string): boolean =>
+          eventName.startsWith(eventNamePrefix),
+      )
+      .forEach(
+        (eventNamePrefix: string): void =>
+          this.emit(eventNamePrefix, event),
+      );
+  };
 
   _filterEvents = (
     eventHandler: (event: Event) => void,
@@ -77,13 +89,12 @@ class EventPublisher extends EventEmitter {
       publishedAt: moment().toISOString(),
     };
 
-    this.emit(eventData.name, event);
+    this._emitWithPrefix(eventData.name, event);
     this.emit(ALL_EVENTS, event);
   };
 
-
   subscribe = (
-    eventName: string = ALL_EVENTS,
+    eventNamePrefix: string = ALL_EVENTS,
     eventHandler: (event: Event) => void,
     filterOptions?: FilterOptions = {},
     subscriberID?: string,
@@ -99,23 +110,23 @@ class EventPublisher extends EventEmitter {
       subscriptionID,
       {
         listener,
-        eventName,
+        eventNamePrefix,
         id: subscriptionID,
         subscriberID,
       },
     );
 
-    this.on(eventName, listener);
+    this.on(eventNamePrefix, listener);
     return subscriptionID;
   };
 
   unsubscribe = (subscriptionID: string): void => {
     const {
-      eventName,
+      eventNamePrefix,
       listener,
     } = nullthrows(this._subscriptionsByID.get(subscriptionID));
 
-    this.removeListener(eventName, listener);
+    this.removeListener(eventNamePrefix, listener);
     this._subscriptionsByID.delete(subscriptionID);
   };
 
