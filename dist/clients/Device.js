@@ -966,12 +966,9 @@ var Device = function (_EventEmitter) {
                 return _context10.abrupt('return', null);
 
               case 13:
-                console.log(args);
-                console.log(args);
-                console.log(args);
                 return _context10.abrupt('return', _Messages2.default.buildArguments(args, functionState.args));
 
-              case 17:
+              case 14:
               case 'end':
                 return _context10.stop();
             }

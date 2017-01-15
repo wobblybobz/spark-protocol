@@ -902,11 +902,8 @@ console.log(args);
     }
 
     if (!functionState || !functionState.args) {
-        return null;
+      return null;
     }
-    console.log(args);
-    console.log(args);
-console.log(args);
     return Messages.buildArguments(args, functionState.args);
   };
 

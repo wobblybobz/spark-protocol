@@ -3,6 +3,8 @@
 import type { DeviceAttributes } from '../types';
 
 import JSONFileManager from './JSONFileManager';
+import memoizeGet from '../decorators/memoizeGet';
+import memoizeSet from '../decorators/memoizeSet';
 
 class DeviceAttributeFileRepository {
   _fileManager: JSONFileManager;
@@ -15,7 +17,8 @@ class DeviceAttributeFileRepository {
     throw new Error('Create device attributes not implemented');
   };
 
-  update = async (model: DeviceAttributes): Promise<DeviceAttributes> => {
+  @memoizeSet(model => ({id: model.id, ownerID: model.ownerID}))
+  async update(model: DeviceAttributes): Promise<DeviceAttributes> {
     const modelToSave = {
       ...model,
       timestamp: new Date(),
@@ -23,9 +26,10 @@ class DeviceAttributeFileRepository {
 
     this._fileManager.writeFile(`${model.deviceID}.json`, modelToSave);
     return modelToSave;
-  };
+  }
 
-  deleteById = async (id: string): Promise<void> => {
+  @memoizeSet(model => ({id: model.id}))
+  async deleteById(id: string): Promise<void> {
     this._fileManager.deleteFile(`${id}.json`);
   };
 
@@ -35,7 +39,8 @@ class DeviceAttributeFileRepository {
   ): Promise<boolean> =>
     !!(await this.getById(id, userID));
 
-  getAll = async (userID: ?string = null): Promise<Array<DeviceAttributes>> => {
+  @memoizeGet(data => [data.ownerID])
+  async getAll(userID: ?string = null): Promise<Array<DeviceAttributes>> {
     const allData = this._fileManager.getAllData();
 
     if (userID) {
@@ -45,18 +50,19 @@ class DeviceAttributeFileRepository {
       );
     }
     return allData;
-  };
+  }
 
-  getById = async (
+  @memoizeGet(data => [data.id, data.ownerID])
+  async getById(
     id: string,
     userID: ?string = null,
-  ): Promise<?DeviceAttributes> => {
+  ): Promise<?DeviceAttributes> {
     const attributes = this._fileManager.getFile(`${id}.json`);
-    if (userID) {
-      if (!attributes) {
-        return null;
-      }
+    if (!attributes) {
+      return null;
+    }
 
+    if (userID) {
       const ownerID = attributes.ownerID;
       if (!ownerID || ownerID !== userID) {
         return null;
@@ -64,7 +70,7 @@ class DeviceAttributeFileRepository {
     }
 
     return attributes;
-  };
+  }
 }
 
 export default DeviceAttributeFileRepository;
