@@ -44,38 +44,6 @@ type Subscription = {
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
 
-  _emitWithPrefix = (eventName: string, event: Event): void => {
-    this.eventNames()
-      .filter(
-        (eventNamePrefix: string): boolean =>
-          eventName.startsWith(eventNamePrefix),
-      )
-      .forEach(
-        (eventNamePrefix: string): void =>
-          this.emit(eventNamePrefix, event),
-      );
-  };
-
-  _filterEvents = (
-    eventHandler: (event: Event) => void,
-    filterOptions: FilterOptions,
-  ): (event: Event) => void =>
-    (event: Event) => {
-      const { userID, deviceID } = filterOptions;
-      if (
-        event.deviceID &&
-        userID && userID !== event.userID
-      ) {
-        return;
-      }
-
-      if (deviceID && deviceID !== event.deviceID) {
-        return;
-      }
-
-      eventHandler(event);
-    };
-
   publish = (
     eventData: EventData,
   ): void => {
@@ -137,7 +105,39 @@ class EventPublisher extends EventEmitter {
             this.unsubscribe(subscription.id)
           }
       });
-  }
+  };
+
+  _emitWithPrefix = (eventName: string, event: Event): void => {
+    this.eventNames()
+      .filter(
+        (eventNamePrefix: string): boolean =>
+          eventName.startsWith(eventNamePrefix),
+      )
+      .forEach(
+        (eventNamePrefix: string): void =>
+          this.emit(eventNamePrefix, event),
+      );
+  };
+
+  _filterEvents = (
+    eventHandler: (event: Event) => void,
+    filterOptions: FilterOptions,
+  ): (event: Event) => void =>
+    (event: Event) => {
+      const { userID, deviceID } = filterOptions;
+      if (
+        event.deviceID &&
+        userID && userID !== event.userID
+      ) {
+        return;
+      }
+
+      if (deviceID && deviceID !== event.deviceID) {
+        return;
+      }
+
+      eventHandler(event);
+    };
 }
 
 export default EventPublisher;
