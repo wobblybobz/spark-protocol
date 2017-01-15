@@ -25,7 +25,7 @@ import moment from 'moment';
 import logger from './logger';
 import nullthrows from 'nullthrows';
 import uuid from 'uuid';
-import { DEFAULT_EVENT_TTL } from '../settings';
+import settings  from '../settings';
 
 const ALL_EVENTS = '*all*';
 
@@ -49,7 +49,7 @@ class EventPublisher extends EventEmitter {
   ): void => {
     const ttl = (eventData.ttl && eventData.ttl > 0)
       ? eventData.ttl
-      : DEFAULT_EVENT_TTL;
+      : settings.DEFAULT_EVENT_TTL;
 
     const event: Event = {
       ...eventData,
@@ -114,7 +114,7 @@ class EventPublisher extends EventEmitter {
           eventName.startsWith(eventNamePrefix),
       )
       .forEach(
-        (eventNamePrefix: string): void =>
+        (eventNamePrefix: string): boolean =>
           this.emit(eventNamePrefix, event),
       );
   };

@@ -50,6 +50,8 @@ var _uuid2 = _interopRequireDefault(_uuid);
 
 var _settings = require('../settings');
 
+var _settings2 = _interopRequireDefault(_settings);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var ALL_EVENTS = '*all*'; /*
@@ -86,29 +88,8 @@ var EventPublisher = function (_EventEmitter) {
       args[_key] = arguments[_key];
     }
 
-    return _ret = (_temp = (_this = (0, _possibleConstructorReturn3.default)(this, (_ref = EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call.apply(_ref, [this].concat(args))), _this), _this._subscriptionsByID = new _map2.default(), _this._emitWithPrefix = function (eventName, event) {
-      _this.eventNames().filter(function (eventNamePrefix) {
-        return eventName.startsWith(eventNamePrefix);
-      }).forEach(function (eventNamePrefix) {
-        return _this.emit(eventNamePrefix, event);
-      });
-    }, _this._filterEvents = function (eventHandler, filterOptions) {
-      return function (event) {
-        var userID = filterOptions.userID,
-            deviceID = filterOptions.deviceID;
-
-        if (event.deviceID && userID && userID !== event.userID) {
-          return;
-        }
-
-        if (deviceID && deviceID !== event.deviceID) {
-          return;
-        }
-
-        eventHandler(event);
-      };
-    }, _this.publish = function (eventData) {
-      var ttl = eventData.ttl && eventData.ttl > 0 ? eventData.ttl : _settings.DEFAULT_EVENT_TTL;
+    return _ret = (_temp = (_this = (0, _possibleConstructorReturn3.default)(this, (_ref = EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call.apply(_ref, [this].concat(args))), _this), _this._subscriptionsByID = new _map2.default(), _this.publish = function (eventData) {
+      var ttl = eventData.ttl && eventData.ttl > 0 ? eventData.ttl : _settings2.default.DEFAULT_EVENT_TTL;
 
       var event = (0, _extends3.default)({}, eventData, {
         ttl: ttl,
@@ -152,6 +133,27 @@ var EventPublisher = function (_EventEmitter) {
           _this.unsubscribe(subscription.id);
         }
       });
+    }, _this._emitWithPrefix = function (eventName, event) {
+      _this.eventNames().filter(function (eventNamePrefix) {
+        return eventName.startsWith(eventNamePrefix);
+      }).forEach(function (eventNamePrefix) {
+        return _this.emit(eventNamePrefix, event);
+      });
+    }, _this._filterEvents = function (eventHandler, filterOptions) {
+      return function (event) {
+        var userID = filterOptions.userID,
+            deviceID = filterOptions.deviceID;
+
+        if (event.deviceID && userID && userID !== event.userID) {
+          return;
+        }
+
+        if (deviceID && deviceID !== event.deviceID) {
+          return;
+        }
+
+        eventHandler(event);
+      };
     }, _temp), (0, _possibleConstructorReturn3.default)(_this, _ret);
   }
 
