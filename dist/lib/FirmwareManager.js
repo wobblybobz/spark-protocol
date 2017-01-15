@@ -126,20 +126,13 @@ var FirmwareManager = function () {
   return FirmwareManager;
 }();
 
-FirmwareManager.runOtaSystemUpdates = function () {
-  var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(device) {
-    var systemInformation, parser, platformID, systemVersion, modules, moduleToUpdate, otaUpdateConfig, moduleIndex, config, systemFile;
+FirmwareManager.getOtaSystemUpdateConfig = function () {
+  var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(systemInformation) {
+    var parser, platformID, systemVersion, modules, moduleToUpdate, otaUpdateConfig, moduleIndex, config, systemFile;
     return _regenerator2.default.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            _context.t0 = _nullthrows2.default;
-            _context.next = 3;
-            return device.getSystemInformation();
-
-          case 3:
-            _context.t1 = _context.sent;
-            systemInformation = (0, _context.t0)(_context.t1);
             parser = new _binaryVersionReader.HalDescribeParser();
             platformID = systemInformation.p;
             systemVersion = parser.getSystemVersion(systemInformation);
@@ -150,44 +143,44 @@ FirmwareManager.runOtaSystemUpdates = function () {
             });
 
             if (modules) {
-              _context.next = 11;
+              _context.next = 6;
               break;
             }
 
             throw new Error('Could not find any system modules for OTA update');
 
-          case 11:
+          case 6:
             moduleToUpdate = modules.find(function (module) {
               return module.version < FIRMWARE_VERSION;
             });
 
             if (modules) {
-              _context.next = 14;
+              _context.next = 9;
               break;
             }
 
             throw new Error('All modules appear to be updated.');
 
-          case 14:
+          case 9:
             otaUpdateConfig = FirmwareManager.getOtaUpdateConfig(platformID);
 
             if (otaUpdateConfig) {
-              _context.next = 17;
+              _context.next = 12;
               break;
             }
 
             throw new Error('Could not find OTA update config for device');
 
-          case 17:
+          case 12:
             moduleIndex = modules.indexOf(moduleToUpdate);
             config = otaUpdateConfig[moduleIndex];
             systemFile = _fs2.default.readFileSync(_settings2.default.BINARIES_DIRECTORY + '/' + config.binaryFileName);
+            return _context.abrupt('return', {
+              moduleIndex: moduleIndex,
+              systemFile: systemFile
+            });
 
-            console.log('FLASHING', systemFile.length, config.binaryFileName);
-            _context.next = 23;
-            return device.flash(systemFile);
-
-          case 23:
+          case 16:
           case 'end':
             return _context.stop();
         }
@@ -199,5 +192,14 @@ FirmwareManager.runOtaSystemUpdates = function () {
     return _ref3.apply(this, arguments);
   };
 }();
+
+FirmwareManager.getAppModule = function (systemInformation) {
+  var parser = new _binaryVersionReader.HalDescribeParser();
+  return (0, _nullthrows2.default)(parser.getModules(systemInformation)
+  // Filter so we only have the app modules
+  .find(function (module) {
+    return module.func === 'u';
+  }));
+};
 
 exports.default = FirmwareManager;

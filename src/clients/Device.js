@@ -41,11 +41,12 @@ import { BufferReader } from 'h5.buffers';
 import nullthrows from 'nullthrows';
 
 
-type DeviceDescription = {
-  firmware_version: number,
-  product_id: number,
-  state: ?Object,
-};
+type DeviceDescription = {|
+  firmwareVersion: number,
+  productID: number,
+  state: Object,
+  systemInformation: Object,
+|};
 
 // Hello — sent first by Core then by Server immediately after handshake, never again
 // Ignored — sent by either side to respond to a message with a bad counter value.
@@ -92,7 +93,10 @@ export const DEVICE_EVENT_NAMES = {
 };
 
 export const SYSTEM_EVENT_NAMES = {
+  APP_HASH: 'spark/device/app-hash',
   CLAIM_CODE: 'spark/device/claim/code',
+  FLASH_AVAILABLE: 'spark/flash/available',
+  FLASH_PROGRESS: 'spark/flash/progress',
   FLASH_STATUS: 'spark/flash/status',
   GET_IP: 'spark/device/ip',
   GET_NAME: 'spark/device/name',
@@ -103,6 +107,7 @@ export const SYSTEM_EVENT_NAMES = {
   OTA_CHUNK_SIZE: 'spark/hardware/ota_chunk_size',
   RESET: 'spark/device/reset',  // send this to reset passing "safe mode"/"dfu"/"reboot"
   SAFE_MODE: 'spark/device/safemode',
+  SAFE_MODE_UPDATING: 'spark/safe-mode-updater/updating',
   SPARK_SUBSYSTEM: 'spark/cc3000-patch-version',
   SPARK_STATUS: 'spark/status',
 };
@@ -592,9 +597,10 @@ class Device extends EventEmitter {
       await this._ensureWeHaveIntrospectionData();
 
       return {
-        firmware_version: this._productFirmwareVersion,
-        product_id: this._particleProductId,
-        state: this._deviceFunctionState,
+        firmwareVersion: this._productFirmwareVersion,
+        productID: this._particleProductId,
+        state: nullthrows(this._deviceFunctionState),
+        systemInformation: nullthrows(this._systemInformation),
       };
     } catch (error) {
       throw new Error('No device state!');

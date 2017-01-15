@@ -1,10 +1,14 @@
 // @flow
 
 export type DeviceAttributes = {
+  appHash: ?string,
+  currentBuildTarget: string,
   deviceID: string,
+  imei?: string,
   ip: string,
+  isCellular: boolean,
+  last_iccid?: string,
   name: string,
-  claimCode: ?string,
   ownerID: ?string,
   particleProductId: number,
   productFirmwareVersion: number,

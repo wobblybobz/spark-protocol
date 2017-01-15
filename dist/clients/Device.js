@@ -140,7 +140,10 @@ var DEVICE_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = {
 };
 
 var SYSTEM_EVENT_NAMES = exports.SYSTEM_EVENT_NAMES = {
+  APP_HASH: 'spark/device/app-hash',
   CLAIM_CODE: 'spark/device/claim/code',
+  FLASH_AVAILABLE: 'spark/flash/available',
+  FLASH_PROGRESS: 'spark/flash/progress',
   FLASH_STATUS: 'spark/flash/status',
   GET_IP: 'spark/device/ip',
   GET_NAME: 'spark/device/name',
@@ -151,6 +154,7 @@ var SYSTEM_EVENT_NAMES = exports.SYSTEM_EVENT_NAMES = {
   OTA_CHUNK_SIZE: 'spark/hardware/ota_chunk_size',
   RESET: 'spark/device/reset', // send this to reset passing "safe mode"/"dfu"/"reboot"
   SAFE_MODE: 'spark/device/safemode',
+  SAFE_MODE_UPDATING: 'spark/safe-mode-updater/updating',
   SPARK_SUBSYSTEM: 'spark/cc3000-patch-version',
   SPARK_STATUS: 'spark/status'
 };
@@ -607,9 +611,10 @@ var Device = function (_EventEmitter) {
 
             case 6:
               return _context5.abrupt('return', {
-                firmware_version: _this._productFirmwareVersion,
-                product_id: _this._particleProductId,
-                state: _this._deviceFunctionState
+                firmwareVersion: _this._productFirmwareVersion,
+                productID: _this._particleProductId,
+                state: (0, _nullthrows2.default)(_this._deviceFunctionState),
+                systemInformation: (0, _nullthrows2.default)(_this._systemInformation)
               });
 
             case 9:

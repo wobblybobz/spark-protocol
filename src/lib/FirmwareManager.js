@@ -16,6 +16,11 @@ type OtaUpdate = {
   binaryFileName: string,
 };
 
+type UpdateConfig = {
+  moduleIndex: number,
+  systemFile: Buffer,
+};
+
 const platformSettings = Object.entries(specifications);
 const SPECIFICATION_KEY_BY_PLATFORM = new Map(
   Object.values(settings.knownPlatforms).map(
@@ -32,9 +37,9 @@ const FIRMWARE_VERSION =
   versions.find(version => version[1] === settings.versionNumber)[0];
 
 class FirmwareManager {
-  static runOtaSystemUpdates = async (device: Device): Promise<*> => {
-    const systemInformation =
-      nullthrows(await device.getSystemInformation());
+  static getOtaSystemUpdateConfig = async (
+    systemInformation: Object,
+  ): Promise<*> => {
     const parser = new HalDescribeParser();
     const platformID = systemInformation.p;
     const systemVersion = parser.getSystemVersion(systemInformation);
@@ -64,8 +69,11 @@ class FirmwareManager {
     const systemFile = fs.readFileSync(
       protocolSettings.BINARIES_DIRECTORY + '/' + config.binaryFileName,
     );
-    console.log('FLASHING', systemFile.length, config.binaryFileName)
-    await device.flash(systemFile);
+
+    return {
+      moduleIndex,
+      systemFile,
+    };
   }
 
   static getOtaUpdateConfig(platformID: number): ?Array<OtaUpdate> {
@@ -86,6 +94,15 @@ class FirmwareManager {
       ...specifications[key][firmwareKey],
       binaryFileName: firmwareSettings[firmwareKey],
     }));
+  }
+
+  static getAppModule = (systemInformation: Object): Object => {
+    const parser = new HalDescribeParser();
+    return nullthrows(
+      parser.getModules(systemInformation)
+        // Filter so we only have the app modules
+        .find(module => module.func === 'u'),
+    );
   }
 
   getKnownAppFileName(): ?string {

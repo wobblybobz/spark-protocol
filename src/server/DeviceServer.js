@@ -51,6 +51,15 @@ type DeviceServerConfig = {|
   port: number,
 |};
 
+const SPECIAL_EVENTS = [
+  SYSTEM_EVENT_NAMES.APP_HASH,
+  SYSTEM_EVENT_NAMES.FLASH_AVAILABLE,
+  SYSTEM_EVENT_NAMES.FLASH_PROGRESS,
+  SYSTEM_EVENT_NAMES.FLASH_STATUS,
+  SYSTEM_EVENT_NAMES.SAFE_MODE,
+  SYSTEM_EVENT_NAMES.SPARK_STATUS,
+];
+
 let connectionIdCounter = 0;
 class DeviceServer {
   _claimCodeManager: ClaimCodeManager;
@@ -122,6 +131,8 @@ class DeviceServer {
       device.on(
         // TODO figure out is this message for subscriptions on public events or
         // public + private
+        // I'm pretty sure this should listen to all events but only use
+        // events for this device.
         DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
         (message: Message): Promise<void> =>
           this._onDeviceSubscribe(message, device),
@@ -223,39 +234,57 @@ class DeviceServer {
   };
 
   _onDeviceReady = async (device: Device): Promise<void> => {
-    logger.log('Device online!');
-    const deviceID = device.getID();
+    try {
+      logger.log('Device online!');
+      const deviceID = device.getID();
 
-    if (this._devicesById.has(deviceID)) {
-      const existingConnection = this._devicesById.get(deviceID);
-      nullthrows(existingConnection).disconnect(
-        'Device was already connected. Reconnecting.\r\n',
+      if (this._devicesById.has(deviceID)) {
+        const existingConnection = this._devicesById.get(deviceID);
+        nullthrows(existingConnection).disconnect(
+          'Device was already connected. Reconnecting.\r\n',
+        );
+      }
+
+      this.publishSpecialEvent(
+        SYSTEM_EVENT_NAMES.SPARK_STATUS,
+        'online',
+        deviceID,
       );
+
+      this._devicesById.set(deviceID, device);
+
+      const existingAttributes =
+        await this._deviceAttributeRepository.getById(deviceID);
+
+      const description = await device.getDescription();
+      const {uuid} = FirmwareManager.getAppModule(
+        description.systemInformation,
+      );
+
+      const deviceAttributes = {
+        ...existingAttributes,
+        appHash: uuid,
+        deviceID,
+        ip: device.getRemoteIPAddress(),
+        particleProductId: description.productID,
+        productFirmwareVersion: description.firmwareVersion,
+      };
+
+      this._deviceAttributeRepository.update(
+        deviceAttributes,
+      );
+
+      // Send app-hash if this is a new app firmware
+      if (!existingAttributes || uuid !== existingAttributes.appHash) {
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.APP_HASH,
+          uuid,
+          deviceID,
+        );
+      }
+    } catch (error) {
+      console.log(error);
     }
-
-    this._devicesById.set(deviceID, device);
-
-    const existingAttributes =
-      await this._deviceAttributeRepository.getById(deviceID);
-
-    const deviceAttributes = {
-      ...existingAttributes,
-      deviceID,
-      ip: device.getRemoteIPAddress(),
-      particleProductId: device._particleProductId,
-      productFirmwareVersion: device._productFirmwareVersion,
-    };
-
-    this._deviceAttributeRepository.update(
-      deviceAttributes,
-    );
-
-
-    this.publishSpecialEvent(
-      SYSTEM_EVENT_NAMES.SPARK_STATUS,
-      'online',
-      deviceID,
-    );
   };
 
   _onDeviceSentMessage = async (
@@ -275,7 +304,9 @@ class DeviceServer {
       }
 
       const eventData = {
-        data: message.getPayloadLength() === 0 ? null : message.getPayload().toString(),
+        data: message.getPayloadLength() === 0
+          ? ''
+          : message.getPayload().toString(),
         deviceID,
         isPublic,
         name: message.getUriPath().substr(3),
@@ -284,6 +315,29 @@ class DeviceServer {
       };
 
       const eventName = eventData.name.toLowerCase();
+
+      let shouldSwallowEvent = false;
+
+      // All spark events except special events should be hidden from the
+      // event stream.
+      if (eventName.startsWith('spark')) {
+        // These should always be private but let's make sure. This way
+        // if you are listening to a specific device you only see the system
+        // events from it.
+        eventData.isPublic = false;
+
+        shouldSwallowEvent = !SPECIAL_EVENTS.some(
+          specialEvent => eventName.startsWith(specialEvent),
+        );
+        if (shouldSwallowEvent) {
+          device.sendReply('EventAck', message.getId());
+          return;
+        }
+      }
+
+      if (!shouldSwallowEvent) {
+        await this._eventPublisher.publish(eventData);
+      }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
         await this._onDeviceClaimCodeMessage(message, device);
@@ -342,8 +396,26 @@ class DeviceServer {
         device.setOtaChunkSize(Number.parseInt(nullthrows(eventData.data)));
       }
 
-      if (eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)) {
-        FirmwareManager.runOtaSystemUpdates(device);
+      if (
+        eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE) &&
+        !deviceAttributes.isCellular
+      ) {
+        console.log(eventData.data);
+        const systemInformation = nullthrows(
+          await device.getSystemInformation(),
+        );
+        const config = await FirmwareManager.getOtaSystemUpdateConfig(
+          systemInformation,
+        );
+
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+          // Lets the user know if it's the system update part 1/2/3
+          config.moduleIndex + 1,
+          device.getID(),
+        )
+
+        // await device.flash(config.systemFile);
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
@@ -352,18 +424,8 @@ class DeviceServer {
         // compare with version on disc
         // if device version is old, do OTA update with patch
       }
-
-      // Any "spark" event should have been handled by now
-      if (eventName.startsWith('spark')) {
-        // These should always be private but let's make sure. This way
-        // if you are listening to a specific device you only see the system
-        // events from it.
-        eventData.isPublic = false;
-      }
-
-      await this._eventPublisher.publish(eventData);
     } catch (error) {
-      console.log(error);
+      console.log(error.message, error.stack);
     }
   };
 
@@ -408,7 +470,6 @@ class DeviceServer {
     // uri -> /e/event_name?u    --> all my devices
     // uri -> /e/event_name?u (deviceid)    --> deviceid?
     const messageName = message.getUriPath().substr(3);
-
     if (!messageName) {
       device.sendReply('SubscribeFail', message.getId());
       return;
@@ -426,7 +487,6 @@ class DeviceServer {
     if (isFromMyDevices) {
       const deviceAttributes =
         await this._deviceAttributeRepository.getById(deviceID);
-
       if (!deviceAttributes || !deviceAttributes.ownerID) {
         // not sure if sending 'ok subscribe reply' right in this case, but with
         // SubscribeFail the device reconnects to the cloud infinitely
