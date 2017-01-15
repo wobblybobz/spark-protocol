@@ -25,7 +25,7 @@ import moment from 'moment';
 import logger from './logger';
 import nullthrows from 'nullthrows';
 import uuid from 'uuid';
-import { DEFAULT_EVENT_TTL } from '../settings';
+import settings  from '../settings';
 
 const ALL_EVENTS = '*all*';
 
@@ -35,7 +35,7 @@ type FilterOptions = {
 };
 
 type Subscription = {
-  eventName: string,
+  eventNamePrefix: string,
   id: string,
   listener: (event: Event) => void,
   subscriberID?: string,
@@ -43,6 +43,81 @@ type Subscription = {
 
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
+
+  publish = (
+    eventData: EventData,
+  ): void => {
+    const ttl = (eventData.ttl && eventData.ttl > 0)
+      ? eventData.ttl
+      : settings.DEFAULT_EVENT_TTL;
+
+    const event: Event = {
+      ...eventData,
+      ttl,
+      publishedAt: moment().toISOString(),
+    };
+
+    this._emitWithPrefix(eventData.name, event);
+    this.emit(ALL_EVENTS, event);
+  };
+
+  subscribe = (
+    eventNamePrefix: string = ALL_EVENTS,
+    eventHandler: (event: Event) => void,
+    filterOptions?: FilterOptions = {},
+    subscriberID?: string,
+  ): void => {
+    let subscriptionID = uuid();
+    while(this._subscriptionsByID.has(subscriptionID)) {
+      subscriptionID = uuid();
+    }
+
+    const listener = this._filterEvents(eventHandler, filterOptions);
+
+    this._subscriptionsByID.set(
+      subscriptionID,
+      {
+        listener,
+        eventNamePrefix,
+        id: subscriptionID,
+        subscriberID,
+      },
+    );
+
+    this.on(eventNamePrefix, listener);
+    return subscriptionID;
+  };
+
+  unsubscribe = (subscriptionID: string): void => {
+    const {
+      eventNamePrefix,
+      listener,
+    } = nullthrows(this._subscriptionsByID.get(subscriptionID));
+
+    this.removeListener(eventNamePrefix, listener);
+    this._subscriptionsByID.delete(subscriptionID);
+  };
+
+  unsubscribeBySubscriberID = (subscriberID: string): void => {
+    this._subscriptionsByID
+      .forEach((subscription) => {
+          if(subscription.subscriberID === subscriberID) {
+            this.unsubscribe(subscription.id)
+          }
+      });
+  };
+
+  _emitWithPrefix = (eventName: string, event: Event): void => {
+    this.eventNames()
+      .filter(
+        (eventNamePrefix: string): boolean =>
+          eventName.startsWith(eventNamePrefix),
+      )
+      .forEach(
+        (eventNamePrefix: string): boolean =>
+          this.emit(eventNamePrefix, event),
+      );
+  };
 
   _filterEvents = (
     eventHandler: (event: Event) => void,
@@ -63,70 +138,6 @@ class EventPublisher extends EventEmitter {
 
       eventHandler(event);
     };
-
-  publish = (
-    eventData: EventData,
-  ): void => {
-    const ttl = (eventData.ttl && eventData.ttl > 0)
-      ? eventData.ttl
-      : DEFAULT_EVENT_TTL;
-
-    const event: Event = {
-      ...eventData,
-      ttl,
-      publishedAt: moment().toISOString(),
-    };
-
-    this.emit(eventData.name, event);
-    this.emit(ALL_EVENTS, event);
-  };
-
-
-  subscribe = (
-    eventName: string = ALL_EVENTS,
-    eventHandler: (event: Event) => void,
-    filterOptions?: FilterOptions = {},
-    subscriberID?: string,
-  ): void => {
-    let subscriptionID = uuid();
-    while(this._subscriptionsByID.has(subscriptionID)) {
-      subscriptionID = uuid();
-    }
-
-    const listener = this._filterEvents(eventHandler, filterOptions);
-
-    this._subscriptionsByID.set(
-      subscriptionID,
-      {
-        listener,
-        eventName,
-        id: subscriptionID,
-        subscriberID,
-      },
-    );
-
-    this.on(eventName, listener);
-    return subscriptionID;
-  };
-
-  unsubscribe = (subscriptionID: string): void => {
-    const {
-      eventName,
-      listener,
-    } = nullthrows(this._subscriptionsByID.get(subscriptionID));
-
-    this.removeListener(eventName, listener);
-    this._subscriptionsByID.delete(subscriptionID);
-  };
-
-  unsubscribeBySubscriberID = (subscriberID: string): void => {
-    this._subscriptionsByID
-      .forEach((subscription) => {
-          if(subscription.subscriberID === subscriberID) {
-            this.unsubscribe(subscription.id)
-          }
-      });
-  }
 }
 
 export default EventPublisher;
