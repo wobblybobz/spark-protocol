@@ -20,6 +20,8 @@ var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
+var _class, _temp;
+
 var _crypto = require('crypto');
 
 var _crypto2 = _interopRequireDefault(_crypto);
@@ -39,10 +41,9 @@ var _ursa2 = _interopRequireDefault(_ursa);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var HASH_TYPE = 'sha1';
-
 var SIGN_TYPE = 'sha256';
 
-var CryptoManager = function CryptoManager(deviceKeyRepository, serverKeyRepository) {
+var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository, serverKeyRepository) {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, CryptoManager);
@@ -280,11 +281,8 @@ var CryptoManager = function CryptoManager(deviceKeyRepository, serverKeyReposit
 
   this._deviceKeyRepository = deviceKeyRepository;
   this._serverKeyRepository = serverKeyRepository;
-};
-
-CryptoManager.getRandomUINT16 = function () {
+}, _class.getRandomUINT16 = function () {
   var uintMax = Math.pow(2, 16) - 1;
   return Math.floor(Math.random() * uintMax + 1);
-};
-
+}, _temp);
 exports.default = CryptoManager;

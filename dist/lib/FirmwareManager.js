@@ -44,6 +44,8 @@ var _entries = require('babel-runtime/core-js/object/entries');
 
 var _entries2 = _interopRequireDefault(_entries);
 
+var _class, _temp;
+
 var _fs = require('fs');
 
 var _fs2 = _interopRequireDefault(_fs);
@@ -90,7 +92,7 @@ var FIRMWARE_VERSION = _versions2.default.find(function (version) {
   return version[1] === _settings4.default.versionNumber;
 })[0];
 
-var FirmwareManager = function () {
+var FirmwareManager = (_temp = _class = function () {
   function FirmwareManager() {
     (0, _classCallCheck3.default)(this, FirmwareManager);
   }
@@ -124,9 +126,7 @@ var FirmwareManager = function () {
     }
   }]);
   return FirmwareManager;
-}();
-
-FirmwareManager.getOtaSystemUpdateConfig = function () {
+}(), _class.getOtaSystemUpdateConfig = function () {
   var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(systemInformation) {
     var parser, platformID, systemVersion, modules, moduleToUpdate, otaUpdateConfig, moduleIndex, config, systemFile;
     return _regenerator2.default.wrap(function _callee$(_context) {
@@ -191,15 +191,12 @@ FirmwareManager.getOtaSystemUpdateConfig = function () {
   return function (_x) {
     return _ref3.apply(this, arguments);
   };
-}();
-
-FirmwareManager.getAppModule = function (systemInformation) {
+}(), _class.getAppModule = function (systemInformation) {
   var parser = new _binaryVersionReader.HalDescribeParser();
   return (0, _nullthrows2.default)(parser.getModules(systemInformation)
   // Filter so we only have the app modules
   .find(function (module) {
     return module.func === 'u';
   }));
-};
-
+}, _temp);
 exports.default = FirmwareManager;

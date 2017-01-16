@@ -62,6 +62,12 @@ class FileManager {
     return fs.readFileSync(filePath);
   }
 
+
+  hasFile(fileName: string): bool {
+    const filePath = path.join(this._path, fileName);
+    return fs.existsSync(filePath);
+  }
+
   writeFile(fileName: string, data: string | Buffer): void {
 		fs.writeFileSync(
       path.join(this._path, fileName),

@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.settings = exports.defaultBindings = exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = exports.ClaimCodeManager = undefined;
+exports.settings = exports.memoizeSet = exports.memoizeGet = exports.defaultBindings = exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = exports.ClaimCodeManager = undefined;
 
 var _DeviceAttributeFileRepository = require('./repository/DeviceAttributeFileRepository');
 
@@ -49,6 +49,14 @@ var _defaultBindings = require('./defaultBindings');
 
 var _defaultBindings2 = _interopRequireDefault(_defaultBindings);
 
+var _memoizeGet = require('./decorators/memoizeGet');
+
+var _memoizeGet2 = _interopRequireDefault(_memoizeGet);
+
+var _memoizeSet = require('./decorators/memoizeSet');
+
+var _memoizeSet2 = _interopRequireDefault(_memoizeSet);
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -63,6 +71,8 @@ exports.JSONFileManager = _JSONFileManager2.default;
 exports.ServerKeyFileRepository = _ServerKeyFileRepository2.default;
 exports.Device = _Device2.default;
 exports.defaultBindings = _defaultBindings2.default;
+exports.memoizeGet = _memoizeGet2.default;
+exports.memoizeSet = _memoizeSet2.default;
 exports.settings = settings; /*
                              *	Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
                              *

@@ -24,7 +24,7 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
-var _dec, _dec2, _dec3, _dec4, _desc, _value, _class;
+var _dec, _dec2, _dec3, _dec4, _dec5, _desc, _value, _class;
 
 var _FileManager = require('./FileManager');
 
@@ -71,15 +71,7 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
 
 var FILE_EXTENSION = '.pub.pem';
 
-var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(function (id) {
-  return id;
-}), _dec2 = (0, _memoizeSet2.default)(function (id) {
-  return id;
-}), _dec3 = (0, _memoizeSet2.default)(function (id) {
-  return id;
-}), _dec4 = (0, _memoizeGet2.default)(function (id) {
-  return id;
-}), (_class = function () {
+var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(), _dec3 = (0, _memoizeSet2.default)(['id']), _dec4 = (0, _memoizeGet2.default)(), _dec5 = (0, _memoizeGet2.default)(['id']), (_class = function () {
   function DeviceKeyFileRepository(path) {
     (0, _classCallCheck3.default)(this, DeviceKeyFileRepository);
 
@@ -210,5 +202,5 @@ var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(function (id) {
     }()
   }]);
   return DeviceKeyFileRepository;
-}(), (_applyDecoratedDescriptor(_class.prototype, 'create', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'create'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'update', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'delete', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'delete'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getAll', [_memoizeGet2.default], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getAll'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getById', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getById'), _class.prototype)), _class));
+}(), (_applyDecoratedDescriptor(_class.prototype, 'create', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'create'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'update', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'delete', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'delete'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getAll'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getById', [_dec5], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getById'), _class.prototype)), _class));
 exports.default = DeviceKeyFileRepository;

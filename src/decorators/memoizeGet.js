@@ -17,10 +17,21 @@ const DEFAULT_PARAMETERS = {
 
 /* eslint-disable no-param-reassign */
 export default <TType: Object>(
-  selectKeys: ?(data: Object) => Array<mixed> = null,
+  keys?: Array<string> = [],
   config: ?MemoizeConfig = null,
 ): Decorator<TType> =>
   (target: TType, name: $Keys<TType>, descriptor: Descriptor): Descriptor => {
+    const formattedKeys = keys.map(key => key.replace('?', ''));
+    const keySets = keys.map((key, index) => {
+      if (!key.startsWith('?')) {
+        return null;
+      }
+
+      return formattedKeys.slice(0, index);
+    })
+    .filter(item => item)
+    .concat([formattedKeys]);
+
     const descriptorFunction = descriptor.value;
     const memoized = memoize(
       descriptorFunction,
@@ -35,7 +46,7 @@ export default <TType: Object>(
     }
     target._caches.push({
       memoized,
-      selectKeys,
+      keySets,
     });
     return descriptor;
   };

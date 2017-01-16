@@ -23,9 +23,22 @@ var DEFAULT_PARAMETERS = {
 /* eslint-disable no-param-reassign */
 
 exports.default = function () {
-  var selectKeys = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+  var keys = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : [];
   var config = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
   return function (target, name, descriptor) {
+    var formattedKeys = keys.map(function (key) {
+      return key.replace('?', '');
+    });
+    var keySets = keys.map(function (key, index) {
+      if (!key.startsWith('?')) {
+        return null;
+      }
+
+      return formattedKeys.slice(0, index);
+    }).filter(function (item) {
+      return item;
+    }).concat([formattedKeys]);
+
     var descriptorFunction = descriptor.value;
     var memoized = (0, _memoizee2.default)(descriptorFunction, (0, _extends3.default)({}, DEFAULT_PARAMETERS, config));
     descriptor.value = memoized;
@@ -34,7 +47,7 @@ exports.default = function () {
     }
     target._caches.push({
       memoized: memoized,
-      selectKeys: selectKeys
+      keySets: keySets
     });
     return descriptor;
   };

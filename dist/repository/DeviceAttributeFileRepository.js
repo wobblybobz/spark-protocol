@@ -73,15 +73,7 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
   return desc;
 }
 
-var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(function (model) {
-  return { id: model.id, ownerID: model.ownerID };
-}), _dec2 = (0, _memoizeSet2.default)(function (model) {
-  return { id: model.id };
-}), _dec3 = (0, _memoizeGet2.default)(function (data) {
-  return [data.ownerID];
-}), _dec4 = (0, _memoizeGet2.default)(function (data) {
-  return [data.id, data.ownerID];
-}), (_class = function () {
+var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(['deviceID']), _dec3 = (0, _memoizeGet2.default)(['deviceID']), _dec4 = (0, _memoizeGet2.default)(), (_class = function () {
   function DeviceAttributeFileRepository(path) {
     var _this = this;
 
@@ -133,17 +125,109 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(function (
       };
     }();
 
+    this.getAll = function () {
+      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
+        var userID = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+        var allData;
+        return _regenerator2.default.wrap(function _callee3$(_context3) {
+          while (1) {
+            switch (_context3.prev = _context3.next) {
+              case 0:
+                _context3.next = 2;
+                return _this._getAll();
+
+              case 2:
+                allData = _context3.sent;
+
+                if (!userID) {
+                  _context3.next = 5;
+                  break;
+                }
+
+                return _context3.abrupt('return', allData.filter(function (attributes) {
+                  return attributes.ownerID === userID;
+                }));
+
+              case 5:
+                return _context3.abrupt('return', allData);
+
+              case 6:
+              case 'end':
+                return _context3.stop();
+            }
+          }
+        }, _callee3, _this);
+      }));
+
+      return function () {
+        return _ref3.apply(this, arguments);
+      };
+    }();
+
+    this.getById = function () {
+      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(id) {
+        var userID = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+        var attributes, ownerID;
+        return _regenerator2.default.wrap(function _callee4$(_context4) {
+          while (1) {
+            switch (_context4.prev = _context4.next) {
+              case 0:
+                _context4.next = 2;
+                return _this._getByID(id);
+
+              case 2:
+                attributes = _context4.sent;
+                ;
+
+                if (attributes) {
+                  _context4.next = 6;
+                  break;
+                }
+
+                return _context4.abrupt('return', null);
+
+              case 6:
+                if (!userID) {
+                  _context4.next = 10;
+                  break;
+                }
+
+                ownerID = attributes.ownerID;
+
+                if (!(!ownerID || ownerID !== userID)) {
+                  _context4.next = 10;
+                  break;
+                }
+
+                return _context4.abrupt('return', null);
+
+              case 10:
+                return _context4.abrupt('return', attributes);
+
+              case 11:
+              case 'end':
+                return _context4.stop();
+            }
+          }
+        }, _callee4, _this);
+      }));
+
+      return function (_x5) {
+        return _ref4.apply(this, arguments);
+      };
+    }();
+
     this._fileManager = new _JSONFileManager2.default(path);
   }
 
   (0, _createClass3.default)(DeviceAttributeFileRepository, [{
     key: 'update',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(model) {
+      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(model) {
         var modelToSave;
-        return _regenerator2.default.wrap(function _callee3$(_context3) {
+        return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
-            switch (_context3.prev = _context3.next) {
+            switch (_context5.prev = _context5.next) {
               case 0:
                 modelToSave = (0, _extends3.default)({}, model, {
                   timestamp: new Date()
@@ -151,71 +235,9 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(function (
 
 
                 this._fileManager.writeFile(model.deviceID + '.json', modelToSave);
-                return _context3.abrupt('return', modelToSave);
+                return _context5.abrupt('return', modelToSave);
 
               case 3:
-              case 'end':
-                return _context3.stop();
-            }
-          }
-        }, _callee3, this);
-      }));
-
-      function update(_x4) {
-        return _ref3.apply(this, arguments);
-      }
-
-      return update;
-    }()
-  }, {
-    key: 'deleteById',
-    value: function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(id) {
-        return _regenerator2.default.wrap(function _callee4$(_context4) {
-          while (1) {
-            switch (_context4.prev = _context4.next) {
-              case 0:
-                this._fileManager.deleteFile(id + '.json');
-
-              case 1:
-              case 'end':
-                return _context4.stop();
-            }
-          }
-        }, _callee4, this);
-      }));
-
-      function deleteById(_x5) {
-        return _ref4.apply(this, arguments);
-      }
-
-      return deleteById;
-    }()
-  }, {
-    key: 'getAll',
-    value: function () {
-      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5() {
-        var userID = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-        var allData;
-        return _regenerator2.default.wrap(function _callee5$(_context5) {
-          while (1) {
-            switch (_context5.prev = _context5.next) {
-              case 0:
-                allData = this._fileManager.getAllData();
-
-                if (!userID) {
-                  _context5.next = 3;
-                  break;
-                }
-
-                return _context5.abrupt('return', allData.filter(function (attributes) {
-                  return attributes.ownerID === userID;
-                }));
-
-              case 3:
-                return _context5.abrupt('return', allData);
-
-              case 4:
               case 'end':
                 return _context5.stop();
             }
@@ -223,50 +245,23 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(function (
         }, _callee5, this);
       }));
 
-      function getAll() {
+      function update(_x7) {
         return _ref5.apply(this, arguments);
       }
 
-      return getAll;
+      return update;
     }()
   }, {
-    key: 'getById',
+    key: 'deleteById',
     value: function () {
       var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(id) {
-        var userID = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-        var attributes, ownerID;
         return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                attributes = this._fileManager.getFile(id + '.json');
+                this._fileManager.deleteFile(id + '.json');
 
-                if (attributes) {
-                  _context6.next = 3;
-                  break;
-                }
-
-                return _context6.abrupt('return', null);
-
-              case 3:
-                if (!userID) {
-                  _context6.next = 7;
-                  break;
-                }
-
-                ownerID = attributes.ownerID;
-
-                if (!(!ownerID || ownerID !== userID)) {
-                  _context6.next = 7;
-                  break;
-                }
-
-                return _context6.abrupt('return', null);
-
-              case 7:
-                return _context6.abrupt('return', attributes);
-
-              case 8:
+              case 1:
               case 'end':
                 return _context6.stop();
             }
@@ -274,13 +269,61 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(function (
         }, _callee6, this);
       }));
 
-      function getById(_x7) {
+      function deleteById(_x8) {
         return _ref6.apply(this, arguments);
       }
 
-      return getById;
+      return deleteById;
+    }()
+  }, {
+    key: '_getByID',
+    value: function () {
+      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(id) {
+        return _regenerator2.default.wrap(function _callee7$(_context7) {
+          while (1) {
+            switch (_context7.prev = _context7.next) {
+              case 0:
+                return _context7.abrupt('return', this._fileManager.getFile(id + '.json'));
+
+              case 1:
+              case 'end':
+                return _context7.stop();
+            }
+          }
+        }, _callee7, this);
+      }));
+
+      function _getByID(_x9) {
+        return _ref7.apply(this, arguments);
+      }
+
+      return _getByID;
+    }()
+  }, {
+    key: '_getAll',
+    value: function () {
+      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8() {
+        return _regenerator2.default.wrap(function _callee8$(_context8) {
+          while (1) {
+            switch (_context8.prev = _context8.next) {
+              case 0:
+                return _context8.abrupt('return', this._fileManager.getAllData());
+
+              case 1:
+              case 'end':
+                return _context8.stop();
+            }
+          }
+        }, _callee8, this);
+      }));
+
+      function _getAll() {
+        return _ref8.apply(this, arguments);
+      }
+
+      return _getAll;
     }()
   }]);
   return DeviceAttributeFileRepository;
-}(), (_applyDecoratedDescriptor(_class.prototype, 'update', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteById', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteById'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getAll', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getAll'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getById', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getById'), _class.prototype)), _class));
+}(), (_applyDecoratedDescriptor(_class.prototype, 'update', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteById', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteById'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getByID', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getAll'), _class.prototype)), _class));
 exports.default = DeviceAttributeFileRepository;

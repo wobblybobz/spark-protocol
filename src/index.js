@@ -29,6 +29,8 @@ import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import Device from './clients/Device';
 import * as settings from './settings';
 import defaultBindings from './defaultBindings';
+import memoizeGet from './decorators/memoizeGet';
+import memoizeSet from './decorators/memoizeSet';
 
 export {
   ClaimCodeManager,
@@ -41,5 +43,7 @@ export {
   ServerKeyFileRepository,
   Device,
   defaultBindings,
+  memoizeGet,
+  memoizeSet,
   settings,
 };

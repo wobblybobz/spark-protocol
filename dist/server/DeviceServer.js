@@ -578,7 +578,7 @@ var DeviceServer = function () {
                 isFromMyDevices = query && !!query.match('u');
 
 
-                _logger2.default.log('Subscribe Request:', {
+                _logger2.default.log('Subscribe Request:\r\n', {
                   deviceID: deviceID,
                   messageName: messageName,
                   isFromMyDevices: isFromMyDevices

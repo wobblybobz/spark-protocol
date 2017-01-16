@@ -89,6 +89,12 @@ var FileManager = function () {
       return _fs2.default.readFileSync(filePath);
     }
   }, {
+    key: 'hasFile',
+    value: function hasFile(fileName) {
+      var filePath = _path2.default.join(this._path, fileName);
+      return _fs2.default.existsSync(filePath);
+    }
+  }, {
     key: 'writeFile',
     value: function writeFile(fileName, data) {
       _fs2.default.writeFileSync(_path2.default.join(this._path, fileName), data);
