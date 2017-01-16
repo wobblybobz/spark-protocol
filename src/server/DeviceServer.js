@@ -347,6 +347,7 @@ class DeviceServer {
 
         this._eventPublisher.publish({
           data: ipAddress,
+          isPublic: false,
           name: SYSTEM_EVENT_NAMES.GET_NAME,
           userID: eventName.userID,
         });
@@ -357,6 +358,7 @@ class DeviceServer {
 
         this._eventPublisher.publish({
           data: name,
+          isPublic: false,
           name: SYSTEM_EVENT_NAMES.GET_NAME,
           userID: eventName.userID,
         });
@@ -370,6 +372,7 @@ class DeviceServer {
 
         this._eventPublisher.publish({
           data: cryptoString,
+          isPublic: false,
           name: SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER,
           userID: eventName.userID,
         });

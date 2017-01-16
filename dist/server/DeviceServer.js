@@ -379,6 +379,7 @@ var DeviceServer = function () {
 
                             _this._eventPublisher.publish({
                               data: ipAddress,
+                              isPublic: false,
                               name: _Device.SYSTEM_EVENT_NAMES.GET_NAME,
                               userID: eventName.userID
                             });
@@ -390,6 +391,7 @@ var DeviceServer = function () {
 
                             _this._eventPublisher.publish({
                               data: name,
+                              isPublic: false,
                               name: _Device.SYSTEM_EVENT_NAMES.GET_NAME,
                               userID: eventName.userID
                             });
@@ -401,6 +403,7 @@ var DeviceServer = function () {
 
                             _this._eventPublisher.publish({
                               data: cryptoString,
+                              isPublic: false,
                               name: _Device.SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER,
                               userID: eventName.userID
                             });
