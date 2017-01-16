@@ -88,8 +88,9 @@ exports.default = function () {
                     cache.memoized.clear();
                     return;
                   }
+                  // Either get the parameter out of item or the args.
                   var cacheParams = keySet.map(function (key) {
-                    return item[key];
+                    return item[key] || args[keySet.indexOf(key)];
                   });
                   (_cache$memoized = cache.memoized).delete.apply(_cache$memoized, (0, _toConsumableArray3.default)(cacheParams));
                 });

@@ -46,6 +46,7 @@ exports.default = function () {
       target._caches = [];
     }
     target._caches.push({
+      fnName: descriptorFunction.name,
       memoized: memoized,
       keySets: keySets
     });

@@ -39,7 +39,10 @@ export default <TType: Object>(
             cache.memoized.clear();
             return;
           }
-          const cacheParams = keySet.map(key => item[key]);
+          // Either get the parameter out of item or the args.
+          const cacheParams = keySet.map(
+            key => item[key] || args[keySet.indexOf(key)],
+          );
           cache.memoized.delete(...cacheParams);
         });
       });

@@ -45,6 +45,7 @@ export default <TType: Object>(
       target._caches = [];
     }
     target._caches.push({
+      fnName: descriptorFunction.name,
       memoized,
       keySets,
     });
