@@ -66,6 +66,14 @@ class FirmwareManager {
     const moduleIndex = modules.indexOf(moduleToUpdate);
 
     const config = otaUpdateConfig[moduleIndex];
+    if (!config) {
+      throw new Error(
+        `Could not find module to update -- moduleToUpdate: ` +
+          `${moduleToUpdate} otaUpdateConfig: ` +
+          `${JSON.stringify(otaUpdateConfig)} moduleIndex: ${moduleIndex}`,
+        )
+    }
+
     const systemFile = fs.readFileSync(
       protocolSettings.BINARIES_DIRECTORY + '/' + config.binaryFileName,
     );

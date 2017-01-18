@@ -8,6 +8,10 @@ var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
 var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
@@ -174,13 +178,22 @@ var FirmwareManager = (_temp = _class = function () {
           case 12:
             moduleIndex = modules.indexOf(moduleToUpdate);
             config = otaUpdateConfig[moduleIndex];
+
+            if (config) {
+              _context.next = 16;
+              break;
+            }
+
+            throw new Error('Could not find module to update -- moduleToUpdate: ' + (moduleToUpdate + ' otaUpdateConfig: ') + ((0, _stringify2.default)(otaUpdateConfig) + ' moduleIndex: ' + moduleIndex));
+
+          case 16:
             systemFile = _fs2.default.readFileSync(_settings2.default.BINARIES_DIRECTORY + '/' + config.binaryFileName);
             return _context.abrupt('return', {
               moduleIndex: moduleIndex,
               systemFile: systemFile
             });
 
-          case 16:
+          case 18:
           case 'end':
             return _context.stop();
         }
