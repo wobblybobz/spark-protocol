@@ -197,6 +197,7 @@ var Device = function (_EventEmitter) {
     _this._platformId = 0;
     _this._productFirmwareVersion = 0;
     _this._recieveCounter = 0;
+    _this._reservedFlags = 0;
     _this._sendCounter = 0;
     _this._sendToken = 0;
     _this._tokens = {};
@@ -323,6 +324,7 @@ var Device = function (_EventEmitter) {
         var payloadBuffer = new _h2.BufferReader(payload);
         _this._particleProductId = payloadBuffer.shiftUInt16();
         _this._productFirmwareVersion = payloadBuffer.shiftUInt16();
+        _this._reservedFlags = payloadBuffer.shiftUInt16();
         _this._platformId = payloadBuffer.shiftUInt16();
       } catch (exception) {
         _logger2.default.log('error while parsing hello payload ', exception);

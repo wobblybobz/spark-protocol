@@ -141,6 +141,7 @@ class Device extends EventEmitter {
   _platformId: number = 0;
   _productFirmwareVersion: number = 0;
   _recieveCounter: number = 0;
+  _reservedFlags: number = 0;
   _sendCounter: number = 0;
   _sendToken: number = 0;
   _socket: Socket;
@@ -240,6 +241,7 @@ class Device extends EventEmitter {
       const payloadBuffer = new BufferReader(payload);
       this._particleProductId = payloadBuffer.shiftUInt16();
       this._productFirmwareVersion = payloadBuffer.shiftUInt16();
+      this._reservedFlags = payloadBuffer.shiftUInt16();
       this._platformId = payloadBuffer.shiftUInt16();
     } catch (exception) {
       logger.log('error while parsing hello payload ', exception);
