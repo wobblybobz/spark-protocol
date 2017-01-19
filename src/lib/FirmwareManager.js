@@ -54,8 +54,9 @@ class FirmwareManager {
       module => module.version < FIRMWARE_VERSION,
     );
 
-    if (!modules) {
-      throw new Error('All modules appear to be updated.');
+    if (!moduleToUpdate) {
+      // This should happen the majority of times
+      return;
     }
 
     const otaUpdateConfig = FirmwareManager.getOtaUpdateConfig(platformID);
@@ -67,11 +68,7 @@ class FirmwareManager {
 
     const config = otaUpdateConfig[moduleIndex];
     if (!config) {
-      throw new Error(
-        `Could not find module to update -- moduleToUpdate: ` +
-          `${moduleToUpdate} otaUpdateConfig: ` +
-          `${JSON.stringify(otaUpdateConfig)} moduleIndex: ${moduleIndex}`,
-        )
+      throw new Error('Cannot find the module for updating');
     }
 
     const systemFile = fs.readFileSync(

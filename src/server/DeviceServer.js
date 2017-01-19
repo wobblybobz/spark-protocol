@@ -282,6 +282,24 @@ class DeviceServer {
           deviceID,
         );
       }
+
+      const systemInformation = description.systemInformation;
+      if (systemInformation) {
+        const config = await FirmwareManager.getOtaSystemUpdateConfig(
+          systemInformation,
+        );
+
+        if (config) {
+          this.publishSpecialEvent(
+            SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+            // Lets the user know if it's the system update part 1/2/3
+            config.moduleIndex + 1,
+            device.getID(),
+          )
+
+          await device.flash(config.systemFile);
+        }
+      }
     } catch (error) {
       console.log(error);
     }
@@ -399,25 +417,9 @@ class DeviceServer {
       }
 
       if (
-        eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE) &&
-        !deviceAttributes.isCellular
+        eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)
       ) {
         console.log(eventData.data);
-        const systemInformation = nullthrows(
-          await device.getSystemInformation(),
-        );
-        const config = await FirmwareManager.getOtaSystemUpdateConfig(
-          systemInformation,
-        );
-
-        this.publishSpecialEvent(
-          SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-          // Lets the user know if it's the system update part 1/2/3
-          config.moduleIndex + 1,
-          device.getID(),
-        )
-
-        await device.flash(config.systemFile);
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {

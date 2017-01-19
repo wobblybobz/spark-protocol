@@ -795,7 +795,6 @@ class Device extends EventEmitter {
     }
   };
 
-
   /**
    *
    * @param name
@@ -874,9 +873,6 @@ class Device extends EventEmitter {
     name: string,
     args: {[key: string]: string},
   ): Promise<?Buffer> => {
-    console.log(args);
-    console.log(args);
-console.log(args);
     if (!args) {
       return null;
     }

@@ -228,7 +228,7 @@ var DeviceServer = function () {
 
     this._onDeviceReady = function () {
       var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(device) {
-        var deviceID, existingConnection, existingAttributes, description, _FirmwareManager$getA, uuid, deviceAttributes;
+        var deviceID, existingConnection, existingAttributes, description, _FirmwareManager$getA, uuid, deviceAttributes, systemInformation, config;
 
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
@@ -276,21 +276,48 @@ var DeviceServer = function () {
                 if (!existingAttributes || uuid !== existingAttributes.appHash) {
                   _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, uuid, deviceID);
                 }
-                _context3.next = 21;
+
+                systemInformation = description.systemInformation;
+
+                if (!systemInformation) {
+                  _context3.next = 25;
+                  break;
+                }
+
+                _context3.next = 20;
+                return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
+
+              case 20:
+                config = _context3.sent;
+
+                if (!config) {
+                  _context3.next = 25;
+                  break;
+                }
+
+                _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+                // Lets the user know if it's the system update part 1/2/3
+                config.moduleIndex + 1, device.getID());
+
+                _context3.next = 25;
+                return device.flash(config.systemFile);
+
+              case 25:
+                _context3.next = 30;
                 break;
 
-              case 18:
-                _context3.prev = 18;
+              case 27:
+                _context3.prev = 27;
                 _context3.t0 = _context3['catch'](0);
 
                 console.log(_context3.t0);
 
-              case 21:
+              case 30:
               case 'end':
                 return _context3.stop();
             }
           }
-        }, _callee3, _this, [[0, 18]]);
+        }, _callee3, _this, [[0, 27]]);
       }));
 
       return function (_x2) {
@@ -306,7 +333,7 @@ var DeviceServer = function () {
               case 0:
                 _context5.prev = 0;
                 return _context5.delegateYield(_regenerator2.default.mark(function _callee4() {
-                  var deviceID, deviceAttributes, eventData, eventName, shouldSwallowEvent, ipAddress, name, cryptoString, systemInformation, config;
+                  var deviceID, deviceAttributes, eventData, eventName, shouldSwallowEvent, ipAddress, name, cryptoString;
                   return _regenerator2.default.wrap(function _callee4$(_context4) {
                     while (1) {
                       switch (_context4.prev = _context4.next) {
@@ -429,34 +456,9 @@ var DeviceServer = function () {
                             device.setOtaChunkSize((0, _parseInt2.default)((0, _nullthrows2.default)(eventData.data)));
                           }
 
-                          if (!(eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE) && !deviceAttributes.isCellular)) {
-                            _context4.next = 36;
-                            break;
+                          if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
+                            console.log(eventData.data);
                           }
-
-                          console.log(eventData.data);
-                          _context4.t0 = _nullthrows2.default;
-                          _context4.next = 28;
-                          return device.getSystemInformation();
-
-                        case 28:
-                          _context4.t1 = _context4.sent;
-                          systemInformation = (0, _context4.t0)(_context4.t1);
-                          _context4.next = 32;
-                          return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
-
-                        case 32:
-                          config = _context4.sent;
-
-
-                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-                          // Lets the user know if it's the system update part 1/2/3
-                          config.moduleIndex + 1, device.getID());
-
-                          _context4.next = 36;
-                          return device.flash(config.systemFile);
-
-                        case 36:
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
                             // TODO: Test this with a Core device
@@ -465,7 +467,7 @@ var DeviceServer = function () {
                             // if device version is old, do OTA update with patch
                           }
 
-                        case 37:
+                        case 25:
                         case 'end':
                           return _context4.stop();
                       }

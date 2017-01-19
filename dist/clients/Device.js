@@ -925,22 +925,18 @@ var Device = function (_EventEmitter) {
           while (1) {
             switch (_context10.prev = _context10.next) {
               case 0:
-                console.log(args);
-                console.log(args);
-                console.log(args);
-
                 if (args) {
-                  _context10.next = 5;
+                  _context10.next = 2;
                   break;
                 }
 
                 return _context10.abrupt('return', null);
 
-              case 5:
-                _context10.next = 7;
+              case 2:
+                _context10.next = 4;
                 return _this._ensureWeHaveIntrospectionData();
 
-              case 7:
+              case 4:
                 name = name.toLowerCase();
                 deviceFunctionState = (0, _nullthrows2.default)(_this._deviceFunctionState);
                 functionState = deviceFunctionState[name];
@@ -961,16 +957,16 @@ var Device = function (_EventEmitter) {
                 }
 
                 if (!(!functionState || !functionState.args)) {
-                  _context10.next = 13;
+                  _context10.next = 10;
                   break;
                 }
 
                 return _context10.abrupt('return', null);
 
-              case 13:
+              case 10:
                 return _context10.abrupt('return', _Messages2.default.buildArguments(args, functionState.args));
 
-              case 14:
+              case 11:
               case 'end':
                 return _context10.stop();
             }
