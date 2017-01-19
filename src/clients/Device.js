@@ -781,6 +781,7 @@ class Device extends EventEmitter {
     this._owningFlasher = flasher;
     return true;
   };
+  
   releaseOwnership = (flasher: Flasher): void => {
     logger.log('releasing flash ownership ', { coreID: this._id });
     if (this._owningFlasher === flasher) {

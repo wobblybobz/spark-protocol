@@ -290,14 +290,16 @@ class DeviceServer {
         );
 
         if (config) {
-          this.publishSpecialEvent(
-            SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-            // Lets the user know if it's the system update part 1/2/3
-            config.moduleIndex + 1,
-            device.getID(),
-          )
+          setTimeout(() => {
+            this.publishSpecialEvent(
+              SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+              // Lets the user know if it's the system update part 1/2/3
+              config.moduleIndex + 1,
+              device.getID(),
+            )
 
-          await device.flash(config.systemFile);
+            device.flash(config.systemFile);
+          }, 1000);
         }
       }
     } catch (error) {
