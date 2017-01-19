@@ -17,7 +17,6 @@ export type DeviceAttributes = {
 };
 
 export type Event = EventData & {
-  ttl: number,
   publishedAt: Date,
 };
 
