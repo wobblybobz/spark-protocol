@@ -781,7 +781,7 @@ class Device extends EventEmitter {
     this._owningFlasher = flasher;
     return true;
   };
-  
+
   releaseOwnership = (flasher: Flasher): void => {
     logger.log('releasing flash ownership ', { coreID: this._id });
     if (this._owningFlasher === flasher) {
@@ -918,7 +918,19 @@ class Device extends EventEmitter {
 
     try {
       this.sendMessage('Describe');
-      const systemMessage = await this.listenFor('DescribeReturn', null, null);
+      const token = this.sendMessage('Describe');
+      const systemMessageAwaitable = this.listenFor(
+        'DescribeReturn',
+        null,
+        token,
+      );
+
+      const functionStateAwaitable = this.listenFor(
+        'DescribeReturn',
+        null,
+        token,
+      );
+      const systemMessage = await systemMessageAwaitable;
 
       //got a description, is it any good?
       const data = systemMessage.getPayload();
@@ -927,12 +939,11 @@ class Device extends EventEmitter {
       // In the newer firmware the application data comes in a later message.
       // We run a race to see if the function state comes in the first response.
       const functionState = await Promise.race([
-        this.listenFor('DescribeReturn', null, null)
-          .then(applicationMessage => {
-            //got a description, is it any good?
-            const data = applicationMessage.getPayload();
-            return JSON.parse(data.toString());
-          }),
+        functionStateAwaitable.then(applicationMessage => {
+          //got a description, is it any good?
+          const data = applicationMessage.getPayload();
+          return JSON.parse(data.toString());
+        }),
         new Promise((resolve, reject) => {
           if (systemInformation.f && systemInformation.v) {
             resolve(systemInformation);
