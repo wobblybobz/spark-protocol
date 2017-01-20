@@ -137,7 +137,7 @@ class EventPublisher extends EventEmitter {
 
       // filter event by deviceID
       if (
-        event.deviceID && filterOptions.deviceID &&
+        filterOptions.deviceID &&
         event.deviceID !== filterOptions.deviceID
       ) {
         return;
