@@ -18,7 +18,19 @@
     "lint": "eslint -- .",
     "postinstall": "npm run update-firmware",
     "start": "babel ./src --out-dir ./dist --watch",
+    "test": "ava",
+    "test:watch": "ava --watch",
     "update-firmware": "node ./dist/scripts/update-firmware-binaries"
+  },
+  "ava": {
+    "verbose": true,
+    "babel": "inherit",
+    "files": [
+      "test/*.test.js"
+    ],
+    "require": [
+      "babel-register"
+    ]
   },
   "dependencies": {
     "binary-version-reader": "^0.5.0",
@@ -40,6 +52,7 @@
     "xtend": "*"
   },
   "devDependencies": {
+    "ava": "^0.17.0",
     "babel-cli": "^6.18.0",
     "babel-eslint": "^7.1.1",
     "babel-plugin-transform-class-properties": "^6.19.0",
@@ -50,11 +63,13 @@
     "babel-preset-latest": "^6.16.0",
     "babel-preset-stage-0": "^6.16.0",
     "babel-preset-stage-1": "^6.16.0",
+    "babel-register": "^6.18.0",
     "eslint": "^3.11.0",
     "eslint-config-airbnb-base": "^10.0.1",
     "eslint-plugin-flowtype": "^2.28.2",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-sorting": "^0.3.0",
-    "flow-bin": "^0.37.0"
+    "flow-bin": "^0.37.0",
+    "sinon": "^1.17.7"
   }
 }

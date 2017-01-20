@@ -2,6 +2,7 @@
 
 export type DeviceAttributes = {
   appHash: ?string,
+  claimCode: ?string,
   currentBuildTarget: string,
   deviceID: string,
   imei?: string,
@@ -26,7 +27,7 @@ export type EventData = {
   isPublic: boolean,
   name: string,
   ttl?: number,
-  userID?: ?string,
+  userID: string,
 };
 
 export type Repository<TModel> = {
