@@ -83,24 +83,32 @@ test(
   t => {
     const eventPublisher = new EventPublisher();
     const handler = sinon.spy();
-    const eventData = {
+    const ownerID = TestData.getID();
+    const deviceEvent = {
       name: TEST_EVENT_NAME,
-      userID: TestData.getID(),
+      userID: ownerID,
       isPublic: false,
       deviceID: TestData.getID()
     };
 
+    // event from api or webhook-response
+    const notDeviceEvent = {
+      name: TEST_EVENT_NAME,
+      userID: ownerID,
+      isPublic: false,
+    };
+
     eventPublisher.subscribe(
-      eventData.name,
+      deviceEvent.name,
       handler,
       {
         deviceID: TestData.getID(),
-        userID: eventData.userID,
+        userID: deviceEvent.userID,
       },
     );
 
-    eventPublisher.publish(eventData);
-
+    eventPublisher.publish(deviceEvent);
+    eventPublisher.publish(notDeviceEvent);
     t.falsy(handler.called);
   }
 );
