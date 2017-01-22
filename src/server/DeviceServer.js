@@ -20,7 +20,6 @@
 
 import type { Socket } from 'net';
 import type { Message } from 'h5.coap';
-import { HalDescribeParser } from 'binary-version-reader';
 import type {
   DeviceAttributes,
   Repository,
@@ -117,6 +116,10 @@ class DeviceServer {
         connectionKey,
         handshake,
       );
+      const deviceID = device.getID();
+      const deviceAttributes =
+        await this._deviceAttributeRepository.getById(device.getID());
+      const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
       device.on(
         DEVICE_EVENT_NAMES.READY,
@@ -125,14 +128,10 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.DISCONNECT,
-        (): void => this._onDeviceDisconnect(device, connectionKey),
+        (): Promise<void> => this._onDeviceDisconnect(device, connectionKey),
       );
 
       device.on(
-        // TODO figure out is this message for subscriptions on public events or
-        // public + private
-        // I'm pretty sure this should listen to all events but only use
-        // events for this device.
         DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
         (message: Message): Promise<void> =>
           this._onDeviceSubscribe(message, device),
@@ -169,7 +168,8 @@ class DeviceServer {
         (): Promise<void> => this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'started',
-          device.getID(),
+          deviceID,
+          ownerID,
         ),
       );
 
@@ -178,7 +178,8 @@ class DeviceServer {
         (): Promise<void> => this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'success',
-          device.getID(),
+          deviceID,
+          ownerID,
         ),
       );
 
@@ -187,7 +188,8 @@ class DeviceServer {
         (): Promise<void> => this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'failed',
-          device.getID(),
+          deviceID,
+          ownerID,
         ),
       );
 
@@ -202,8 +204,14 @@ class DeviceServer {
     }
   };
 
-  _onDeviceDisconnect = (device: Device, connectionKey: string) => {
+  _onDeviceDisconnect = async (
+    device: Device,
+    connectionKey: string,
+  ): Promise<void> => {
     const deviceID = device.getID();
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+    const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
     if (this._devicesById.has(deviceID)) {
       this._devicesById.delete(deviceID);
@@ -213,6 +221,7 @@ class DeviceServer {
         SYSTEM_EVENT_NAMES.SPARK_STATUS,
         'offline',
         deviceID,
+        ownerID,
       );
       logger.log(
         `Session ended for device with ID: ${deviceID} with connectionKey: ` +
@@ -245,19 +254,21 @@ class DeviceServer {
         );
       }
 
-      this.publishSpecialEvent(
-        SYSTEM_EVENT_NAMES.SPARK_STATUS,
-        'online',
-        deviceID,
-      );
-
       this._devicesById.set(deviceID, device);
 
       const existingAttributes =
         await this._deviceAttributeRepository.getById(deviceID);
+      const ownerID = existingAttributes && existingAttributes.ownerID;
+
+      this.publishSpecialEvent(
+        SYSTEM_EVENT_NAMES.SPARK_STATUS,
+        'online',
+        deviceID,
+        ownerID,
+      );
 
       const description = await device.getDescription();
-      const {uuid} = FirmwareManager.getAppModule(
+      const { uuid } = FirmwareManager.getAppModule(
         description.systemInformation,
       );
 
@@ -280,6 +291,7 @@ class DeviceServer {
           SYSTEM_EVENT_NAMES.APP_HASH,
           uuid,
           deviceID,
+          ownerID,
         );
       }
 
@@ -290,16 +302,20 @@ class DeviceServer {
         );
 
         if (config) {
-          setTimeout(() => {
-            this.publishSpecialEvent(
-              SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-              // Lets the user know if it's the system update part 1/2/3
-              config.moduleIndex + 1,
-              device.getID(),
-            )
+          setTimeout(
+            () => {
+              this.publishSpecialEvent(
+                SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+                // Lets the user know if it's the system update part 1/2/3
+                config.moduleIndex + 1,
+                deviceID,
+                ownerID,
+              );
 
-            device.flash(config.systemFile);
-          }, 1000);
+              device.flash(config.systemFile);
+            },
+            1000,
+          );
         }
       }
     } catch (error) {
@@ -316,12 +332,12 @@ class DeviceServer {
       const deviceID = device.getID();
       const deviceAttributes =
         await this._deviceAttributeRepository.getById(deviceID);
-
       if (!deviceAttributes) {
         throw new Error(
           `Could not find device attributes for device: ${deviceID}`,
         );
       }
+      const ownerID = deviceAttributes.ownerID;
 
       const eventData = {
         data: message.getPayloadLength() === 0
@@ -331,7 +347,6 @@ class DeviceServer {
         isPublic,
         name: message.getUriPath().substr(3),
         ttl: message.getMaxAge(),
-        userID: deviceAttributes && deviceAttributes.ownerID,
       };
 
       const eventName = eventData.name.toLowerCase();
@@ -347,15 +362,16 @@ class DeviceServer {
         eventData.isPublic = false;
 
         shouldSwallowEvent = !SPECIAL_EVENTS.some(
-          specialEvent => eventName.startsWith(specialEvent),
+          (specialEvent: string): boolean =>
+            eventName.startsWith(specialEvent),
         );
         if (shouldSwallowEvent) {
           device.sendReply('EventAck', message.getId());
         }
       }
 
-      if (!shouldSwallowEvent) {
-        await this._eventPublisher.publish(eventData);
+      if (!shouldSwallowEvent && ownerID) {
+        this._eventPublisher.publish({ ...eventData, userID: ownerID });
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
@@ -363,25 +379,21 @@ class DeviceServer {
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_IP)) {
-        const ipAddress = device.getRemoteIPAddress();
-
-        this._eventPublisher.publish({
-          data: ipAddress,
-          isPublic: false,
-          name: SYSTEM_EVENT_NAMES.GET_NAME,
-          userID: eventName.userID,
-        });
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.GET_NAME,
+          device.getRemoteIPAddress(),
+          deviceID,
+          ownerID,
+        );
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME)) {
-        const name = deviceAttributes.name;
-
-        this._eventPublisher.publish({
-          data: name,
-          isPublic: false,
-          name: SYSTEM_EVENT_NAMES.GET_NAME,
-          userID: eventName.userID,
-        });
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.GET_NAME,
+          deviceAttributes.name,
+          deviceID,
+          ownerID,
+        );
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {
@@ -390,12 +402,12 @@ class DeviceServer {
           .toString('base64')
           .substring(0, 40);
 
-        this._eventPublisher.publish({
-          data: cryptoString,
-          isPublic: false,
-          name: SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER,
-          userID: eventName.userID,
-        });
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER,
+          cryptoString,
+          deviceID,
+          ownerID,
+        );
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.IDENTITY)) {
@@ -407,15 +419,15 @@ class DeviceServer {
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.LAST_RESET)) {
         // This should be sent to the stream in DeviceServer
-        console.log('LAST_RESET', eventData.data)
+        console.log('LAST_RESET', eventData.data);
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.MAX_BINARY)) {
-        device.setMaxBinarySize(Number.parseInt(nullthrows(eventData.data)));
+        device.setMaxBinarySize(Number.parseInt(nullthrows(eventData.data), 10));
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {
-        device.setOtaChunkSize(Number.parseInt(nullthrows(eventData.data)));
+        device.setOtaChunkSize(Number.parseInt(nullthrows(eventData.data), 10));
       }
 
       if (
@@ -441,7 +453,8 @@ class DeviceServer {
   ): Promise<void> => {
     const claimCode = message.getPayload().toString();
     const deviceID = device.getID();
-    const deviceAttributes = await this._deviceAttributeRepository.getById(deviceID);
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
 
     if (
       !deviceAttributes ||
@@ -451,7 +464,8 @@ class DeviceServer {
       return;
     }
 
-    const claimRequestUserID = this._claimCodeManager.getUserIDByClaimCode(claimCode);
+    const claimRequestUserID =
+      this._claimCodeManager.getUserIDByClaimCode(claimCode);
     if (!claimRequestUserID) {
       return;
     }
@@ -469,58 +483,48 @@ class DeviceServer {
     message: Message,
     device: Device,
   ): Promise<void> => {
-    const deviceID = device.getID();
     // uri -> /e/?u    --> firehose for all my devices
     // uri -> /e/ (deviceid in body)   --> allowed
     // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
     // uri -> /e/event_name?u    --> all my devices
     // uri -> /e/event_name?u (deviceid)    --> deviceid?
     const messageName = message.getUriPath().substr(3);
+    const deviceID = device.getID();
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+    const ownerID = deviceAttributes && deviceAttributes.ownerID;
+    const query = message.getUriQuery();
+    const isFromMyDevices = query && !!query.match('u');
+
     if (!messageName) {
       device.sendReply('SubscribeFail', message.getId());
       return;
     }
 
-    const query = message.getUriQuery();
-    const isFromMyDevices = query && !!query.match('u');
-
     logger.log(
       'Subscribe Request:\r\n',
       {
         deviceID,
-        messageName,
         isFromMyDevices,
+        messageName,
       },
     );
 
-    if (isFromMyDevices) {
-      const deviceAttributes =
-        await this._deviceAttributeRepository.getById(deviceID);
-      if (!deviceAttributes || !deviceAttributes.ownerID) {
-        // not sure if sending 'ok subscribe reply' right in this case, but with
-        // SubscribeFail the device reconnects to the cloud infinitely
-        device.sendReply('SubscribeAck', message.getId());
-        logger.log(
-          `device with ID ${deviceID} wasn't subscribed to` +
-            `${messageName} MY_DEVICES event: the device is unclaimed.`,
-        );
-        return;
-      }
-
-      this._eventPublisher.subscribe(
-        messageName,
-        device.onCoreEvent,
-        { userID: deviceAttributes.ownerID },
-        deviceID,
+    if (!ownerID) {
+      device.sendReply('SubscribeAck', message.getId());
+      logger.log(
+        `device with ID ${deviceID} wasn't subscribed to` +
+        `${messageName} event: the device is unclaimed.`,
       );
-    } else {
-      this._eventPublisher.subscribe(
-        messageName,
-        device.onCoreEvent,
-        /* filterOptions */{},
-        deviceID,
-      );
+      return;
     }
+
+    this._eventPublisher.subscribe(
+      messageName,
+      device.onCoreEvent,
+      { mydevices: isFromMyDevices, userID: ownerID },
+      deviceID,
+    );
 
     device.sendReply('SubscribeAck', message.getId());
   };
@@ -532,12 +536,17 @@ class DeviceServer {
     eventName: string,
     data: string,
     deviceID: string,
+    userID: ?string,
   ): Promise<void> {
-    await this._eventPublisher.publish({
+    if (!userID) {
+      return;
+    }
+    this._eventPublisher.publish({
       data,
       deviceID,
       isPublic: false,
       name: eventName,
+      userID,
     });
   }
 }

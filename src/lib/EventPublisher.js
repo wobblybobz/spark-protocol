@@ -31,7 +31,8 @@ const ALL_EVENTS = '*all*';
 
 type FilterOptions = {
   deviceID?: string,
-  userID?: string,
+  mydevices?: boolean,
+  userID: string,
 };
 
 type Subscription = {
@@ -64,7 +65,7 @@ class EventPublisher extends EventEmitter {
   subscribe = (
     eventNamePrefix: string = ALL_EVENTS,
     eventHandler: (event: Event) => void,
-    filterOptions?: FilterOptions = {},
+    filterOptions: FilterOptions,
     subscriberID?: string,
   ): void => {
     let subscriptionID = uuid();
@@ -124,15 +125,21 @@ class EventPublisher extends EventEmitter {
     filterOptions: FilterOptions,
   ): (event: Event) => void =>
     (event: Event) => {
-      const { userID, deviceID } = filterOptions;
-      if (
-        event.deviceID &&
-        userID && userID !== event.userID
-      ) {
+      // filter private events from another devices
+      if (!event.isPublic && filterOptions.userID !== event.userID) {
         return;
       }
 
-      if (deviceID && deviceID !== event.deviceID) {
+      // filter mydevices events
+      if (filterOptions.mydevices && filterOptions.userID !== event.userID) {
+        return;
+      }
+
+      // filter event by deviceID
+      if (
+        filterOptions.deviceID &&
+        event.deviceID !== filterOptions.deviceID
+      ) {
         return;
       }
 

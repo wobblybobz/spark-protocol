@@ -101,7 +101,7 @@ var EventPublisher = function (_EventEmitter) {
     }, _this.subscribe = function () {
       var eventNamePrefix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ALL_EVENTS;
       var eventHandler = arguments[1];
-      var filterOptions = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      var filterOptions = arguments[2];
       var subscriberID = arguments[3];
 
       var subscriptionID = (0, _uuid2.default)();
@@ -141,14 +141,18 @@ var EventPublisher = function (_EventEmitter) {
       });
     }, _this._filterEvents = function (eventHandler, filterOptions) {
       return function (event) {
-        var userID = filterOptions.userID,
-            deviceID = filterOptions.deviceID;
-
-        if (event.deviceID && userID && userID !== event.userID) {
+        // filter private events from another devices
+        if (!event.isPublic && filterOptions.userID !== event.userID) {
           return;
         }
 
-        if (deviceID && deviceID !== event.deviceID) {
+        // filter mydevices events
+        if (filterOptions.mydevices && filterOptions.userID !== event.userID) {
+          return;
+        }
+
+        // filter event by deviceID
+        if (filterOptions.deviceID && event.deviceID !== filterOptions.deviceID) {
           return;
         }
 
