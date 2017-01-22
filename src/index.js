@@ -28,6 +28,7 @@ import JSONFileManager from './repository/JSONFileManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import Device from './clients/Device';
 import * as settings from './settings';
+import {knownPlatforms} from '../third-party/settings';
 import defaultBindings from './defaultBindings';
 import memoizeGet from './decorators/memoizeGet';
 import memoizeSet from './decorators/memoizeSet';
@@ -45,5 +46,6 @@ export {
   defaultBindings,
   memoizeGet,
   memoizeSet,
+  knownPlatforms,
   settings,
 };

@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.settings = exports.memoizeSet = exports.memoizeGet = exports.defaultBindings = exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = exports.ClaimCodeManager = undefined;
+exports.settings = exports.knownPlatforms = exports.memoizeSet = exports.memoizeGet = exports.defaultBindings = exports.Device = exports.ServerKeyFileRepository = exports.JSONFileManager = exports.FileManager = exports.EventPublisher = exports.DeviceServer = exports.DeviceKeyFileRepository = exports.DeviceAttributeFileRepository = exports.ClaimCodeManager = undefined;
 
 var _DeviceAttributeFileRepository = require('./repository/DeviceAttributeFileRepository');
 
@@ -45,6 +45,8 @@ var _settings = require('./settings');
 
 var settings = _interopRequireWildcard(_settings);
 
+var _settings2 = require('../third-party/settings');
+
 var _defaultBindings = require('./defaultBindings');
 
 var _defaultBindings2 = _interopRequireDefault(_defaultBindings);
@@ -61,6 +63,26 @@ function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj;
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+/*
+*	Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*	This program is free software; you can redistribute it and/or
+*	modify it under the terms of the GNU Lesser General Public
+*	License as published by the Free Software Foundation, either
+*	version 3 of the License, or (at your option) any later version.
+*
+*	This program is distributed in the hope that it will be useful,
+*	but WITHOUT ANY WARRANTY; without even the implied warranty of
+*	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*	Lesser General Public License for more details.
+*
+*	You should have received a copy of the GNU Lesser General Public
+*	License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+*	 
+*
+*/
+
 exports.ClaimCodeManager = _ClaimCodeManager2.default;
 exports.DeviceAttributeFileRepository = _DeviceAttributeFileRepository2.default;
 exports.DeviceKeyFileRepository = _DeviceKeyFileRepository2.default;
@@ -73,22 +95,5 @@ exports.Device = _Device2.default;
 exports.defaultBindings = _defaultBindings2.default;
 exports.memoizeGet = _memoizeGet2.default;
 exports.memoizeSet = _memoizeSet2.default;
-exports.settings = settings; /*
-                             *	Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                             *
-                             *	This program is free software; you can redistribute it and/or
-                             *	modify it under the terms of the GNU Lesser General Public
-                             *	License as published by the Free Software Foundation, either
-                             *	version 3 of the License, or (at your option) any later version.
-                             *
-                             *	This program is distributed in the hope that it will be useful,
-                             *	but WITHOUT ANY WARRANTY; without even the implied warranty of
-                             *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                             *	Lesser General Public License for more details.
-                             *
-                             *	You should have received a copy of the GNU Lesser General Public
-                             *	License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                             *
-                             *	 
-                             *
-                             */
+exports.knownPlatforms = _settings2.knownPlatforms;
+exports.settings = settings;
