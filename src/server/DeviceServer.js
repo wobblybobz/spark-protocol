@@ -514,7 +514,7 @@ class DeviceServer {
       device.sendReply('SubscribeAck', message.getId());
       logger.log(
         `device with ID ${deviceID} wasn't subscribed to` +
-        `${messageName} event: the device is unclaimed.`,
+          `${messageName} event: the device is unclaimed.`,
       );
       return;
     }
