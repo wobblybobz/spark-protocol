@@ -919,18 +919,9 @@ class Device extends EventEmitter {
     try {
       this.sendMessage('Describe');
       const token = this.sendMessage('Describe');
-      const systemMessageAwaitable = this.listenFor(
-        'DescribeReturn',
-        null,
-        token,
-      );
+      const systemMessage = await this.listenFor('DescribeReturn');
 
-      const functionStateAwaitable = this.listenFor(
-        'DescribeReturn',
-        null,
-        token,
-      );
-      const systemMessage = await systemMessageAwaitable;
+      const functionStateAwaitable = this.listenFor('DescribeReturn');
 
       //got a description, is it any good?
       const data = systemMessage.getPayload();

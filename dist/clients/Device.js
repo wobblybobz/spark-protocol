@@ -994,30 +994,29 @@ var Device = function (_EventEmitter) {
             case 2:
               _context12.prev = 2;
               return _context12.delegateYield(_regenerator2.default.mark(function _callee11() {
-                var token, systemMessageAwaitable, functionStateAwaitable, systemMessage, data, systemInformation, functionState;
+                var token, systemMessage, functionStateAwaitable, data, systemInformation, functionState;
                 return _regenerator2.default.wrap(function _callee11$(_context11) {
                   while (1) {
                     switch (_context11.prev = _context11.next) {
                       case 0:
                         _this.sendMessage('Describe');
                         token = _this.sendMessage('Describe');
-                        systemMessageAwaitable = _this.listenFor('DescribeReturn', null, token);
-                        functionStateAwaitable = _this.listenFor('DescribeReturn', null, token);
-                        _context11.next = 6;
-                        return systemMessageAwaitable;
+                        _context11.next = 4;
+                        return _this.listenFor('DescribeReturn');
 
-                      case 6:
+                      case 4:
                         systemMessage = _context11.sent;
-
+                        functionStateAwaitable = _this.listenFor('DescribeReturn');
 
                         //got a description, is it any good?
+
                         data = systemMessage.getPayload();
                         systemInformation = JSON.parse(data.toString());
 
                         // In the newer firmware the application data comes in a later message.
                         // We run a race to see if the function state comes in the first response.
 
-                        _context11.next = 11;
+                        _context11.next = 10;
                         return _promise2.default.race([functionStateAwaitable.then(function (applicationMessage) {
                           //got a description, is it any good?
                           var data = applicationMessage.getPayload();
@@ -1028,7 +1027,7 @@ var Device = function (_EventEmitter) {
                           }
                         })]);
 
-                      case 11:
+                      case 10:
                         functionState = _context11.sent;
 
 
@@ -1040,7 +1039,7 @@ var Device = function (_EventEmitter) {
                         _this._systemInformation = systemInformation;
                         _this._deviceFunctionState = functionState;
 
-                      case 15:
+                      case 14:
                       case 'end':
                         return _context11.stop();
                     }
