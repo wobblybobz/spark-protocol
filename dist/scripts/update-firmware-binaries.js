@@ -320,7 +320,7 @@ var downloadAppBinaries = function () {
           _context3.next = 29;
           return githubAPI.repos.getContent({
             owner: GITHUB_USER,
-            path: 'lib/deviceSpecs/specifications.js',
+            path: 'oldlib/deviceSpecs/specifications.js',
             repo: GITHUB_CLI_REPOSITORY
           });
 
