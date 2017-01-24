@@ -214,7 +214,7 @@ const downloadAppBinaries = async (): Promise<*> => {
 
   const specificationsResponse = await githubAPI.repos.getContent({
     owner: GITHUB_USER,
-    path: 'lib/deviceSpecs/specifications.js',
+    path: 'oldlib/deviceSpecs/specifications.js',
     repo: GITHUB_CLI_REPOSITORY
   });
 
