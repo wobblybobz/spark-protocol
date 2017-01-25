@@ -1,9 +1,15 @@
 // @flow
 
+export type Cache = {
+  fnName: string,
+  keySets: Array<Array<string>>,
+  memoized: Function,
+};
+
 export type Decorator<TType> = (
-  target: TType,
-  name: $Keys<TType>,
   descriptor: Descriptor,
+  name: $Keys<TType>,
+  target: TType,
 ) => Descriptor;
 
 export type Descriptor = {

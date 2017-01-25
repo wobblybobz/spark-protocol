@@ -16,8 +16,8 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var DEFAULT_MAX_AGE = 3600 * 1000; // 1 hour
 var DEFAULT_PARAMETERS = {
-  promise: true,
-  maxAge: DEFAULT_MAX_AGE
+  maxAge: DEFAULT_MAX_AGE,
+  promise: true
 };
 
 /* eslint-disable no-param-reassign */
@@ -29,6 +29,7 @@ exports.default = function () {
     var formattedKeys = keys.map(function (key) {
       return key.replace('?', '');
     });
+
     var keySets = keys.map(function (key, index) {
       if (!key.startsWith('?')) {
         return null;
@@ -36,20 +37,24 @@ exports.default = function () {
 
       return formattedKeys.slice(0, index);
     }).filter(function (item) {
-      return item;
+      return !!item;
     }).concat([formattedKeys]);
 
     var descriptorFunction = descriptor.value;
     var memoized = (0, _memoizee2.default)(descriptorFunction, (0, _extends3.default)({}, DEFAULT_PARAMETERS, config));
+
     descriptor.value = memoized;
+
     if (!target._caches) {
       target._caches = [];
     }
+
     target._caches.push({
       fnName: descriptorFunction.name,
-      memoized: memoized,
-      keySets: keySets
+      keySets: keySets,
+      memoized: memoized
     });
+
     return descriptor;
   };
 };

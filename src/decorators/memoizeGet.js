@@ -11,8 +11,8 @@ type MemoizeConfig = {
 
 const DEFAULT_MAX_AGE = 3600 * 1000; // 1 hour
 const DEFAULT_PARAMETERS = {
-  promise: true,
   maxAge: DEFAULT_MAX_AGE,
+  promise: true,
 };
 
 /* eslint-disable no-param-reassign */
@@ -21,16 +21,20 @@ export default <TType: Object>(
   config: ?MemoizeConfig = null,
 ): Decorator<TType> =>
   (target: TType, name: $Keys<TType>, descriptor: Descriptor): Descriptor => {
-    const formattedKeys = keys.map(key => key.replace('?', ''));
-    const keySets = keys.map((key, index) => {
-      if (!key.startsWith('?')) {
-        return null;
-      }
+    const formattedKeys = keys.map(
+      (key: string): string => key.replace('?', ''),
+    );
 
-      return formattedKeys.slice(0, index);
-    })
-    .filter(item => item)
-    .concat([formattedKeys]);
+    const keySets = keys
+      .map((key: string, index: number): ?Array<string> => {
+        if (!key.startsWith('?')) {
+          return null;
+        }
+
+        return formattedKeys.slice(0, index);
+      })
+      .filter((item: ?Array<string>): boolean => !!item)
+      .concat([formattedKeys]);
 
     const descriptorFunction = descriptor.value;
     const memoized = memoize(
@@ -40,14 +44,18 @@ export default <TType: Object>(
         ...config,
       },
     );
+
     descriptor.value = memoized;
+
     if (!target._caches) {
       target._caches = [];
     }
+
     target._caches.push({
       fnName: descriptorFunction.name,
-      memoized,
       keySets,
+      memoized,
     });
+
     return descriptor;
   };

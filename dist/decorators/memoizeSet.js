@@ -22,6 +22,8 @@ var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+/* eslint-disable no-param-reassign */
+/* eslint-disable func-names */
 exports.default = function () {
   var parameterKeys = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
   return function (target, name, descriptor) {
@@ -29,6 +31,7 @@ exports.default = function () {
     var fetchItemFunction = function fetchItemFunction(item) {
       return item;
     };
+
     if (!parameterKeys) {
       fetchItemFunction = function fetchItemFunction(item) {
         return item;
@@ -52,6 +55,7 @@ exports.default = function () {
         };
       };
     }
+
     descriptor.value = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
       var _fetchItemFunction;
 
@@ -63,7 +67,8 @@ exports.default = function () {
         while (1) {
           switch (_context.prev = _context.next) {
             case 0:
-              args = _args;
+              args = _args; // eslint-disable-line prefer-rest-params
+
               _context.next = 3;
               return descriptorFunction.call.apply(descriptorFunction, [this].concat((0, _toConsumableArray3.default)(args)));
 
@@ -105,6 +110,7 @@ exports.default = function () {
         }
       }, _callee, this);
     }));
+
     return descriptor;
   };
 };
