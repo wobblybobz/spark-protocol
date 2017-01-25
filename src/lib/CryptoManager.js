@@ -4,11 +4,9 @@ import type { Repository, ServerKeyRepository } from '../types';
 
 import crypto from 'crypto';
 import CryptoStream from './CryptoStream';
-import logger from './logger';
 import ursa from 'ursa';
 
 const HASH_TYPE = 'sha1';
-const SIGN_TYPE = 'sha256';
 
 class CryptoManager {
   _deviceKeyRepository: Repository<string>;
@@ -31,13 +29,13 @@ class CryptoManager {
     // the next 16 bytes (MSB first) will be the initialization vector (IV),
     // and the final 8 bytes (MSB first) will be the salt.
 
-    const key = new Buffer(16); //just the key... +8); //key plus salt
-    const iv = new Buffer(16); //initialization vector
+    const key = new Buffer(16); // just the key... +8); //key plus salt
+    const iv = new Buffer(16); // initialization vector
 
-    sessionKey.copy(key, 0, 0, 16); //copy the key
-    sessionKey.copy(iv, 0, 16, 32); //copy the iv
+    sessionKey.copy(key, 0, 0, 16); // copy the key
+    sessionKey.copy(iv, 0, 16, 32); // copy the iv
 
-    return new CryptoStream({ encrypt, iv, key, });
+    return new CryptoStream({ encrypt, iv, key });
   };
 
   _createServerKeys = async (): Promise<Object> => {
@@ -119,19 +117,25 @@ class CryptoManager {
   };
 
   getRandomBytes = (size: number): Promise<Buffer> =>
-    new Promise((resolve, reject) => {
-      crypto.randomBytes(size, (error, buffer) => {
-        if (error) {
-          reject(error);
-          return;
-        }
+    new Promise((
+      resolve: (buffer: Buffer) => void,
+      reject: (error: Error) => void,
+    ) => {
+      crypto.randomBytes(
+        size,
+        (error: ?Error, buffer: Buffer) => {
+          if (error) {
+            reject(error);
+            return;
+          }
 
-        resolve(buffer);
-      });
+          resolve(buffer);
+        },
+      );
     });
 
   static getRandomUINT16 = (): number => {
-    const uintMax = Math.pow(2, 16) - 1;
+    const uintMax = 2 ** 16 - 1;
     return Math.floor((Math.random() * uintMax) + 1);
   };
 

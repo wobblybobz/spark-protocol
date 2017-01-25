@@ -32,14 +32,6 @@ var _events = require('events');
 
 var _events2 = _interopRequireDefault(_events);
 
-var _moment = require('moment');
-
-var _moment2 = _interopRequireDefault(_moment);
-
-var _logger = require('./logger');
-
-var _logger2 = _interopRequireDefault(_logger);
-
 var _nullthrows2 = require('nullthrows');
 
 var _nullthrows3 = _interopRequireDefault(_nullthrows2);
@@ -92,8 +84,8 @@ var EventPublisher = function (_EventEmitter) {
       var ttl = eventData.ttl && eventData.ttl > 0 ? eventData.ttl : _settings2.default.DEFAULT_EVENT_TTL;
 
       var event = (0, _extends3.default)({}, eventData, {
-        ttl: ttl,
-        publishedAt: (0, _moment2.default)().toISOString()
+        publishedAt: new Date(),
+        ttl: ttl
       });
 
       _this._emitWithPrefix(eventData.name, event);
@@ -112,9 +104,9 @@ var EventPublisher = function (_EventEmitter) {
       var listener = _this._filterEvents(eventHandler, filterOptions);
 
       _this._subscriptionsByID.set(subscriptionID, {
-        listener: listener,
         eventNamePrefix: eventNamePrefix,
         id: subscriptionID,
+        listener: listener,
         subscriberID: subscriberID
       });
 

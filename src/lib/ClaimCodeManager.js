@@ -8,7 +8,7 @@ const CLAIM_CODE_TTL = 5000 * 60; // 5 min
 class ClaimCodeManager {
   _userIDByClaimCode: Map<string, string> = new Map();
 
-  _generateClaimCode = () => crypto
+  _generateClaimCode = (): string => crypto
     .randomBytes(CLAIM_CODE_LENGTH)
     .toString('base64')
     .substring(0, CLAIM_CODE_LENGTH);
@@ -23,7 +23,7 @@ class ClaimCodeManager {
     this._userIDByClaimCode.set(claimCode, userID);
 
     setTimeout(
-      (): void => {this.removeClaimCode(claimCode)},
+      (): boolean => this.removeClaimCode(claimCode),
       CLAIM_CODE_TTL,
     );
 
