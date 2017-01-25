@@ -17,7 +17,7 @@ type OtaUpdate = {
 const platformSettings = Object.entries(specifications);
 const SPECIFICATION_KEY_BY_PLATFORM = new Map(
   Object.values(settings.knownPlatforms).map(
-    (platform: string): Array<*> => {
+    (platform: mixed): Array<*> => {
       const spec = platformSettings.find(
         // eslint-disable-next-line no-unused-vars
         ([key, value]: Array<*>): boolean =>
@@ -26,7 +26,7 @@ const SPECIFICATION_KEY_BY_PLATFORM = new Map(
 
       return [platform, spec && spec[0]];
     },
-  ).filter((item: Array): boolean => item[1]),
+  ).filter((item: Array<*>): boolean => !!item[1]),
 );
 const FIRMWARE_VERSION =
   versions.find((version: Array<*>): boolean =>

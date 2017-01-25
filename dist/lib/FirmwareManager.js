@@ -88,7 +88,7 @@ var SPECIFICATION_KEY_BY_PLATFORM = new _map2.default((0, _values2.default)(_set
 
   return [platform, spec && spec[0]];
 }).filter(function (item) {
-  return item[1];
+  return !!item[1];
 }));
 var FIRMWARE_VERSION = _versions2.default.find(function (version) {
   return version[1] === _settings4.default.versionNumber;
