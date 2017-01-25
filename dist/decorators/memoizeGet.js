@@ -37,7 +37,7 @@ exports.default = function () {
 
       return formattedKeys.slice(0, index);
     }).filter(function (item) {
-      return item;
+      return !!item;
     }).concat([formattedKeys]);
 
     var descriptorFunction = descriptor.value;

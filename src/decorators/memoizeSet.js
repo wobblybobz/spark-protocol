@@ -4,25 +4,25 @@ import type { Cache, Decorator, Descriptor } from './types';
 
 /* eslint-disable no-param-reassign */
 /* eslint-disable func-names */
-export default <TType: Object>(
+export default <TType: Object, TItem: Object>(
   parameterKeys: ?Array<string> = null,
 ): Decorator<TType> =>
   (target: TType, name: $Keys<TType>, descriptor: Descriptor): Descriptor => {
     const descriptorFunction = descriptor.value;
-    let fetchItemFunction = (item: TType): TType => item;
+    let fetchItemFunction = (item: TItem): TItem => item;
 
     if (!parameterKeys) {
-      fetchItemFunction = (item: TType): TType => item;
+      fetchItemFunction = (item: TItem): TItem => item;
     } else if (parameterKeys[0] === 'id') {
-      fetchItemFunction = function (id: string): Promise<TType> {
+      fetchItemFunction = function (id: string): Promise<TItem> {
         return this.getById(id);
       };
     } else {
       fetchItemFunction = (keys: Array<string>): Function =>
-        function (...parameters: Array<Object>): Promise<TType> {
+        function (...parameters: Array<Object>): Promise<TItem> {
           return this.getAll()
             .filter(
-              (item: TType): boolean => parameters.every(
+              (item: TItem): boolean => parameters.every(
                 (param: Object, index: number): boolean =>
                   param === item[keys[index]],
               ),
@@ -30,7 +30,7 @@ export default <TType: Object>(
         };
     }
 
-    descriptor.value = async function (): Promise<TType> {
+    descriptor.value = async function (): Promise<TItem> {
       const args = arguments; // eslint-disable-line prefer-rest-params
 
       const result = await descriptorFunction.call(this, ...args);

@@ -3,7 +3,7 @@
 export type Cache = {
   fnName: string,
   keySets: Array<Array<string>>,
-  memoized: Object,
+  memoized: Function,
 };
 
 export type Decorator<TType> = (

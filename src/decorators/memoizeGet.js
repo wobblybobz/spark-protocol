@@ -26,14 +26,14 @@ export default <TType: Object>(
     );
 
     const keySets = keys
-      .map((key: string, index: number): Array<string> => {
+      .map((key: string, index: number): ?Array<string> => {
         if (!key.startsWith('?')) {
           return null;
         }
 
         return formattedKeys.slice(0, index);
       })
-      .filter((item: Array<string>): boolean => item)
+      .filter((item: ?Array<string>): boolean => !!item)
       .concat([formattedKeys]);
 
     const descriptorFunction = descriptor.value;
