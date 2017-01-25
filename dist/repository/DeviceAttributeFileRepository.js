@@ -177,34 +177,33 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
 
               case 2:
                 attributes = _context4.sent;
-                ;
 
                 if (attributes) {
-                  _context4.next = 6;
+                  _context4.next = 5;
                   break;
                 }
 
                 return _context4.abrupt('return', null);
 
-              case 6:
+              case 5:
                 if (!userID) {
-                  _context4.next = 10;
+                  _context4.next = 9;
                   break;
                 }
 
                 ownerID = attributes.ownerID;
 
                 if (!(!ownerID || ownerID !== userID)) {
-                  _context4.next = 10;
+                  _context4.next = 9;
                   break;
                 }
 
                 return _context4.abrupt('return', null);
 
-              case 10:
+              case 9:
                 return _context4.abrupt('return', attributes);
 
-              case 11:
+              case 10:
               case 'end':
                 return _context4.stop();
             }
@@ -219,6 +218,9 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
 
     this._fileManager = new _JSONFileManager2.default(path);
   }
+
+  // eslint-disable-next-line no-unused-vars
+
 
   (0, _createClass3.default)(DeviceAttributeFileRepository, [{
     key: 'update',

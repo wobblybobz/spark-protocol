@@ -17,13 +17,13 @@ class DeviceKeyFileRepository {
   async create(id: string, data: string): Promise<string> {
     this._fileManager.createFile(id + FILE_EXTENSION, data);
     return data;
-  };
+  }
 
   @memoizeSet()
   async update(id: string, data: string): Promise<string> {
     this._fileManager.writeFile(id + FILE_EXTENSION, data);
     return data;
-  };
+  }
 
   @memoizeSet(['id'])
   async delete(id: string): Promise<void> {
