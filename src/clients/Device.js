@@ -871,16 +871,25 @@ class Device extends EventEmitter {
    * Checks our cache to see if we have the function state, otherwise requests
    * it from the core, listens for it, and resolves our deferred on success
    */
-  _ensureWeHaveIntrospectionData = async (): Promise<*> => {
+  _ensureWeHaveIntrospectionData = async (counter: number = 0): Promise<*> => {
     if (this._hasFunctionState()) {
       return;
     }
 
     try {
-      this.sendMessage('Describe');
-      this.sendMessage('Describe');
-      const systemMessage = await this.listenFor('DescribeReturn');
-      const functionStateAwaitable = this.listenFor('DescribeReturn');
+      const token = this.sendMessage('Describe');
+      const systemMessage = await this.listenFor(
+        'DescribeReturn',
+        null,
+        token,
+      );
+
+      // Sometimes this listener will
+      const functionStateAwaitable = this.listenFor(
+        'DescribeReturn',
+        null,
+        token,
+      );
 
       // got a description, is it any good?
       const data = systemMessage.getPayload();
@@ -888,18 +897,27 @@ class Device extends EventEmitter {
 
       // In the newer firmware the application data comes in a later message.
       // We run a race to see if the function state comes in the first response.
+      let gotFunctionState = false;
       const functionState = await Promise.race([
         functionStateAwaitable.then((applicationMessage: Message): Object => {
+          gotFunctionState = true;
           // got a description, is it any good?
           const applicationMessageData = applicationMessage.getPayload();
           return JSON.parse(applicationMessageData.toString());
         }),
         new Promise((resolve: (systemInformation: Object) => void) => {
           if (systemInformation.f && systemInformation.v) {
+            gotFunctionState = true;
             resolve(systemInformation);
           }
         }),
       ]);
+
+      // only retry 3 times
+      if (!gotFunctionState && counter && counter < 3) {
+        await this._ensureWeHaveIntrospectionData((counter || 0) + 1);
+        return;
+      }
 
       if (functionState && functionState.v) {
         // 'v':{'temperature':2}
