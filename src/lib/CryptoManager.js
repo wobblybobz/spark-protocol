@@ -135,7 +135,8 @@ class CryptoManager {
     });
 
   static getRandomUINT16 = (): number => {
-    const uintMax = 2 ** 16 - 1;
+    // ** - the same as Math.pow()
+    const uintMax = 2 ** 16 - 1; // 65535
     return Math.floor((Math.random() * uintMax) + 1);
   };
 
