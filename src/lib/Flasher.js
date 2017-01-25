@@ -107,7 +107,7 @@ class Flasher {
         new Promise((
           resolve: () => void,
           reject: (error: Error) => void,
-          ): void => setTimeout(
+        ): number => setTimeout(
             (): void => reject(new Error('Update timed out')),
             60 * 1000,
           ),
@@ -213,7 +213,7 @@ class Flasher {
         }),
 
         // Try to update multiple times
-        new Promise((resolve: () => void): void =>
+        new Promise((resolve: () => void): number =>
           setTimeout(
             () => {
               if (maxTries <= 0) {
@@ -461,13 +461,13 @@ class Flasher {
    * delay the teardown until at least like 10 seconds after the last
    * chunkmissed message.
    */
-  _waitForMissedChunks = async (): Promise<void> => {
+  _waitForMissedChunks = async (): Promise<*> => {
     if (this._protocolVersion <= 0) {
       // this doesn't apply to normal slow ota
       return null;
     }
 
-    return new Promise((resolve: () => void): void =>
+    return new Promise((resolve: () => void): number =>
       setTimeout(
         () => {
           logger.log('finished waiting');
