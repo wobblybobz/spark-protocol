@@ -5,7 +5,6 @@ import path from 'path';
 import Github from 'github';
 import mkdirp from 'mkdirp';
 import request from 'request';
-import rmfr from 'rmfr';
 import settings from '../settings';
 import nullthrows from 'nullthrows';
 
@@ -125,7 +124,7 @@ const updateSettings = (): Array<string> => {
     },
   );
 
-  fs.writeFileSync(SETTINGS_FILE, scriptSettings, { flag: 'wx' });
+  fs.writeFileSync(SETTINGS_FILE, scriptSettings);
   console.log('Updated settings');
 
   return settingsBinaries;
@@ -171,12 +170,9 @@ const downloadAppBinaries = async (): Promise<*> => {
     versionTag = `v${versionTag}`;
   }
 
-
-  await rmfr(`${settings.BINARIES_DIRECTORY}/`);
   if (!fs.existsSync(settings.BINARIES_DIRECTORY)) {
     mkdirp.sync(settings.BINARIES_DIRECTORY);
   }
-  await rmfr(FILE_GEN_DIRECTORY);
   if (!fs.existsSync(FILE_GEN_DIRECTORY)) {
     mkdirp.sync(FILE_GEN_DIRECTORY);
   }
@@ -230,7 +226,6 @@ const downloadAppBinaries = async (): Promise<*> => {
   fs.writeFileSync(
     SPECIFICATIONS_FILE,
     new Buffer(specificationsResponse.content, 'base64').toString(),
-    { flag: 'wx' },
   );
 
   const versionResponse = await githubAPI.repos.getContent({
@@ -257,7 +252,6 @@ const downloadAppBinaries = async (): Promise<*> => {
   fs.writeFileSync(
     MAPPING_FILE,
     JSON.stringify(mapping, null, 2),
-    { flag: 'wx' },
   );
 
   console.log('\r\nCompleted Sync');

@@ -40,10 +40,6 @@ var _request = require('request');
 
 var _request2 = _interopRequireDefault(_request);
 
-var _rmfr = require('rmfr');
-
-var _rmfr2 = _interopRequireDefault(_rmfr);
-
 var _settings = require('../settings');
 
 var _settings2 = _interopRequireDefault(_settings);
@@ -55,6 +51,7 @@ var _nullthrows2 = _interopRequireDefault(_nullthrows);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var GITHUB_USER = 'spark';
+
 var GITHUB_FIRMWARE_REPOSITORY = 'firmware';
 var GITHUB_CLI_REPOSITORY = 'particle-cli';
 var FILE_GEN_DIRECTORY = _path2.default.join(__dirname, '../../third-party/');
@@ -178,7 +175,7 @@ var updateSettings = function updateSettings() {
     return newFilename;
   });
 
-  _fs2.default.writeFileSync(SETTINGS_FILE, scriptSettings, { flag: 'wx' });
+  _fs2.default.writeFileSync(SETTINGS_FILE, scriptSettings);
   console.log('Updated settings');
 
   return settingsBinaries;
@@ -242,32 +239,24 @@ var downloadAppBinaries = function () {
             versionTag = 'v' + versionTag;
           }
 
-          _context3.next = 4;
-          return (0, _rmfr2.default)(_settings2.default.BINARIES_DIRECTORY + '/');
-
-        case 4:
           if (!_fs2.default.existsSync(_settings2.default.BINARIES_DIRECTORY)) {
             _mkdirp2.default.sync(_settings2.default.BINARIES_DIRECTORY);
           }
-          _context3.next = 7;
-          return (0, _rmfr2.default)(FILE_GEN_DIRECTORY);
-
-        case 7:
           if (!_fs2.default.existsSync(FILE_GEN_DIRECTORY)) {
             _mkdirp2.default.sync(FILE_GEN_DIRECTORY);
           }
 
           // Download app binaries
-          _context3.next = 10;
+          _context3.next = 6;
           return downloadAppBinaries();
 
-        case 10:
+        case 6:
           if (!(process.argv.length !== 3)) {
-            _context3.next = 17;
+            _context3.next = 13;
             break;
           }
 
-          _context3.next = 13;
+          _context3.next = 9;
           return githubAPI.repos.getTags({
             owner: GITHUB_USER,
             page: 0,
@@ -275,7 +264,7 @@ var downloadAppBinaries = function () {
             repo: GITHUB_FIRMWARE_REPOSITORY
           });
 
-        case 13:
+        case 9:
           tags = _context3.sent;
 
           tags = tags.filter(function (tag
@@ -296,50 +285,50 @@ var downloadAppBinaries = function () {
 
           versionTag = tags[0].name;
 
-        case 17:
-          _context3.next = 19;
+        case 13:
+          _context3.next = 15;
           return githubAPI.repos.getReleaseByTag({
             owner: GITHUB_USER,
             repo: GITHUB_FIRMWARE_REPOSITORY,
             tag: versionTag
           });
 
-        case 19:
+        case 15:
           release = _context3.sent;
-          _context3.next = 22;
+          _context3.next = 18;
           return downloadFirmwareBinaries(release.assets);
 
-        case 22:
+        case 18:
           downloadedBinaries = _context3.sent;
-          _context3.next = 25;
+          _context3.next = 21;
           return updateSettings();
 
-        case 25:
+        case 21:
           settingsBinaries = _context3.sent;
 
           verifyBinariesMatch(downloadedBinaries, settingsBinaries);
 
-          _context3.next = 29;
+          _context3.next = 25;
           return githubAPI.repos.getContent({
             owner: GITHUB_USER,
             path: 'oldlib/deviceSpecs/specifications.js',
             repo: GITHUB_CLI_REPOSITORY
           });
 
-        case 29:
+        case 25:
           specificationsResponse = _context3.sent;
 
 
-          _fs2.default.writeFileSync(SPECIFICATIONS_FILE, new Buffer(specificationsResponse.content, 'base64').toString(), { flag: 'wx' });
+          _fs2.default.writeFileSync(SPECIFICATIONS_FILE, new Buffer(specificationsResponse.content, 'base64').toString());
 
-          _context3.next = 33;
+          _context3.next = 29;
           return githubAPI.repos.getContent({
             owner: GITHUB_USER,
             path: 'system/system-versions.md',
             repo: GITHUB_FIRMWARE_REPOSITORY
           });
 
-        case 33:
+        case 29:
           versionResponse = _context3.sent;
           versionText = new Buffer(versionResponse.content, 'base64').toString();
           startIndex = versionText.indexOf('| 0 ');
@@ -348,33 +337,33 @@ var downloadAppBinaries = function () {
           mapping = [];
           ii = 0;
 
-        case 40:
+        case 36:
           if (!(ii < data.length)) {
-            _context3.next = 47;
-            break;
-          }
-
-          if (data[ii + 1]) {
             _context3.next = 43;
             break;
           }
 
-          return _context3.abrupt('continue', 44);
+          if (data[ii + 1]) {
+            _context3.next = 39;
+            break;
+          }
 
-        case 43:
+          return _context3.abrupt('continue', 40);
+
+        case 39:
           mapping.push([data[ii + 1], data[ii + 2]]);
 
-        case 44:
+        case 40:
           ii += 4;
-          _context3.next = 40;
+          _context3.next = 36;
           break;
 
-        case 47:
-          _fs2.default.writeFileSync(MAPPING_FILE, (0, _stringify2.default)(mapping, null, 2), { flag: 'wx' });
+        case 43:
+          _fs2.default.writeFileSync(MAPPING_FILE, (0, _stringify2.default)(mapping, null, 2));
 
           console.log('\r\nCompleted Sync');
 
-        case 49:
+        case 45:
         case 'end':
           return _context3.stop();
       }
