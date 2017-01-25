@@ -22,6 +22,10 @@
     "test:watch": "ava --watch",
     "update-firmware": "node ./dist/scripts/update-firmware-binaries"
   },
+  "pre-commit": [
+    "lint",
+    "test"
+  ],
   "ava": {
     "verbose": true,
     "babel": "inherit",
@@ -47,9 +51,7 @@
     "request": "^2.79.0",
     "rmfr": "^1.0.1",
     "ursa": "*",
-    "uuid": "^3.0.1",
-    "when": "*",
-    "xtend": "*"
+    "uuid": "^3.0.1"
   },
   "devDependencies": {
     "ava": "^0.17.0",
@@ -71,6 +73,7 @@
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-sorting": "^0.3.0",
     "flow-bin": "^0.37.0",
+    "pre-commit": "^1.2.2",
     "sinon": "^1.17.7"
   }
 }

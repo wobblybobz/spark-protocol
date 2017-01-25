@@ -1,10 +1,12 @@
-docs
+dist
+doc
 flow-typed
 
 # Don't check auto-generated stuff
 coverage
-lib
+data
 node_modules
+third-party
 
 # Cruft
 .DS_Store
