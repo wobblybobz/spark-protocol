@@ -21,7 +21,6 @@
 import type { Event, EventData } from '../types';
 
 import EventEmitter from 'events';
-import moment from 'moment';
 import nullthrows from 'nullthrows';
 import uuid from 'uuid';
 import settings from '../settings';
@@ -53,7 +52,7 @@ class EventPublisher extends EventEmitter {
 
     const event: Event = {
       ...eventData,
-      publishedAt: moment().toISOString(),
+      publishedAt: new Date(),
       ttl,
     };
 

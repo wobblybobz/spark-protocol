@@ -32,10 +32,6 @@ var _events = require('events');
 
 var _events2 = _interopRequireDefault(_events);
 
-var _moment = require('moment');
-
-var _moment2 = _interopRequireDefault(_moment);
-
 var _nullthrows2 = require('nullthrows');
 
 var _nullthrows3 = _interopRequireDefault(_nullthrows2);
@@ -50,27 +46,25 @@ var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
-*/
-
-var ALL_EVENTS = '*all*';
+var ALL_EVENTS = '*all*'; /*
+                          *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                          *
+                          *   This program is free software; you can redistribute it and/or
+                          *   modify it under the terms of the GNU Lesser General Public
+                          *   License as published by the Free Software Foundation, either
+                          *   version 3 of the License, or (at your option) any later version.
+                          *
+                          *   This program is distributed in the hope that it will be useful,
+                          *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                          *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                          *   Lesser General Public License for more details.
+                          *
+                          *   You should have received a copy of the GNU Lesser General Public
+                          *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                          *
+                          * 
+                          *
+                          */
 
 var EventPublisher = function (_EventEmitter) {
   (0, _inherits3.default)(EventPublisher, _EventEmitter);
@@ -90,7 +84,7 @@ var EventPublisher = function (_EventEmitter) {
       var ttl = eventData.ttl && eventData.ttl > 0 ? eventData.ttl : _settings2.default.DEFAULT_EVENT_TTL;
 
       var event = (0, _extends3.default)({}, eventData, {
-        publishedAt: (0, _moment2.default)().toISOString(),
+        publishedAt: new Date(),
         ttl: ttl
       });
 
