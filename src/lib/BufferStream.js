@@ -18,8 +18,6 @@
 *
 */
 
-import {ReadStream} from 'fs';
-
 class BufferStream {
   _buffer: ?Buffer;
   _index: number = 0;
@@ -28,9 +26,9 @@ class BufferStream {
     this._buffer = buffer;
   }
 
-  seek = (index: number): void => {
+  seek = (index: number) => {
     this._index = index;
-  }
+  };
 
   read = (size?: number): ?Buffer => {
     if (!this._buffer) {
@@ -51,9 +49,9 @@ class BufferStream {
     }
 
     return result;
-  }
+  };
 
-  close = (): void => {
+  close = () => {
     this._buffer = null;
   }
 }
