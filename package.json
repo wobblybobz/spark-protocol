@@ -49,7 +49,6 @@
     "moment": "*",
     "nullthrows": "^1.0.0",
     "request": "^2.79.0",
-    "rmfr": "^1.0.1",
     "ursa": "*",
     "uuid": "^3.0.1"
   },
