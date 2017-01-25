@@ -63,6 +63,7 @@ var SPECIFICATIONS_FILE = FILE_GEN_DIRECTORY + 'specifications.js';
 var SETTINGS_FILE = FILE_GEN_DIRECTORY + 'settings.json';
 
 // This default is here so that the regex will work when updating these files.
+/* eslint-disable */
 var DEFAULT_SETTINGS = {
   knownApps: {
     'deep_update_2014_06': true,
@@ -96,6 +97,7 @@ var DEFAULT_SETTINGS = {
     }
   }
 };
+/* eslint-enable */
 
 var versionTag = '';
 var githubAPI = new _github2.default();
@@ -110,10 +112,12 @@ var exitWithJSON = function exitWithJSON(json) {
 };
 
 var downloadFile = function downloadFile(url) {
-  return new _promise2.default(function (resolve, reject) {
+  return new _promise2.default(function (resolve) {
     var filename = (0, _nullthrows2.default)(url.match(/.*\/(.*)/))[1];
     console.log('Downloading ' + filename + '...');
+
     var file = _fs2.default.createWriteStream(_settings2.default.BINARIES_DIRECTORY + '/' + filename);
+
     file.on('finish', function () {
       return file.close(function () {
         return resolve(filename);
@@ -135,13 +139,13 @@ var downloadFirmwareBinaries = function () {
               if (asset.name.match(/^system-part/)) {
                 return downloadFile(asset.browser_download_url);
               }
-              return '';
+              return _promise2.default.resolve('');
             }));
 
           case 2:
             assetFileNames = _context.sent;
             return _context.abrupt('return', assetFileNames.filter(function (item) {
-              return item;
+              return !!item;
             }));
 
           case 4:
@@ -163,26 +167,25 @@ var updateSettings = function updateSettings() {
     versionNumber = versionNumber.substr(1);
   }
 
-  var settings = (0, _stringify2.default)((0, _extends3.default)({
+  var scriptSettings = (0, _stringify2.default)((0, _extends3.default)({
     versionNumber: versionNumber
   }, DEFAULT_SETTINGS), null, 2);
+
   var settingsBinaries = [];
-  settings = settings.replace(/(system-part\d-).*(-.*.bin)/g, function (filename, part, device) {
+  scriptSettings = scriptSettings.replace(/(system-part\d-).*(-.*.bin)/g, function (filename, part, device) {
     var newFilename = part + versionNumber + device;
     settingsBinaries.push(newFilename);
     return newFilename;
   });
 
-  _fs2.default.writeFileSync(SETTINGS_FILE, settings, { flag: 'wx' });
+  _fs2.default.writeFileSync(SETTINGS_FILE, scriptSettings, { flag: 'wx' });
   console.log('Updated settings');
 
   return settingsBinaries;
 };
 
 var verifyBinariesMatch = function verifyBinariesMatch(downloadedBinaries, settingsBinaries) {
-  downloadedBinaries = downloadedBinaries.sort();
-  settingsBinaries = settingsBinaries.sort();
-  if ((0, _stringify2.default)(downloadedBinaries) !== (0, _stringify2.default)(settingsBinaries)) {
+  if ((0, _stringify2.default)(downloadedBinaries.sort()) !== (0, _stringify2.default)(settingsBinaries.sort())) {
     console.log('\n\nWARNING: the list of downloaded binaries doesn\'t match the list ' + 'of binaries in settings.js');
     console.log('Downloaded:  ', downloadedBinaries);
     console.log('settings.js: ', settingsBinaries);
@@ -199,8 +202,8 @@ var downloadAppBinaries = function () {
             _context2.next = 2;
             return githubAPI.repos.getContent({
               owner: GITHUB_USER,
-              repo: GITHUB_CLI_REPOSITORY,
-              path: 'binaries'
+              path: 'binaries',
+              repo: GITHUB_CLI_REPOSITORY
             });
 
           case 2:
@@ -227,7 +230,7 @@ var downloadAppBinaries = function () {
 }();
 
 (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
-  var tags, release, downloadedBinaries, settingsBinaries, specificationsResponse, versionResponse, versionText, startIndex, endIndex, data, mapping, i;
+  var tags, release, downloadedBinaries, settingsBinaries, specificationsResponse, versionResponse, versionText, startIndex, endIndex, data, mapping, ii;
   return _regenerator2.default.wrap(function _callee3$(_context3) {
     while (1) {
       switch (_context3.prev = _context3.next) {
@@ -275,11 +278,10 @@ var downloadAppBinaries = function () {
         case 13:
           tags = _context3.sent;
 
-          tags = tags.filter(function (tag) {
-            return (
-              // Don't use release candidates.. we only need main releases.
-              !tag.name.includes('-rc') && !tag.name.includes('-pi')
-            );
+          tags = tags.filter(function (tag
+          // Don't use release candidates.. we only need main releases.
+          ) {
+            return !tag.name.includes('-rc') && !tag.name.includes('-pi');
           });
 
           tags.sort(function (a, b) {
@@ -344,15 +346,15 @@ var downloadAppBinaries = function () {
           endIndex = versionText.indexOf('\n\n', startIndex);
           data = versionText.substring(startIndex, endIndex).replace(/\s/g, '').split('|');
           mapping = [];
-          i = 0;
+          ii = 0;
 
         case 40:
-          if (!(i < data.length)) {
+          if (!(ii < data.length)) {
             _context3.next = 47;
             break;
           }
 
-          if (data[i + 1]) {
+          if (data[ii + 1]) {
             _context3.next = 43;
             break;
           }
@@ -360,10 +362,10 @@ var downloadAppBinaries = function () {
           return _context3.abrupt('continue', 44);
 
         case 43:
-          mapping.push([data[i + 1], data[i + 2]]);
+          mapping.push([data[ii + 1], data[ii + 2]]);
 
         case 44:
-          i += 4;
+          ii += 4;
           _context3.next = 40;
           break;
 

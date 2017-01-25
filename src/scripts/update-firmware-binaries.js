@@ -2,7 +2,7 @@
 
 import fs from 'fs';
 import path from 'path';
-import github from 'github';
+import Github from 'github';
 import mkdirp from 'mkdirp';
 import request from 'request';
 import rmfr from 'rmfr';
@@ -18,11 +18,12 @@ const GITHUB_USER = 'spark';
 const GITHUB_FIRMWARE_REPOSITORY = 'firmware';
 const GITHUB_CLI_REPOSITORY = 'particle-cli';
 const FILE_GEN_DIRECTORY = path.join(__dirname, '../../third-party/');
-const MAPPING_FILE =  FILE_GEN_DIRECTORY + 'versions.json';
-const SPECIFICATIONS_FILE = FILE_GEN_DIRECTORY + 'specifications.js';
-const SETTINGS_FILE = FILE_GEN_DIRECTORY + 'settings.json';
+const MAPPING_FILE = `${FILE_GEN_DIRECTORY}versions.json`;
+const SPECIFICATIONS_FILE = `${FILE_GEN_DIRECTORY}specifications.js`;
+const SETTINGS_FILE = `${FILE_GEN_DIRECTORY}settings.json`;
 
 // This default is here so that the regex will work when updating these files.
+/* eslint-disable */
 const DEFAULT_SETTINGS = {
   knownApps: {
 		'deep_update_2014_06': true,
@@ -56,53 +57,56 @@ const DEFAULT_SETTINGS = {
 		}
 	},
 };
+/* eslint-enable */
 
 let versionTag = '';
-const githubAPI = new github();
+const githubAPI = new Github();
 
-const exitWithMessage = (message: string): void => {
-	console.log(message);
-	process.exit(0);
+const exitWithMessage = (message: string) => {
+  console.log(message);
+  process.exit(0);
 };
 
-const exitWithJSON = (json: Object): void => {
-	exitWithMessage(JSON.stringify(json, null, 2));
-}
+const exitWithJSON = (json: Object) => {
+  exitWithMessage(JSON.stringify(json, null, 2));
+};
 
-const downloadFile = (url: string): Promise<*> => {
-	return new Promise((resolve, reject) => {
-		const filename = nullthrows(url.match(/.*\/(.*)/))[1];
-		console.log('Downloading ' + filename + '...');
-		const file = fs.createWriteStream(
-      settings.BINARIES_DIRECTORY +
-      '/' +
-      filename
+const downloadFile = (url: string): Promise<*> =>
+  new Promise((resolve: (filename: string) => void) => {
+    const filename = nullthrows(url.match(/.*\/(.*)/))[1];
+    console.log(`Downloading ${filename}...`);
+
+    const file = fs.createWriteStream(
+      `${settings.BINARIES_DIRECTORY}/${filename}`,
     );
-    file.on('finish', () => file.close(() => resolve(filename)));
-		request(url).pipe(file).on('error', exitWithJSON);
-	});
-};
+
+    file.on('finish', (): void => file.close((): void => resolve(filename)));
+    request(url).pipe(file).on('error', exitWithJSON);
+  });
+
 
 const downloadFirmwareBinaries = async (
   assets: Array<Asset>,
-): Promise<*> => {
-	const assetFileNames = await Promise.all(assets.map(asset => {
-		if (asset.name.match(/^system-part/)) {
-			return downloadFile(asset.browser_download_url);
-		}
-    return '';
-	}));
+): Promise<Array<string>> => {
+  const assetFileNames = await Promise.all(
+    assets.map((asset: Object): Promise<string> => {
+      if (asset.name.match(/^system-part/)) {
+        return downloadFile(asset.browser_download_url);
+      }
+      return Promise.resolve('');
+    }),
+  );
 
-  return assetFileNames.filter(item => item);
+  return assetFileNames.filter((item: ?string): boolean => !!item);
 };
 
 const updateSettings = (): Array<string> => {
-	let versionNumber = versionTag;
-	if (versionNumber[0] === 'v') {
-		versionNumber = versionNumber.substr(1);
-	}
+  let versionNumber = versionTag;
+  if (versionNumber[0] === 'v') {
+    versionNumber = versionNumber.substr(1);
+  }
 
-	let settings = JSON.stringify(
+  let scriptSettings = JSON.stringify(
     {
       versionNumber,
       ...DEFAULT_SETTINGS,
@@ -110,18 +114,19 @@ const updateSettings = (): Array<string> => {
     null,
     2,
   );
+
   const settingsBinaries = [];
-	settings = settings.replace(
+  scriptSettings = scriptSettings.replace(
     /(system-part\d-).*(-.*.bin)/g,
-    (filename, part, device) => {
-  		var newFilename = part + versionNumber + device;
-  		settingsBinaries.push(newFilename);
-  		return newFilename;
-  	}
+    (filename: string, part: string, device: string): string => {
+      const newFilename = part + versionNumber + device;
+      settingsBinaries.push(newFilename);
+      return newFilename;
+    },
   );
 
-	fs.writeFileSync(SETTINGS_FILE, settings, { flag: 'wx' });
-	console.log('Updated settings');
+  fs.writeFileSync(SETTINGS_FILE, scriptSettings, { flag: 'wx' });
+  console.log('Updated settings');
 
   return settingsBinaries;
 };
@@ -129,28 +134,32 @@ const updateSettings = (): Array<string> => {
 const verifyBinariesMatch = (
   downloadedBinaries: Array<string>,
   settingsBinaries: Array<string>,
-): void => {
-	downloadedBinaries = downloadedBinaries.sort();
-	settingsBinaries = settingsBinaries.sort();
-	if (JSON.stringify(downloadedBinaries) !== JSON.stringify(settingsBinaries)) {
-		console.log(
+) => {
+  if (
+    JSON.stringify(downloadedBinaries.sort()) !==
+    JSON.stringify(settingsBinaries.sort())
+  ) {
+    console.log(
       '\n\nWARNING: the list of downloaded binaries doesn\'t match the list ' +
-        'of binaries in settings.js'
+        'of binaries in settings.js',
     );
-		console.log('Downloaded:  ', downloadedBinaries);
-		console.log('settings.js: ', settingsBinaries);
-	}
+    console.log('Downloaded:  ', downloadedBinaries);
+    console.log('settings.js: ', settingsBinaries);
+  }
 };
 
 const downloadAppBinaries = async (): Promise<*> => {
   const assets = await githubAPI.repos.getContent({
     owner: GITHUB_USER,
+    path: 'binaries',
     repo: GITHUB_CLI_REPOSITORY,
-    path: 'binaries'
   });
 
   return await Promise.all(
-    assets.map(asset => downloadFile(asset.download_url)),
+    assets.map(
+      (asset: Object): Promise<string> =>
+        downloadFile(asset.download_url),
+    ),
   );
 };
 
@@ -159,11 +168,11 @@ const downloadAppBinaries = async (): Promise<*> => {
   // the firmware.
   versionTag = process.argv[2];
   if (versionTag && versionTag[0] !== 'v') {
-  	versionTag = 'v' + versionTag;
+    versionTag = `v${versionTag}`;
   }
 
 
-  await rmfr(settings.BINARIES_DIRECTORY + '/');
+  await rmfr(`${settings.BINARIES_DIRECTORY}/`);
   if (!fs.existsSync(settings.BINARIES_DIRECTORY)) {
     mkdirp.sync(settings.BINARIES_DIRECTORY);
   }
@@ -181,15 +190,15 @@ const downloadAppBinaries = async (): Promise<*> => {
       owner: GITHUB_USER,
       page: 0,
       perPage: 30,
-      repo: GITHUB_FIRMWARE_REPOSITORY
-    })
-    tags = tags.filter(tag =>
+      repo: GITHUB_FIRMWARE_REPOSITORY,
+    });
+    tags = tags.filter((tag: Object): boolean =>
       // Don't use release candidates.. we only need main releases.
       !tag.name.includes('-rc') &&
-      !tag.name.includes('-pi')
+      !tag.name.includes('-pi'),
     );
 
-    tags.sort((a, b) => {
+    tags.sort((a: Object, b: Object): number => {
       if (a.name < b.name) {
         return 1;
       }
@@ -205,7 +214,7 @@ const downloadAppBinaries = async (): Promise<*> => {
   const release = await githubAPI.repos.getReleaseByTag({
     owner: GITHUB_USER,
     repo: GITHUB_FIRMWARE_REPOSITORY,
-    tag: versionTag
+    tag: versionTag,
   });
 
   const downloadedBinaries = await downloadFirmwareBinaries(release.assets);
@@ -215,20 +224,20 @@ const downloadAppBinaries = async (): Promise<*> => {
   const specificationsResponse = await githubAPI.repos.getContent({
     owner: GITHUB_USER,
     path: 'oldlib/deviceSpecs/specifications.js',
-    repo: GITHUB_CLI_REPOSITORY
+    repo: GITHUB_CLI_REPOSITORY,
   });
 
   fs.writeFileSync(
     SPECIFICATIONS_FILE,
     new Buffer(specificationsResponse.content, 'base64').toString(),
-    { flag: 'wx' }
+    { flag: 'wx' },
   );
 
   const versionResponse = await githubAPI.repos.getContent({
     owner: GITHUB_USER,
     path: 'system/system-versions.md',
-    repo: GITHUB_FIRMWARE_REPOSITORY
-  })
+    repo: GITHUB_FIRMWARE_REPOSITORY,
+  });
 
   const versionText = new Buffer(versionResponse.content, 'base64').toString();
   const startIndex = versionText.indexOf('| 0 ');
@@ -239,17 +248,17 @@ const downloadAppBinaries = async (): Promise<*> => {
     .split('|');
 
   const mapping = [];
-  for (var i = 0; i < data.length; i += 4) {
-    if (!data[i+1]) {
-      continue;
+  for (let ii = 0; ii < data.length; ii += 4) {
+    if (!data[ii + 1]) {
+      continue; // eslint-disable-line no-continue
     }
-    mapping.push([data[i+1], data[i+2]]);
+    mapping.push([data[ii + 1], data[ii + 2]]);
   }
   fs.writeFileSync(
     MAPPING_FILE,
     JSON.stringify(mapping, null, 2),
-    { flag: 'wx' }
+    { flag: 'wx' },
   );
 
-  console.log('\r\nCompleted Sync')
+  console.log('\r\nCompleted Sync');
 })();
