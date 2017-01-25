@@ -19,61 +19,72 @@
 */
 
 import type Device from '../clients/Device';
-import type { Repository } from '../types';
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
 import type CryptoStream from './CryptoStream';
 import type CryptoManager from './CryptoManager';
 
-
 import ChunkingStream from './ChunkingStream';
 import logger from './logger';
-import buffers from 'h5.buffers';
-import nullthrows from 'nullthrows';
 
 /*
  Handshake protocol v1
 
- 1.) Socket opens:
+ 1) Socket opens:
 
- 2.) Server responds with 40 bytes of random data as a nonce.
-     * Core should read exactly 40 bytes from the socket.
-     Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket and retry the connection.
+ 2) Server responds with 40 bytes of random data as a nonce.
+ Core should read exactly 40 bytes from the socket.
+ Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket
+ and retry the connection.
 
-     * Core appends the 12-byte STM32 Unique ID to the nonce, RSA encrypts the 52-byte message with the Server's public key,
-     and sends the resulting 256-byte ciphertext to the Server.  The Server's public key is stored on the external flash chip at address TBD.
-     The nonce should be repeated in the same byte order it arrived (FIFO) and the STM32 ID should be appended in the
-     same byte order as the memory addresses: 0x1FFFF7E8, 0x1FFFF7E9, 0x1FFFF7EA… 0x1FFFF7F2, 0x1FFFF7F3.
+ Core appends the 12-byte STM32 Unique ID to the nonce,
+ RSA encrypts the 52-byte message with the Server's public key,
+ and sends the resulting 256-byte ciphertext to the Server.
+ The Server's public key is stored on the external flash chip at address TBD.
+ The nonce should be repeated in the same byte order it arrived (FIFO)
+ and the STM32 ID should be appended in the same byte order as the memory addresses:
+ 0x1FFFF7E8, 0x1FFFF7E9, 0x1FFFF7EA… 0x1FFFF7F2, 0x1FFFF7F3.
 
- 3.) Server should read exactly 256 bytes from the socket.
-     Timeout waiting for the encrypted message is 30 seconds.  If the timeout is reached, Server must close the connection.
+ 3) Server should read exactly 256 bytes from the socket.
+ Timeout waiting for the encrypted message is 30 seconds.
+ If the timeout is reached, Server must close the connection.
 
-     * Server RSA decrypts the message with its private key.  If the decryption fails, Server must close the connection.
-     * Decrypted message should be 52 bytes, otherwise Server must close the connection.
-     * The first 40 bytes of the message must match the previously sent nonce, otherwise Server must close the connection.
-     * Remaining 12 bytes of message represent STM32 ID.  Server looks up STM32 ID, retrieving the Core's public RSA key.
-     * If the public key is not found, Server must close the connection.
+ Server RSA decrypts the message with its private key.  If the decryption fails,
+ Server must close the connection.
+ Decrypted message should be 52 bytes, otherwise Server must close the connection.
+ The first 40 bytes of the message must match the previously sent nonce,
+ otherwise Server must close the connection.
+ Remaining 12 bytes of message represent STM32 ID.
+ Server looks up STM32 ID, retrieving the Core's public RSA key.
+ If the public key is not found, Server must close the connection.
 
- 4.) Server creates secure session key
-     * Server generates 40 bytes of secure random data to serve as components of a session key for AES-128-CBC encryption.
-     The first 16 bytes (MSB first) will be the key, the next 16 bytes (MSB first) will be the initialization vector (IV), and the final 8 bytes (MSB first) will be the salt.
-     Server RSA encrypts this 40-byte message using the Core's public key to create a 128-byte ciphertext.
-     * Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40 bytes generated in the previous step as the HMAC key.
-     * Server signs the HMAC with its RSA private key generating a 256-byte signature.
-     * Server sends 384 bytes to Core: the ciphertext then the signature.
+ 4) Server creates secure session key
+ Server generates 40 bytes of secure random data to serve as components of a session key
+ for AES-128-CBC encryption.
+ The first 16 bytes (MSB first) will be the key, the next 16 bytes (MSB first)
+ will be the initialization vector (IV), and the final 8 bytes (MSB first) will be the salt.
+ Server RSA encrypts this 40-byte message using the Core's public key
+ to create a 128-byte ciphertext.
+ Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40 bytes generated
+ in the previous step as the HMAC key.
+ Server signs the HMAC with its RSA private key generating a 256-byte signature.
+ Server sends 384 bytes to Core: the ciphertext then the signature.
 
+ 5) Release control back to the Device module
+ Core creates a protobufs Hello with counter set to the uint32
+ represented by the most significant 4 bytes of the IV,
+ encrypts the protobufs Hello with AES, and sends the ciphertext to Server.
+ Server reads protobufs Hello from socket, taking note of counter.
+ Each subsequent message received from Core must have the counter incremented by 1.
+ After the max uint32, the next message should set the counter to zero.
 
- 5.) Release control back to the Device module
+ Server creates protobufs Hello with counter set to a random uint32,
+ encrypts the protobufs Hello with AES, and sends the ciphertext to Core.
+ Core reads protobufs Hello from socket, taking note of counter.
+ Each subsequent message received from Server must have the counter incremented by 1.
+ After the max uint32, the next message should set the counter to zero.
+*/
 
-     * Core creates a protobufs Hello with counter set to the uint32 represented by the most significant 4 bytes of the IV, encrypts the protobufs Hello with AES, and sends the ciphertext to Server.
-     * Server reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Core must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
-
-     * Server creates protobufs Hello with counter set to a random uint32, encrypts the protobufs Hello with AES, and sends the ciphertext to Core.
-     * Core reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Server must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
-     */
-
-
-//statics
 const NONCE_BYTES = 40;
 const ID_BYTES = 12;
 const SESSION_BYTES = 40;
@@ -85,7 +96,6 @@ class Handshake {
   _cryptoManager: CryptoManager;
   _socket: Socket;
   _isSendingHello: boolean = false;
-  _reject: ?Function;
   _deviceID: string;
   _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
@@ -101,14 +111,13 @@ class Handshake {
     return Promise.race([
       this._runHandshake(),
       this._startGlobalTimeout(),
-      new Promise((resolve, reject) => this._reject = reject),
-    ]).catch((error) => {
-      var logInfo = {
+    ]).catch((error: Error) => {
+      const logInfo = {
         cache_key: this._device && this._device._connectionKey,
+        deviceID: this._deviceID || null,
         ip: this._socket && this._socket.remoteAddress
           ? this._socket.remoteAddress.toString()
           : 'unknown',
-        deviceID: this._deviceID || null,
       };
 
       logger.error('Handshake failed: ', error.message, logInfo);
@@ -139,26 +148,34 @@ class Handshake {
     ]);
 
     return {
-      deviceID,
       cipherStream,
       decipherStream,
+      deviceID,
       handshakeBuffer,
       pendingBuffers: [...this._pendingBuffers],
     };
   };
 
-  _startGlobalTimeout = (): Promise<*> => {
-    return new Promise((resolve, reject) => {
+  _startGlobalTimeout = (): Promise<*> =>
+    new Promise((
+      resolve: () => void,
+      reject: (error: Error) => void,
+    ) => {
       setTimeout(
-        () => reject(new Error(`Handshake did not complete in ${GLOBAL_TIMEOUT} seconds`)),
+        (): void => reject(
+          new Error(`Handshake did not complete in ${GLOBAL_TIMEOUT} seconds`),
+        ),
         GLOBAL_TIMEOUT * 1000,
       );
     });
-  };
 
-  _onSocketDataAvailable = (): Promise<Buffer> => {
-    return new Promise((resolve, reject): void => {
-      const onReadable = (): void => {
+
+  _onSocketDataAvailable = (): Promise<Buffer> =>
+    new Promise((
+      resolve: (data: Buffer) => void,
+      reject: (error: Error) => void,
+    ) => {
+      const onReadable = () => {
         try {
           const data = ((this._socket.read(): any): Buffer);
 
@@ -178,7 +195,7 @@ class Handshake {
       };
       this._socket.on('readable', onReadable);
     });
-  };
+
 
   _sendNonce = async (): Promise<Buffer> => {
     const nonce = await this._cryptoManager.getRandomBytes(NONCE_BYTES);
@@ -217,21 +234,21 @@ class Handshake {
       deviceIDBuffer,
       0,
       NONCE_BYTES,
-      (NONCE_BYTES + ID_BYTES)
+      (NONCE_BYTES + ID_BYTES),
     );
     decryptedHandshakeData.copy(
       deviceKeyBuffer,
       0,
       (NONCE_BYTES + ID_BYTES),
-      decryptedHandshakeData.length
+      decryptedHandshakeData.length,
     );
 
     if (!nonceBuffer.equals(nonce)) {
-      throw new Error('nonces didn\`t match');
+      throw new Error('nonces didn`t match');
     }
 
-		const deviceProvidedPem = this._convertDERtoPEM(deviceKeyBuffer);
-		const deviceID = deviceIDBuffer.toString('hex');
+    const deviceProvidedPem = this._convertDERtoPEM(deviceKeyBuffer);
+    const deviceID = deviceIDBuffer.toString('hex');
 
     return { deviceID, deviceProvidedPem };
   };
@@ -250,32 +267,26 @@ class Handshake {
    * //EJQCe6JReTQlq9F6bioK84nc9QsFTpiCIqeTAZE4t6Di5pF8qrUgQvREHrl4Nw0D
    * //R7ECODgxc/r5+XFh9wIDAQAB
    * //-----END PUBLIC KEY-----
-   *
-   * @param buf
-   * @returns {*}
    */
   _convertDERtoPEM = (buffer: ?Buffer): ?string => {
-  	if (!buffer || !buffer.length) {
-  		return null;
-  	}
+    if (!buffer || !buffer.length) {
+      return null;
+    }
 
     const bufferString = buffer.toString('base64');
-  	try {
-  		const lines = [
+    try {
+      const lines = [
         '-----BEGIN PUBLIC KEY-----',
         ...(bufferString.match(/.{1,64}/g) || []),
         '-----END PUBLIC KEY-----',
       ];
-  		return lines.join('\n');
-  	} catch(exception) {
-  		logger.error(
-        'error converting DER to PEM, was: ' +
-          bufferString +
-          ' ' +
-          exception,
+      return lines.join('\n');
+    } catch (error) {
+      logger.error(
+        `error converting DER to PEM, was: ${bufferString} ${error}`,
       );
-  	}
-  	return null;
+    }
+    return null;
   };
 
 
@@ -322,7 +333,7 @@ class Handshake {
     // signature.
     const signedhmac = await this._cryptoManager.sign(hash);
 
-    //Server sends ~384 bytes to Core: the ciphertext then the signature.
+    // Server sends ~384 bytes to Core: the ciphertext then the signature.
     const message = Buffer.concat(
       [ciphertext, signedhmac],
       ciphertext.length + signedhmac.length,
@@ -333,8 +344,8 @@ class Handshake {
     const cipherStream = this._cryptoManager.createAESCipherStream(sessionKey);
 
     if (this._useChunkingStream) {
-      const chunkingIn = new ChunkingStream({outgoing: false });
-      const chunkingOut = new ChunkingStream({outgoing: true });
+      const chunkingIn = new ChunkingStream({ outgoing: false });
+      const chunkingOut = new ChunkingStream({ outgoing: true });
 
       // What I receive gets broken into message chunks, and goes into the
       // decrypter
@@ -353,8 +364,8 @@ class Handshake {
     return { cipherStream, decipherStream };
   };
 
-  _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> => {
-    return new Promise((resolve, reject) => {
+  _onDecipherStreamReadable = (decipherStream: Duplex): Promise<*> =>
+    new Promise((resolve: (chunk: Buffer) => void) => {
       const callback = () => {
         const chunk = ((decipherStream.read(): any): Buffer);
         resolve(chunk);
@@ -362,20 +373,14 @@ class Handshake {
       };
       decipherStream.on('readable', callback);
     });
-  };
 
-  _onDecipherStreamTimeout = (): Promise<*> => {
-    return new Promise(
-      (resolve, reject) => setTimeout(
-        () => reject(),
+  _onDecipherStreamTimeout = (): Promise<*> =>
+    new Promise((resolve: () => void, reject: () => void): number =>
+      setTimeout(
+        (): void => reject(),
         DECIPHER_STREAM_TIMEOUT * 1000,
       ),
     );
-  };
-
-  _handshakeFail = (message: string): void => {
-    this._reject && this._reject(message);
-  }
 }
 
 export default Handshake;
