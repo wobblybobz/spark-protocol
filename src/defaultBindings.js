@@ -6,6 +6,7 @@ import DeviceKeyFileRepository from './repository/DeviceKeyFileRepository';
 import DeviceServer from './server/DeviceServer';
 import EventPublisher from './lib/EventPublisher';
 import ClaimCodeManager from './lib/ClaimCodeManager';
+import CryptoManager from './lib/CryptoManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import settings from './settings';
 
@@ -14,6 +15,7 @@ const defaultBindings = (container: Container) => {
   container.bindValue('DEVICE_DIRECTORY', settings.DEVICE_DIRECTORY);
   container.bindValue('SERVER_CONFIG', settings.SERVER_CONFIG);
   container.bindValue('SERVER_KEY_FILENAME', settings.SERVER_KEY_FILENAME);
+  container.bindValue('SERVER_KEY_PASSWORD', settings.SERVER_KEY_PASSWORD);
   container.bindValue('SERVER_KEYS_DIRECTORY', settings.SERVER_KEYS_DIRECTORY);
 
   // Repository
@@ -36,6 +38,15 @@ const defaultBindings = (container: Container) => {
   // Utils
   container.bindClass('EventPublisher', EventPublisher, []);
   container.bindClass('ClaimCodeManager', ClaimCodeManager, []);
+  container.bindClass(
+    'CryptoManager',
+    CryptoManager,
+    [
+      'DeviceKeyRepository',
+      'ServerKeyRepository',
+      'SERVER_KEY_PASSWORD',
+    ],
+  );
 
   // Device server
   container.bindClass(
@@ -43,9 +54,8 @@ const defaultBindings = (container: Container) => {
     DeviceServer,
     [
       'DeviceAttributeRepository',
-      'DeviceKeyRepository',
-      'ServerKeyRepository',
       'ClaimCodeManager',
+      'CryptoManager',
       'EventPublisher',
       'SERVER_CONFIG',
     ],

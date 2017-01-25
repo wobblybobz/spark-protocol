@@ -38,7 +38,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var HASH_TYPE = 'sha1';
 
-var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository, serverKeyRepository) {
+var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository, serverKeyRepository, serverKeyPassword) {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, CryptoManager);
@@ -108,9 +108,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
 
           case 8:
 
-            _this._privateServerKey = _ursa2.default.createPrivateKey(privateKeyString,
-            // todo password?
-            /* password */undefined);
+            _this._privateServerKey = _ursa2.default.createPrivateKey(privateKeyString, _this._serverKeyPassword || undefined);
 
           case 9:
             return _context2.abrupt('return', _this._privateServerKey);
@@ -276,8 +274,10 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
 
   this._deviceKeyRepository = deviceKeyRepository;
   this._serverKeyRepository = serverKeyRepository;
+  this._serverKeyPassword = serverKeyPassword;
 }, _class.getRandomUINT16 = function () {
-  var uintMax = Math.pow(2, 16) - 1;
+  // ** - the same as Math.pow()
+  var uintMax = Math.pow(2, 16) - 1; // 65535
   return Math.floor(Math.random() * uintMax + 1);
 }, _temp);
 exports.default = CryptoManager;

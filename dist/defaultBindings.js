@@ -26,6 +26,10 @@ var _ClaimCodeManager = require('./lib/ClaimCodeManager');
 
 var _ClaimCodeManager2 = _interopRequireDefault(_ClaimCodeManager);
 
+var _CryptoManager = require('./lib/CryptoManager');
+
+var _CryptoManager2 = _interopRequireDefault(_CryptoManager);
+
 var _ServerKeyFileRepository = require('./repository/ServerKeyFileRepository');
 
 var _ServerKeyFileRepository2 = _interopRequireDefault(_ServerKeyFileRepository);
@@ -41,6 +45,7 @@ var defaultBindings = function defaultBindings(container) {
   container.bindValue('DEVICE_DIRECTORY', _settings2.default.DEVICE_DIRECTORY);
   container.bindValue('SERVER_CONFIG', _settings2.default.SERVER_CONFIG);
   container.bindValue('SERVER_KEY_FILENAME', _settings2.default.SERVER_KEY_FILENAME);
+  container.bindValue('SERVER_KEY_PASSWORD', _settings2.default.SERVER_KEY_PASSWORD);
   container.bindValue('SERVER_KEYS_DIRECTORY', _settings2.default.SERVER_KEYS_DIRECTORY);
 
   // Repository
@@ -51,9 +56,9 @@ var defaultBindings = function defaultBindings(container) {
   // Utils
   container.bindClass('EventPublisher', _EventPublisher2.default, []);
   container.bindClass('ClaimCodeManager', _ClaimCodeManager2.default, []);
+  container.bindClass('CryptoManager', _CryptoManager2.default, ['DeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
 
   // Device server
-  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'DeviceKeyRepository', 'ServerKeyRepository', 'ClaimCodeManager', 'EventPublisher', 'SERVER_CONFIG']);
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'SERVER_CONFIG']);
 };
-
 exports.default = defaultBindings;

@@ -32,10 +32,6 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
-var _CryptoManager = require('../lib/CryptoManager');
-
-var _CryptoManager2 = _interopRequireDefault(_CryptoManager);
-
 var _Handshake = require('../lib/Handshake');
 
 var _Handshake2 = _interopRequireDefault(_Handshake);
@@ -99,7 +95,7 @@ var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_
 var connectionIdCounter = 0;
 
 var DeviceServer = function () {
-  function DeviceServer(deviceAttributeRepository, deviceKeyRepository, serverKeyRepository, claimCodeManager, eventPublisher, deviceServerConfig) {
+  function DeviceServer(deviceAttributeRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
@@ -654,7 +650,7 @@ var DeviceServer = function () {
 
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
-    this._cryptoManager = new _CryptoManager2.default(deviceKeyRepository, serverKeyRepository);
+    this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
   }
