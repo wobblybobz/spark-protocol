@@ -123,7 +123,7 @@ class CryptoManager {
     ) => {
       crypto.randomBytes(
         size,
-        (error: Error, buffer: Buffer) => {
+        (error: ?Error, buffer: Buffer) => {
           if (error) {
             reject(error);
             return;
