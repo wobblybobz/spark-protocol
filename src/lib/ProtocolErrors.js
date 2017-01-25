@@ -31,7 +31,8 @@ const ProtocolErrors: Array<[number, string]> = [
   [25, 'IO_ERROR_LIGHTSSL_HANDSHAKE_RECV_KEY'],
 
   /*
-   * NOTE: when adding more ProtocolError codes, be sure to update toSystemError() in protocol_defs.cpp
+   * NOTE: when adding more ProtocolError codes,
+   * be sure to update toSystemError() in protocol_defs.cpp
    */
   [0x7FFFF, 'UNKNOWN'],
 ];

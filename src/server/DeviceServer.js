@@ -108,8 +108,8 @@ class DeviceServer {
 
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
     try {
-      // eslint-disable-next-line no-plusplus
-      const connectionKey = `_${connectionIdCounter++}`;
+      connectionIdCounter += 1;
+      const connectionKey = `_${connectionIdCounter}`;
       const handshake = new Handshake(this._cryptoManager);
       const device = new Device(
         socket,

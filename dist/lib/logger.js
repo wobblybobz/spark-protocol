@@ -42,18 +42,24 @@ var Logger = function () {
     (0, _classCallCheck3.default)(this, Logger);
   }
 
-  (0, _createClass3.default)(Logger, [{
+  (0, _createClass3.default)(Logger, null, [{
     key: "log",
     value: function log() {
-      console.log.apply(console, arguments);
+      var _console;
+
+      // eslint-disable-next-line prefer-rest-params
+      (_console = console).log.apply(_console, arguments);
     }
   }, {
     key: "error",
     value: function error() {
-      console.error.apply(console, arguments);
+      var _console2;
+
+      // eslint-disable-next-line prefer-rest-params
+      (_console2 = console).error.apply(_console2, arguments);
     }
   }]);
   return Logger;
 }();
 
-exports.default = new Logger();
+exports.default = Logger;
