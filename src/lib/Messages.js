@@ -48,18 +48,24 @@ class Messages {
     new Map(MessageSpecifications);
 
   // Maps CODE + URL to MessageNames as they appear in 'Spec'
-  _routes: Map<string, string> = new Map(
+  _routes: Map<string, MessageType> = new Map(
     MessageSpecifications
-      // eslint-disable-next-line no-unused-vars
-      .filter(([name, value]: Array<*>): boolean => !!value.uri)
-      .map(([name, value]: Array<*>): Array<*> => {
-        // see what it looks like without params
-        const uri = value.template ? value.template.render({}) : value.uri;
-        const routeKey = _getRouteKey(value.code, `/${(uri || '')}`);
+      .filter(
+        // eslint-disable-next-line no-unused-vars
+        ([name, value]: [MessageType, MessageSpecificationType]): boolean =>
+          !!value.uri,
+      )
+      .map(
+        (
+          [name, value]: [MessageType, MessageSpecificationType],
+        ): [string, MessageType] => {
+          // see what it looks like without params
+          const uri = value.template ? value.template.render({}) : value.uri;
+          const routeKey = _getRouteKey(value.code, `/${(uri || '')}`);
 
-        return [routeKey, name];
-      },
-    ),
+          return [routeKey, name];
+        },
+      ),
   );
 
   /**
@@ -188,7 +194,7 @@ class Messages {
       .getOwnPropertyNames(varState)
       .forEach(
         (varName: string) => {
-          const intType = varState[varName];
+          const intType = varState && varState[varName];
           if (typeof intType === 'number') {
             const str = this.getNameFromTypeInt(intType);
 
@@ -237,7 +243,9 @@ class Messages {
     try {
       result = this.fromBinary(buffer, typeName);
     } catch (error) {
-      logger.error(`Could not parse type: ${typeName} ${buffer} ${error}`);
+      logger.error(
+        `Could not parse type: ${typeName} ${buffer.toString()} ${error}`,
+      );
     }
     return result;
   };

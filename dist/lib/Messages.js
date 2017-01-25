@@ -87,10 +87,10 @@ var Messages = function Messages() {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, Messages);
-  this._specifications = new _map2.default(_MessageSpecifications2.default
+  this._specifications = new _map2.default(_MessageSpecifications2.default);
+  this._routes = new _map2.default(_MessageSpecifications2.default.filter(
   // eslint-disable-next-line no-unused-vars
-  );
-  this._routes = new _map2.default(_MessageSpecifications2.default.filter(function (_ref) {
+  function (_ref) {
     var _ref2 = (0, _slicedToArray3.default)(_ref, 2),
         name = _ref2[0],
         value = _ref2[1];
@@ -211,7 +211,7 @@ var Messages = function Messages() {
     var translatedVarState = {};
 
     (0, _getOwnPropertyNames2.default)(varState).forEach(function (varName) {
-      var intType = varState[varName];
+      var intType = varState && varState[varName];
       if (typeof intType === 'number') {
         var str = _this.getNameFromTypeInt(intType);
 
@@ -264,7 +264,7 @@ var Messages = function Messages() {
     try {
       result = this.fromBinary(buffer, typeName);
     } catch (error) {
-      _logger2.default.error('Could not parse type: ' + typeName + ' ' + buffer + ' ' + error);
+      _logger2.default.error('Could not parse type: ' + typeName + ' ' + buffer.toString() + ' ' + error);
     }
     return result;
   };
