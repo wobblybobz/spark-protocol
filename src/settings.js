@@ -29,16 +29,13 @@ export default {
     port: 5683,
   },
   SERVER_KEY_FILENAME: 'default_key.pem',
+  SERVER_KEY_PASSWORD: null,
   SERVER_KEYS_DIRECTORY: path.join(__dirname, '../data/users'),
-
   environment: 'prn',
   /**
    * Your server crypto keys!
    */
   cryptoSalt: 'aes-128-cbc',
-  serverKeyPassFile: null,
-  serverKeyPassEnvVar: null,
-
   keepaliveTimeout: 15000, // 15 seconds
   socketTimeout: 31000, // 31 seconds
 

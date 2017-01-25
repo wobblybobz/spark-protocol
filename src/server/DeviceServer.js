@@ -23,11 +23,11 @@ import type { Message } from 'h5.coap';
 import type {
   DeviceAttributes,
   Repository,
-  ServerKeyRepository,
 } from '../types';
 import type ClaimCodeManager from '../lib/ClaimCodeManager';
+import type CryptoManager from '../lib/CryptoManager';
 import type EventPublisher from '../lib/EventPublisher';
-import CryptoManager from '../lib/CryptoManager';
+
 import Handshake from '../lib/Handshake';
 
 import net from 'net';
@@ -70,19 +70,14 @@ class DeviceServer {
 
   constructor(
     deviceAttributeRepository: Repository<DeviceAttributes>,
-    deviceKeyRepository: Repository<string>,
-    serverKeyRepository: ServerKeyRepository,
     claimCodeManager: ClaimCodeManager,
+    cryptoManager: CryptoManager,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
   ) {
     this._config = deviceServerConfig;
-    this._deviceAttributeRepository =
-      deviceAttributeRepository;
-    this._cryptoManager = new CryptoManager(
-      deviceKeyRepository,
-      serverKeyRepository,
-    );
+    this._deviceAttributeRepository = deviceAttributeRepository;
+    this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
   }

@@ -12,13 +12,16 @@ class CryptoManager {
   _deviceKeyRepository: Repository<string>;
   _serverKeyRepository: ServerKeyRepository;
   _privateServerKey: ?Object;
+  _serverKeyPassword: ?string;
 
   constructor(
     deviceKeyRepository: Repository<string>,
     serverKeyRepository: ServerKeyRepository,
+    serverKeyPassword: ?string,
   ) {
     this._deviceKeyRepository = deviceKeyRepository;
     this._serverKeyRepository = serverKeyRepository;
+    this._serverKeyPassword = serverKeyPassword;
   }
 
   _createCryptoStream = (
@@ -61,8 +64,7 @@ class CryptoManager {
 
       this._privateServerKey = ursa.createPrivateKey(
         privateKeyString,
-        // todo password?
-        /* password */undefined,
+        this._serverKeyPassword || undefined,
       );
     }
     return this._privateServerKey;
