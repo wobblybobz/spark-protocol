@@ -30,10 +30,6 @@ var _CryptoStream = require('./CryptoStream');
 
 var _CryptoStream2 = _interopRequireDefault(_CryptoStream);
 
-var _logger = require('./logger');
-
-var _logger2 = _interopRequireDefault(_logger);
-
 var _ursa = require('ursa');
 
 var _ursa2 = _interopRequireDefault(_ursa);
@@ -41,7 +37,6 @@ var _ursa2 = _interopRequireDefault(_ursa);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var HASH_TYPE = 'sha1';
-var SIGN_TYPE = 'sha256';
 
 var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository, serverKeyRepository) {
   var _this = this;
@@ -53,11 +48,11 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
     // the next 16 bytes (MSB first) will be the initialization vector (IV),
     // and the final 8 bytes (MSB first) will be the salt.
 
-    var key = new Buffer(16); //just the key... +8); //key plus salt
-    var iv = new Buffer(16); //initialization vector
+    var key = new Buffer(16); // just the key... +8); //key plus salt
+    var iv = new Buffer(16); // initialization vector
 
-    sessionKey.copy(key, 0, 0, 16); //copy the key
-    sessionKey.copy(iv, 0, 16, 32); //copy the iv
+    sessionKey.copy(key, 0, 0, 16); // copy the key
+    sessionKey.copy(iv, 0, 16, 32); // copy the iv
 
     return new _CryptoStream2.default({ encrypt: encrypt, iv: iv, key: key });
   };
