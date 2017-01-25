@@ -26,10 +26,10 @@ import hogan from 'hogan.js';
 
 export type MessageSpecificationType = {
   code: string,
-  Response: ?string,
-  template: ?HoganTemplate,
+  Response?: ?string,
+  template?: ?HoganTemplate,
   type: string,
-  uri: ?string,
+  uri?: ?string,
 };
 
 type HoganTemplate = {
@@ -45,39 +45,39 @@ type HoganTemplate = {
 
 export type MessageType =
   'Hello' |
-    'KeyChange' |
-    'UpdateBegin' |
-    'UpdateAbort' |
-    'Chunk' |
-    'ChunkMissed' |
-    'UpdateDone' |
-    'FunctionCall' |
-    'VariableRequest' |
-    'PrivateEvent' |
-    'PublicEvent' |
-    'Subscribe' |
-    'Describe' |
-    'GetTime' |
-    'SignalStart' |
-    'EventAck' |
-    'EventSlowdown' |
-    'SubscribeAck' |
-    'SubscribeFail' |
-    'GetTimeReturn' |
-    'SignalStartReturn' |
-    'ChunkMissedAck' |
-    'DescribeReturn' |
-    'KeyChanged' |
-    'UpdateReady' |
-    'ChunkReceived' |
-    'ChunkReceivedError' |
-    'FunctionReturn' |
-    'FunctionReturnError' |
-    'VariableValue' |
-    'VariableValueError' |
-    'Ping' |
-    'PingAck' |
-    'SocketPing';
+  'KeyChange' |
+  'UpdateBegin' |
+  'UpdateAbort' |
+  'Chunk' |
+  'ChunkMissed' |
+  'UpdateDone' |
+  'FunctionCall' |
+  'VariableRequest' |
+  'PrivateEvent' |
+  'PublicEvent' |
+  'Subscribe' |
+  'Describe' |
+  'GetTime' |
+  'SignalStart' |
+  'EventAck' |
+  'EventSlowdown' |
+  'SubscribeAck' |
+  'SubscribeFail' |
+  'GetTimeReturn' |
+  'SignalStartReturn' |
+  'ChunkMissedAck' |
+  'DescribeReturn' |
+  'KeyChanged' |
+  'UpdateReady' |
+  'ChunkReceived' |
+  'ChunkReceivedError' |
+  'FunctionReturn' |
+  'FunctionReturnError' |
+  'VariableValue' |
+  'VariableValueError' |
+  'Ping' |
+  'PingAck' |
+  'SocketPing';
 
 const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
   [
@@ -362,13 +362,17 @@ const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
       type: Message.Type.NON,
     },
   ],
-].map(([name, value]: Array<*>): Array<*> => {
-  let template = null;
-  if (value && value.uri && (value.uri.indexOf('{') >= 0)) {
-    template = hogan.compile(value.uri);
-  }
+].map(
+  (
+    [name, value]: [MessageType, MessageSpecificationType],
+  ): [MessageType, Object] => {
+    let template = null;
+    if (value && value.uri && (value.uri.indexOf('{') >= 0)) {
+      template = hogan.compile(value.uri);
+    }
 
-  return [name, { ...value, template }];
-});
+    return [name, { ...value, template }];
+  },
+);
 
 export default MessageSpecifications;
