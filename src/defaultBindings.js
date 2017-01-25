@@ -1,6 +1,4 @@
 // @flow
-
-
 import { Container } from 'constitute';
 
 import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepository';
@@ -11,7 +9,7 @@ import ClaimCodeManager from './lib/ClaimCodeManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import settings from './settings';
 
-const defaultBindings = (container: Container): void => {
+const defaultBindings = (container: Container) => {
   // Settings
   container.bindValue('DEVICE_DIRECTORY', settings.DEVICE_DIRECTORY);
   container.bindValue('SERVER_CONFIG', settings.SERVER_CONFIG);

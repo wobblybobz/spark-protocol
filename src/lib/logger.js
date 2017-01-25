@@ -21,15 +21,16 @@
 *
 */
 
-
 class Logger {
-  log(): void {
-    console.log.apply(console, arguments);
-  };
+  static log() {
+    // eslint-disable-next-line prefer-rest-params
+    console.log(...arguments);
+  }
 
-  error(): void {
-    console.error.apply(console, arguments);
+  static error() {
+    // eslint-disable-next-line prefer-rest-params
+    console.error(...arguments);
   }
 }
 
-export default new Logger();
+export default Logger;

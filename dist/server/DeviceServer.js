@@ -118,15 +118,15 @@ var DeviceServer = function () {
                     while (1) {
                       switch (_context.prev = _context.next) {
                         case 0:
-                          // eslint-disable-next-line no-plusplus
-                          connectionKey = '_' + connectionIdCounter++;
+                          connectionIdCounter += 1;
+                          connectionKey = '_' + connectionIdCounter;
                           handshake = new _Handshake2.default(_this._cryptoManager);
                           device = new _Device2.default(socket, connectionKey, handshake);
                           deviceID = device.getID();
-                          _context.next = 6;
+                          _context.next = 7;
                           return _this._deviceAttributeRepository.getById(device.getID());
 
-                        case 6:
+                        case 7:
                           deviceAttributes = _context.sent;
                           ownerID = deviceAttributes && deviceAttributes.ownerID;
 
@@ -169,14 +169,14 @@ var DeviceServer = function () {
                             return _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'failed', deviceID, ownerID);
                           });
 
-                          _context.next = 19;
+                          _context.next = 20;
                           return device.startupProtocol();
 
-                        case 19:
+                        case 20:
 
                           _logger2.default.log('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Connection ID: ' + connectionIdCounter));
 
-                        case 20:
+                        case 21:
                         case 'end':
                           return _context.stop();
                       }
