@@ -12,6 +12,14 @@ var _typeof2 = require('babel-runtime/helpers/typeof');
 
 var _typeof3 = _interopRequireDefault(_typeof2);
 
+var _extends2 = require('babel-runtime/helpers/extends');
+
+var _extends3 = _interopRequireDefault(_extends2);
+
+var _getOwnPropertyNames = require('babel-runtime/core-js/object/get-own-property-names');
+
+var _getOwnPropertyNames2 = _interopRequireDefault(_getOwnPropertyNames);
+
 var _slicedToArray2 = require('babel-runtime/helpers/slicedToArray');
 
 var _slicedToArray3 = _interopRequireDefault(_slicedToArray2);
@@ -23,14 +31,6 @@ var _map2 = _interopRequireDefault(_map);
 var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
-
-var _fs = require('fs');
-
-var _fs2 = _interopRequireDefault(_fs);
-
-var _settings = require('../settings');
-
-var _settings2 = _interopRequireDefault(_settings);
 
 var _h = require('h5.coap');
 
@@ -48,62 +48,60 @@ var _MessageSpecifications = require('./MessageSpecifications');
 
 var _MessageSpecifications2 = _interopRequireDefault(_MessageSpecifications);
 
-var _nullthrows = require('nullthrows');
-
-var _nullthrows2 = _interopRequireDefault(_nullthrows);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/*
+*   Copyright (C) 2013-2014 Spark Labs, Inc. All rights reserved. -  https://www.spark.io/
+*
+*   This file is part of the Spark-protocol module
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License version 3
+*   as published by the Free Software Foundation.
+*
+*   Spark-protocol is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with Spark-protocol.  If not, see <http://www.gnu.org/licenses/>.
+*
+*   You can download the source here: https://github.com/spark/spark-protocol
+*
+* 
+*
+*/
 
 var _getRouteKey = function _getRouteKey(code, path) {
   var uri = code + path;
-
-  //find the slash.
   var idx = uri.indexOf('/');
 
-  //this assumes all the messages are one character for now.
-  //if we wanted to change this, we'd need to find the first non message char, '/' or '?',
-  //or use the real coap parsing stuff
+  // this assumes all the messages are one character for now.
+  // if we wanted to change this, we'd need to find the first non message char,
+  // '/' or '?', or use the real coap parsing stuff
   return uri.substr(0, idx + 2);
-}; /*
-   *   Copyright (C) 2013-2014 Spark Labs, Inc. All rights reserved. -  https://www.spark.io/
-   *
-   *   This file is part of the Spark-protocol module
-   *
-   *   This program is free software: you can redistribute it and/or modify
-   *   it under the terms of the GNU General Public License version 3
-   *   as published by the Free Software Foundation.
-   *
-   *   Spark-protocol is distributed in the hope that it will be useful,
-   *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   *   GNU General Public License for more details.
-   *
-   *   You should have received a copy of the GNU General Public License
-   *   along with Spark-protocol.  If not, see <http://www.gnu.org/licenses/>.
-   *
-   *   You can download the source here: https://github.com/spark/spark-protocol
-   *
-   * 
-   *
-   */
+};
 
 var Messages = function Messages() {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, Messages);
-  this._specifications = new _map2.default(_MessageSpecifications2.default);
+  this._specifications = new _map2.default(_MessageSpecifications2.default
+  // eslint-disable-next-line no-unused-vars
+  );
   this._routes = new _map2.default(_MessageSpecifications2.default.filter(function (_ref) {
     var _ref2 = (0, _slicedToArray3.default)(_ref, 2),
         name = _ref2[0],
         value = _ref2[1];
 
-    return value.uri;
+    return !!value.uri;
   }).map(function (_ref3) {
     var _ref4 = (0, _slicedToArray3.default)(_ref3, 2),
         name = _ref4[0],
         value = _ref4[1];
 
-    //see what it looks like without params
+    // see what it looks like without params
     var uri = value.template ? value.template.render({}) : value.uri;
     var routeKey = _getRouteKey(value.code, '/' + (uri || ''));
 
@@ -121,10 +119,8 @@ var Messages = function Messages() {
     };
   };
 
-  this.getRouteKey = _getRouteKey;
-
   this.getRequestType = function (message) {
-    var uri = _this.getRouteKey(message.getCode(), message.getUriPath());
+    var uri = _getRouteKey(message.getCode(), message.getUriPath());
     return _this._routes.get(uri);
   };
 
@@ -201,8 +197,8 @@ var Messages = function Messages() {
 
     try {
       return _h.Message.fromBuffer(data);
-    } catch (exception) {
-      _logger2.default.error('Coap Error: ' + exception);
+    } catch (error) {
+      _logger2.default.error('Coap Error: ' + error);
     }
 
     return null;
@@ -212,23 +208,20 @@ var Messages = function Messages() {
     if (!varState) {
       return null;
     }
+    var translatedVarState = {};
 
-    for (var varName in varState) {
-      if (!varState.hasOwnProperty(varName)) {
-        continue;
-      }
-
+    (0, _getOwnPropertyNames2.default)(varState).forEach(function (varName) {
       var intType = varState[varName];
       if (typeof intType === 'number') {
         var str = _this.getNameFromTypeInt(intType);
 
         if (str !== null) {
-          varState[varName] = str;
+          translatedVarState[varName] = str;
         }
       }
-    }
+    });
 
-    return varState;
+    return (0, _extends3.default)({}, varState, translatedVarState);
   };
 
   this.getNameFromTypeInt = function (typeInt) {
@@ -261,7 +254,7 @@ var Messages = function Messages() {
       default:
         {
           _logger2.default.error('asked for unknown type: ' + typeInt);
-          throw 'errror getNameFromTypeInt ' + typeInt;
+          throw new Error('error getNameFromTypeInt: ' + typeInt);
         }
     }
   };
@@ -269,9 +262,9 @@ var Messages = function Messages() {
   this.tryFromBinary = function (buffer, typeName) {
     var result = null;
     try {
-      result = _this.fromBinary(buffer, typeName);
+      result = this.fromBinary(buffer, typeName);
     } catch (error) {
-      _logger2.default.error('Could not parse type: ${typeName} ${buffer}', error);
+      _logger2.default.error('Could not parse type: ' + typeName + ' ' + buffer + ' ' + error);
     }
     return result;
   };
@@ -318,7 +311,7 @@ var Messages = function Messages() {
 
       case 'double':
         {
-          //doubles on the core are little-endian
+          // doubles on the core are little-endian
           return bufferReader.shiftDouble(true);
         }
 
@@ -335,10 +328,11 @@ var Messages = function Messages() {
     }
   };
 
-  this.toBinary = function (value, typeName, bufferBuilder) {
-    typeName = typeName || (typeof value === 'undefined' ? 'undefined' : (0, _typeof3.default)(value));
+  this.toBinary = function (value, typeName) {
+    var bufferBuilder = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : new _h2.BufferBuilder();
 
-    bufferBuilder = bufferBuilder || new _h2.BufferBuilder();
+    // eslint-disable-next-line no-param-reassign
+    typeName = typeName || (typeof value === 'undefined' ? 'undefined' : (0, _typeof3.default)(value));
 
     if (value === null) {
       return bufferBuilder;
@@ -393,7 +387,7 @@ var Messages = function Messages() {
         var bufferBuilder = new _h2.BufferBuilder();
         var requestArgsKey = (0, _keys2.default)(requestArgs)[0];
         args.filter(function (arg) {
-          return arg;
+          return !!arg;
         }).forEach(function (arg, index) {
           if (index > 0) {
             _this.toBinary('&', 'string', bufferBuilder);
@@ -405,61 +399,45 @@ var Messages = function Messages() {
 
           _this.toBinary(val, type, bufferBuilder);
         });
+
         return {
           v: bufferBuilder.toBuffer()
         };
       }();
 
       if ((typeof _ret === 'undefined' ? 'undefined' : (0, _typeof3.default)(_ret)) === "object") return _ret.v;
-    } catch (exception) {
-      _logger2.default.error('buildArguments: ', exception);
+    } catch (error) {
+      _logger2.default.error('buildArguments error: ' + error);
     }
 
     return null;
   };
 }
 
-/**
- * Maps CODE + URL to MessageNames as they appear in 'Spec'
- */
+// Maps CODE + URL to MessageNames as they appear in 'Spec'
 
 
 /**
  * does the special URL writing needed directly to the COAP message object,
  * since the URI requires non-text values
- *
- * @param showSignal
- * @returns {Function}
  */
 
 
-/**
- *
- * @param messageName
- * @param messageCounterId - must be an unsigned 16 bit integer
- * @param params
- * @param data
- * @param token - helps us associate responses w/ requests
- * @param onError
- * @returns {*}
- */
-
-
-//http://en.wikipedia.org/wiki/X.690
-//=== TYPES: SUBSET OF ASN.1 TAGS ===
+// http://en.wikipedia.org/wiki/X.690
+// === TYPES: SUBSET OF ASN.1 TAGS ===
 //
-//1: BOOLEAN (false=0, true=1)
-//2: INTEGER (int32)
-//4: OCTET STRING (arbitrary bytes)
-//5: NULL (void for return value only)
-//9: REAL (double)
+// 1: BOOLEAN (false=0, true=1)
+// 2: INTEGER (int32)
+// 4: OCTET STRING (arbitrary bytes)
+// 5: NULL (void for return value only)
+// 9: REAL (double)
+// Translates the integer variable type enum to user friendly string types
 
-/**
- * Translates the integer variable type enum to user friendly string types
- * @param varState
- * @returns {*}
- * @constructor
- */
+
+// eslint-disable-next-line func-names
+
+
+// eslint-disable-next-line func-names
 ;
 
 exports.default = new Messages();
