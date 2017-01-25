@@ -60,7 +60,7 @@ var CryptoStream = function (_Transform) {
         /*
          The crypto stream error was coming from the additional null packet
          before the end of the stream
-           IE
+          IE
          <Buffer a0 4a 2e 8e 2d ce de 12 15 03 7a 42 44 ca 84 88 72 64 77 61 72
           65 2f 6f 74 61 5f 63 68 75 6e 6b>
          <Buffer 5f 73 69 7a 65 ff 35 31 32>
@@ -68,9 +68,9 @@ var CryptoStream = function (_Transform) {
          CryptoStream transform error TypeError: Cannot read property 'length' of
           null
          Coap Error: Error: Invalid CoAP version. Expected 1, got: 3
-           The if statement solves (I believe) all of the node version dependency
+          The if statement solves (I believe) all of the node version dependency
          issues
-           */
+          */
         if (chunk) {
           if (!cipherText) {
             cipherText = chunk;
@@ -79,16 +79,14 @@ var CryptoStream = function (_Transform) {
           }
         }
       });
+
       cipher.on('end', function () {
         _this.push(cipherText);
 
         if (_this._encrypt && cipherText) {
-          //logger.log("ENCRYPTING WITH ", that.iv.toString('hex'));
-          //get new iv for next time.
+          // get new iv for next time.
           _this._iv = new Buffer(16);
           cipherText.copy(_this._iv, 0, 0, 16);
-
-          //logger.log("ENCRYPTING WITH ", that.iv.toString('hex'));
         }
         cipherText = null;
 
@@ -100,22 +98,22 @@ var CryptoStream = function (_Transform) {
 
     _this._transform = function (chunk, encoding, callback) {
       try {
-        //assuming it comes in full size pieces
+        // assuming it comes in full size pieces
         var cipher = _this._getCipher(callback);
         cipher.write(chunk);
         cipher.end();
         cipher = null;
 
-        //ASSERT: we just DECRYPTED an incoming message
-        //THEN:
-        //  update the initialization vector to the first 16 bytes of the
-        //  encrypted message we just got
+        // ASSERT: we just DECRYPTED an incoming message
+        // THEN:
+        // update the initialization vector to the first 16 bytes of the
+        // encrypted message we just got
         if (!_this._encrypt && Buffer.isBuffer(chunk)) {
           _this._iv = new Buffer(16);
           chunk.copy(_this._iv, 0, 0, 16);
         }
-      } catch (exception) {
-        _logger2.default.error("CryptoStream transform error " + exception);
+      } catch (error) {
+        _logger2.default.error('CryptoStream transform error: ' + error);
       }
     };
 

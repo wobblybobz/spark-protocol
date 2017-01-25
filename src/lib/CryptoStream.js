@@ -58,7 +58,7 @@ class CryptoStream extends Transform {
 
     let cipherText = null;
 
-    cipher.on('readable', (): void => {
+    cipher.on('readable', () => {
       const chunk: ?Buffer = (((cipher && cipher.read()): any): Buffer);
 
       /*
@@ -78,27 +78,25 @@ class CryptoStream extends Transform {
        issues
 
        */
-      if(chunk) {
+      if (chunk) {
         if (!cipherText) {
           cipherText = chunk;
         } else {
           cipherText = Buffer.concat(
             [cipherText, chunk],
-            cipherText.length + chunk.length
+            cipherText.length + chunk.length,
           );
         }
       }
     });
-    cipher.on('end', (): void => {
+
+    cipher.on('end', () => {
       this.push(cipherText);
 
       if (this._encrypt && cipherText) {
-          //logger.log("ENCRYPTING WITH ", that.iv.toString('hex'));
-          //get new iv for next time.
-          this._iv = new Buffer(16);
-          cipherText.copy(this._iv, 0, 0, 16);
-
-          //logger.log("ENCRYPTING WITH ", that.iv.toString('hex'));
+        // get new iv for next time.
+        this._iv = new Buffer(16);
+        cipherText.copy(this._iv, 0, 0, 16);
       }
       cipherText = null;
 
@@ -106,30 +104,30 @@ class CryptoStream extends Transform {
     });
 
     return cipher;
-  }
+  };
 
   _transform = (
     chunk: Buffer | string,
     encoding: string,
     callback: Function,
-  ): void => {
+  ) => {
     try {
-      //assuming it comes in full size pieces
-      var cipher = this._getCipher(callback);
+      // assuming it comes in full size pieces
+      let cipher = this._getCipher(callback);
       cipher.write(chunk);
       cipher.end();
       cipher = null;
 
-      //ASSERT: we just DECRYPTED an incoming message
-      //THEN:
-      //  update the initialization vector to the first 16 bytes of the
-      //  encrypted message we just got
+      // ASSERT: we just DECRYPTED an incoming message
+      // THEN:
+      // update the initialization vector to the first 16 bytes of the
+      // encrypted message we just got
       if (!this._encrypt && Buffer.isBuffer(chunk)) {
         this._iv = new Buffer(16);
-        ((chunk:any): Buffer).copy(this._iv, 0, 0, 16);
+        ((chunk: any): Buffer).copy(this._iv, 0, 0, 16);
       }
-    } catch (exception) {
-      logger.error("CryptoStream transform error " + exception);
+    } catch (error) {
+      logger.error(`CryptoStream transform error: ${error}`);
     }
   }
 }

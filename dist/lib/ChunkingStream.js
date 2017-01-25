@@ -29,11 +29,11 @@ var _logger2 = _interopRequireDefault(_logger);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /**
-
  Our job here is to accept messages in whole chunks, and put their length in front
  as we send them out, and parse them back into those size chunks as we read them in.
-
  **/
+/* eslint-disable no-bitwise */
+
 /*
 *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 *
@@ -56,7 +56,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var MSG_LENGTH_BYTES = 2;
 var messageLengthBytes = function messageLengthBytes(message) {
-  //assuming a maximum encrypted message length of 65K, lets write an
+  // assuming a maximum encrypted message length of 65K, lets write an
   // unsigned short int before every message, so we know how much to read out.
   if (!message) {
     return null;
@@ -79,7 +79,6 @@ var ChunkingStream = function (_Transform) {
 
     var _this = (0, _possibleConstructorReturn3.default)(this, (ChunkingStream.__proto__ || (0, _getPrototypeOf2.default)(ChunkingStream)).call(this, options));
 
-    _this.INCOMING_BUFFER_SIZE = 1024;
     _this._incomingBuffer = null;
     _this._incomingIndex = -1;
 
@@ -93,10 +92,10 @@ var ChunkingStream = function (_Transform) {
       if (isNewMessage) {
         _this._expectedLength = (chunk[0] << 8) + chunk[1];
 
-        //if we don't have a buffer, make one as big as we will need.
+        // if we don't have a buffer, make one as big as we will need.
         _this._incomingBuffer = new Buffer(_this._expectedLength);
         _this._incomingIndex = 0;
-        startIndex = 2; //skip the first two.
+        startIndex = 2; // skip the first two.
       }
 
       var bytesLeft = _this._expectedLength - _this._incomingIndex;
@@ -139,8 +138,8 @@ var ChunkingStream = function (_Transform) {
     _this._transform = function (chunk, encoding, callback) {
       var buffer = Buffer.from(chunk);
       if (_this._outgoing) {
-        //we should be passed whole messages here.
-        //write our length first, then message, then bail.
+        // we should be passed whole messages here.
+        // write our length first, then message, then bail.
         var lengthChunk = messageLengthBytes(chunk);
         _this.push(Buffer.concat(lengthChunk ? [lengthChunk, buffer] : [buffer]));
         process.nextTick(callback);
@@ -149,8 +148,8 @@ var ChunkingStream = function (_Transform) {
         // readable
         try {
           _this.process(buffer, callback);
-        } catch (exception) {
-          _logger2.default.error("ChunkingStream error!: " + exception);
+        } catch (error) {
+          _logger2.default.error('ChunkingStream error!: ' + error);
         }
       }
     };
