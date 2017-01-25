@@ -13,6 +13,7 @@ class DeviceAttributeFileRepository {
     this._fileManager = new JSONFileManager(path);
   }
 
+  // eslint-disable-next-line no-unused-vars
   create = async (model: DeviceAttributes): Promise<DeviceAttributes> => {
     throw new Error('Create device attributes not implemented');
   };
@@ -31,7 +32,7 @@ class DeviceAttributeFileRepository {
   @memoizeSet(['deviceID'])
   async deleteById(id: string): Promise<void> {
     this._fileManager.deleteFile(`${id}.json`);
-  };
+  }
 
   doesUserHaveAccess = async (
     id: string,
@@ -55,7 +56,7 @@ class DeviceAttributeFileRepository {
     id: string,
     userID: ?string = null,
   ): Promise<?DeviceAttributes> => {
-    const attributes = await this._getByID(id);;
+    const attributes = await this._getByID(id);
     if (!attributes) {
       return null;
     }
@@ -68,7 +69,7 @@ class DeviceAttributeFileRepository {
     }
 
     return attributes;
-  }
+  };
 
   @memoizeGet(['deviceID'])
   async _getByID(

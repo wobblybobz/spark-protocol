@@ -27,21 +27,21 @@ var _path2 = _interopRequireDefault(_path);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var FileManager = function () {
-  function FileManager(path) {
+  function FileManager(dirPath) {
     var isJSON = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
     (0, _classCallCheck3.default)(this, FileManager);
 
-    this._path = path;
+    this._dirPath = dirPath;
     this._isJSON = isJSON;
-    if (!_fs2.default.existsSync(path)) {
-      _mkdirp2.default.sync(path);
+    if (!_fs2.default.existsSync(dirPath)) {
+      _mkdirp2.default.sync(dirPath);
     }
   }
 
   (0, _createClass3.default)(FileManager, [{
     key: 'createFile',
     value: function createFile(fileName, data) {
-      if (_fs2.default.existsSync(_path2.default.join(this._path, fileName))) {
+      if (_fs2.default.existsSync(_path2.default.join(this._dirPath, fileName))) {
         return;
       }
 
@@ -50,7 +50,7 @@ var FileManager = function () {
   }, {
     key: 'deleteFile',
     value: function deleteFile(fileName) {
-      var filePath = _path2.default.join(this._path, fileName);
+      var filePath = _path2.default.join(this._dirPath, fileName);
       if (!_fs2.default.existsSync(filePath)) {
         return;
       }
@@ -62,16 +62,16 @@ var FileManager = function () {
     value: function getAllData() {
       var _this = this;
 
-      return _fs2.default.readdirSync(this._path).filter(function (fileName) {
+      return _fs2.default.readdirSync(this._dirPath).filter(function (fileName) {
         return fileName.endsWith('.json');
       }).map(function (fileName) {
-        return _fs2.default.readFileSync(_path2.default.join(_this._path, fileName), 'utf8');
+        return _fs2.default.readFileSync(_path2.default.join(_this._dirPath, fileName), 'utf8');
       });
     }
   }, {
     key: 'getFile',
     value: function getFile(fileName) {
-      var filePath = _path2.default.join(this._path, fileName);
+      var filePath = _path2.default.join(this._dirPath, fileName);
       if (!_fs2.default.existsSync(filePath)) {
         return null;
       }
@@ -81,7 +81,7 @@ var FileManager = function () {
   }, {
     key: 'getFileBuffer',
     value: function getFileBuffer(fileName) {
-      var filePath = _path2.default.join(this._path, fileName);
+      var filePath = _path2.default.join(this._dirPath, fileName);
       if (!_fs2.default.existsSync(filePath)) {
         return null;
       }
@@ -91,13 +91,13 @@ var FileManager = function () {
   }, {
     key: 'hasFile',
     value: function hasFile(fileName) {
-      var filePath = _path2.default.join(this._path, fileName);
+      var filePath = _path2.default.join(this._dirPath, fileName);
       return _fs2.default.existsSync(filePath);
     }
   }, {
     key: 'writeFile',
     value: function writeFile(fileName, data) {
-      _fs2.default.writeFileSync(_path2.default.join(this._path, fileName), data);
+      _fs2.default.writeFileSync(_path2.default.join(this._dirPath, fileName), data);
     }
   }]);
   return FileManager;
