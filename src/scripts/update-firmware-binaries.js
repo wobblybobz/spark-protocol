@@ -89,7 +89,7 @@ const downloadFirmwareBinaries = async (
   assets: Array<Asset>,
 ): Promise<Array<string>> => {
   const assetFileNames = await Promise.all(
-    assets.map((asset: Object): Promise<?string> => {
+    assets.map((asset: Object): Promise<string> => {
       if (asset.name.match(/^system-part/)) {
         return downloadFile(asset.browser_download_url);
       }
