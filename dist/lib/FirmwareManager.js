@@ -60,7 +60,7 @@ var _settings = require('../settings');
 
 var _settings2 = _interopRequireDefault(_settings);
 
-var _settings3 = require('../../third-party/settings');
+var _settings3 = require('../../third-party/settings.json');
 
 var _settings4 = _interopRequireDefault(_settings3);
 
@@ -68,7 +68,7 @@ var _specifications = require('../../third-party/specifications');
 
 var _specifications2 = _interopRequireDefault(_specifications);
 
-var _versions = require('../../third-party/versions');
+var _versions = require('../../third-party/versions.json');
 
 var _versions2 = _interopRequireDefault(_versions);
 
@@ -76,7 +76,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var platformSettings = (0, _entries2.default)(_specifications2.default);
 var SPECIFICATION_KEY_BY_PLATFORM = new _map2.default((0, _values2.default)(_settings4.default.knownPlatforms).map(function (platform) {
-  var spec = platformSettings.find(function (_ref) {
+  var spec = platformSettings.find(
+  // eslint-disable-next-line no-unused-vars
+  function (_ref) {
     var _ref2 = (0, _slicedToArray3.default)(_ref, 2),
         key = _ref2[0],
         value = _ref2[1];
@@ -86,7 +88,7 @@ var SPECIFICATION_KEY_BY_PLATFORM = new _map2.default((0, _values2.default)(_set
 
   return [platform, spec && spec[0]];
 }).filter(function (item) {
-  return item[1];
+  return !!item[1];
 }));
 var FIRMWARE_VERSION = _versions2.default.find(function (version) {
   return version[1] === _settings4.default.versionNumber;
@@ -95,17 +97,16 @@ var FIRMWARE_VERSION = _versions2.default.find(function (version) {
 var FirmwareManager = (_temp = _class = function () {
   function FirmwareManager() {
     (0, _classCallCheck3.default)(this, FirmwareManager);
+
+    this.getKnownAppFileName = function () {
+      throw new Error('getKnownAppFileName has not been implemented.');
+    };
   }
 
-  (0, _createClass3.default)(FirmwareManager, [{
-    key: 'getKnownAppFileName',
-    value: function getKnownAppFileName() {
-      throw new Error('getKnownAppFileName has not been implemented.');
-    }
-  }], [{
+  (0, _createClass3.default)(FirmwareManager, null, [{
     key: 'getOtaUpdateConfig',
     value: function getOtaUpdateConfig(platformID) {
-      var platform = _settings4.default.knownPlatforms[platformID + ''];
+      var platform = _settings4.default.knownPlatforms[platformID.toString()];
       var key = SPECIFICATION_KEY_BY_PLATFORM.get(platform);
 
       if (!key) {
@@ -128,14 +129,13 @@ var FirmwareManager = (_temp = _class = function () {
   return FirmwareManager;
 }(), _class.getOtaSystemUpdateConfig = function () {
   var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(systemInformation) {
-    var parser, platformID, systemVersion, modules, moduleToUpdate, otaUpdateConfig, moduleIndex, config, systemFile;
+    var parser, platformID, modules, moduleToUpdate, otaUpdateConfig, moduleIndex, config, systemFile;
     return _regenerator2.default.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
             parser = new _binaryVersionReader.HalDescribeParser();
             platformID = systemInformation.p;
-            systemVersion = parser.getSystemVersion(systemInformation);
             modules = parser.getModules(systemInformation)
             // Filter so we only have the system modules
             .filter(function (module) {
@@ -143,53 +143,53 @@ var FirmwareManager = (_temp = _class = function () {
             });
 
             if (modules) {
-              _context.next = 6;
+              _context.next = 5;
               break;
             }
 
             throw new Error('Could not find any system modules for OTA update');
 
-          case 6:
+          case 5:
             moduleToUpdate = modules.find(function (module) {
               return module.version < FIRMWARE_VERSION;
             });
 
             if (moduleToUpdate) {
-              _context.next = 9;
+              _context.next = 8;
               break;
             }
 
-            return _context.abrupt('return');
+            return _context.abrupt('return', null);
 
-          case 9:
+          case 8:
             otaUpdateConfig = FirmwareManager.getOtaUpdateConfig(platformID);
 
             if (otaUpdateConfig) {
-              _context.next = 12;
+              _context.next = 11;
               break;
             }
 
             throw new Error('Could not find OTA update config for device');
 
-          case 12:
+          case 11:
             moduleIndex = modules.indexOf(moduleToUpdate);
             config = otaUpdateConfig[moduleIndex];
 
             if (config) {
-              _context.next = 16;
+              _context.next = 15;
               break;
             }
 
             throw new Error('Cannot find the module for updating');
 
-          case 16:
+          case 15:
             systemFile = _fs2.default.readFileSync(_settings2.default.BINARIES_DIRECTORY + '/' + config.binaryFileName);
             return _context.abrupt('return', {
               moduleIndex: moduleIndex,
               systemFile: systemFile
             });
 
-          case 18:
+          case 17:
           case 'end':
             return _context.stop();
         }
