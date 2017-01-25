@@ -32,79 +32,86 @@ var _logger = require('./logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
-var _h = require('h5.buffers');
-
-var _h2 = _interopRequireDefault(_h);
-
-var _nullthrows = require('nullthrows');
-
-var _nullthrows2 = _interopRequireDefault(_nullthrows);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 /*
  Handshake protocol v1
 
- 1.) Socket opens:
+ 1) Socket opens:
 
- 2.) Server responds with 40 bytes of random data as a nonce.
-     * Core should read exactly 40 bytes from the socket.
-     Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket and retry the connection.
+ 2) Server responds with 40 bytes of random data as a nonce.
+ Core should read exactly 40 bytes from the socket.
+ Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket
+ and retry the connection.
 
-     * Core appends the 12-byte STM32 Unique ID to the nonce, RSA encrypts the 52-byte message with the Server's public key,
-     and sends the resulting 256-byte ciphertext to the Server.  The Server's public key is stored on the external flash chip at address TBD.
-     The nonce should be repeated in the same byte order it arrived (FIFO) and the STM32 ID should be appended in the
-     same byte order as the memory addresses: 0x1FFFF7E8, 0x1FFFF7E9, 0x1FFFF7EA… 0x1FFFF7F2, 0x1FFFF7F3.
+ Core appends the 12-byte STM32 Unique ID to the nonce,
+ RSA encrypts the 52-byte message with the Server's public key,
+ and sends the resulting 256-byte ciphertext to the Server.
+ The Server's public key is stored on the external flash chip at address TBD.
+ The nonce should be repeated in the same byte order it arrived (FIFO)
+ and the STM32 ID should be appended in the same byte order as the memory addresses:
+ 0x1FFFF7E8, 0x1FFFF7E9, 0x1FFFF7EA… 0x1FFFF7F2, 0x1FFFF7F3.
 
- 3.) Server should read exactly 256 bytes from the socket.
-     Timeout waiting for the encrypted message is 30 seconds.  If the timeout is reached, Server must close the connection.
+ 3) Server should read exactly 256 bytes from the socket.
+ Timeout waiting for the encrypted message is 30 seconds.
+ If the timeout is reached, Server must close the connection.
 
-     * Server RSA decrypts the message with its private key.  If the decryption fails, Server must close the connection.
-     * Decrypted message should be 52 bytes, otherwise Server must close the connection.
-     * The first 40 bytes of the message must match the previously sent nonce, otherwise Server must close the connection.
-     * Remaining 12 bytes of message represent STM32 ID.  Server looks up STM32 ID, retrieving the Core's public RSA key.
-     * If the public key is not found, Server must close the connection.
+ Server RSA decrypts the message with its private key.  If the decryption fails,
+ Server must close the connection.
+ Decrypted message should be 52 bytes, otherwise Server must close the connection.
+ The first 40 bytes of the message must match the previously sent nonce,
+ otherwise Server must close the connection.
+ Remaining 12 bytes of message represent STM32 ID.
+ Server looks up STM32 ID, retrieving the Core's public RSA key.
+ If the public key is not found, Server must close the connection.
 
- 4.) Server creates secure session key
-     * Server generates 40 bytes of secure random data to serve as components of a session key for AES-128-CBC encryption.
-     The first 16 bytes (MSB first) will be the key, the next 16 bytes (MSB first) will be the initialization vector (IV), and the final 8 bytes (MSB first) will be the salt.
-     Server RSA encrypts this 40-byte message using the Core's public key to create a 128-byte ciphertext.
-     * Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40 bytes generated in the previous step as the HMAC key.
-     * Server signs the HMAC with its RSA private key generating a 256-byte signature.
-     * Server sends 384 bytes to Core: the ciphertext then the signature.
+ 4) Server creates secure session key
+ Server generates 40 bytes of secure random data to serve as components of a session key
+ for AES-128-CBC encryption.
+ The first 16 bytes (MSB first) will be the key, the next 16 bytes (MSB first)
+ will be the initialization vector (IV), and the final 8 bytes (MSB first) will be the salt.
+ Server RSA encrypts this 40-byte message using the Core's public key
+ to create a 128-byte ciphertext.
+ Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40 bytes generated
+ in the previous step as the HMAC key.
+ Server signs the HMAC with its RSA private key generating a 256-byte signature.
+ Server sends 384 bytes to Core: the ciphertext then the signature.
 
+ 5) Release control back to the Device module
+ Core creates a protobufs Hello with counter set to the uint32
+ represented by the most significant 4 bytes of the IV,
+ encrypts the protobufs Hello with AES, and sends the ciphertext to Server.
+ Server reads protobufs Hello from socket, taking note of counter.
+ Each subsequent message received from Core must have the counter incremented by 1.
+ After the max uint32, the next message should set the counter to zero.
 
- 5.) Release control back to the Device module
-
-     * Core creates a protobufs Hello with counter set to the uint32 represented by the most significant 4 bytes of the IV, encrypts the protobufs Hello with AES, and sends the ciphertext to Server.
-     * Server reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Core must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
-
-     * Server creates protobufs Hello with counter set to a random uint32, encrypts the protobufs Hello with AES, and sends the ciphertext to Core.
-     * Core reads protobufs Hello from socket, taking note of counter.  Each subsequent message received from Server must have the counter incremented by 1. After the max uint32, the next message should set the counter to zero.
-     */
-
-//statics
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
+ Server creates protobufs Hello with counter set to a random uint32,
+ encrypts the protobufs Hello with AES, and sends the ciphertext to Core.
+ Core reads protobufs Hello from socket, taking note of counter.
+ Each subsequent message received from Server must have the counter incremented by 1.
+ After the max uint32, the next message should set the counter to zero.
 */
 
-var NONCE_BYTES = 40;
+var NONCE_BYTES = 40; /*
+                      *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                      *
+                      *   This program is free software; you can redistribute it and/or
+                      *   modify it under the terms of the GNU Lesser General Public
+                      *   License as published by the Free Software Foundation, either
+                      *   version 3 of the License, or (at your option) any later version.
+                      *
+                      *   This program is distributed in the hope that it will be useful,
+                      *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                      *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                      *   Lesser General Public License for more details.
+                      *
+                      *   You should have received a copy of the GNU Lesser General Public
+                      *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                      *
+                      * 
+                      *
+                      */
+
 var ID_BYTES = 12;
 var SESSION_BYTES = 40;
 var GLOBAL_TIMEOUT = 10;
@@ -127,13 +134,11 @@ var Handshake = function Handshake(cryptoManager) {
               _this._device = device;
               _this._socket = device._socket;
 
-              return _context.abrupt('return', _promise2.default.race([_this._runHandshake(), _this._startGlobalTimeout(), new _promise2.default(function (resolve, reject) {
-                return _this._reject = reject;
-              })]).catch(function (error) {
+              return _context.abrupt('return', _promise2.default.race([_this._runHandshake(), _this._startGlobalTimeout()]).catch(function (error) {
                 var logInfo = {
                   cache_key: _this._device && _this._device._connectionKey,
-                  ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown',
-                  deviceID: _this._deviceID || null
+                  deviceID: _this._deviceID || null,
+                  ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown'
                 };
 
                 _logger2.default.error('Handshake failed: ', error.message, logInfo);
@@ -198,9 +203,9 @@ var Handshake = function Handshake(cryptoManager) {
           case 22:
             handshakeBuffer = _context2.sent;
             return _context2.abrupt('return', {
-              deviceID: deviceID,
               cipherStream: cipherStream,
               decipherStream: decipherStream,
+              deviceID: deviceID,
               handshakeBuffer: handshakeBuffer,
               pendingBuffers: [].concat((0, _toConsumableArray3.default)(_this._pendingBuffers))
             });
@@ -225,14 +230,14 @@ var Handshake = function Handshake(cryptoManager) {
     return new _promise2.default(function (resolve, reject) {
       var onReadable = function onReadable() {
         try {
-          var data = _this._socket.read();
+          var _data = _this._socket.read();
 
-          if (!data) {
+          if (!_data) {
             _logger2.default.log('onSocketData called, but no data sent.');
             reject(new Error('onSocketData called, but no data sent.'));
           }
 
-          resolve(data);
+          resolve(_data);
         } catch (error) {
           _logger2.default.log('Handshake: Exception thrown while processing data');
           _logger2.default.error(error);
@@ -312,7 +317,7 @@ var Handshake = function Handshake(cryptoManager) {
                 break;
               }
 
-              throw new Error('nonces didn\`t match');
+              throw new Error('nonces didn`t match');
 
             case 15:
               deviceProvidedPem = _this._convertDERtoPEM(deviceKeyBuffer);
@@ -341,8 +346,8 @@ var Handshake = function Handshake(cryptoManager) {
     try {
       var lines = ['-----BEGIN PUBLIC KEY-----'].concat((0, _toConsumableArray3.default)(bufferString.match(/.{1,64}/g) || []), ['-----END PUBLIC KEY-----']);
       return lines.join('\n');
-    } catch (exception) {
-      _logger2.default.error('error converting DER to PEM, was: ' + bufferString + ' ' + exception);
+    } catch (error) {
+      _logger2.default.error('error converting DER to PEM, was: ' + bufferString + ' ' + error);
     }
     return null;
   };
@@ -428,7 +433,7 @@ var Handshake = function Handshake(cryptoManager) {
               signedhmac = _context6.sent;
 
 
-              //Server sends ~384 bytes to Core: the ciphertext then the signature.
+              // Server sends ~384 bytes to Core: the ciphertext then the signature.
               message = Buffer.concat([ciphertext, signedhmac], ciphertext.length + signedhmac.length);
 
               _this._socket.write(message);
@@ -472,7 +477,7 @@ var Handshake = function Handshake(cryptoManager) {
   }();
 
   this._onDecipherStreamReadable = function (decipherStream) {
-    return new _promise2.default(function (resolve, reject) {
+    return new _promise2.default(function (resolve) {
       var callback = function callback() {
         var chunk = decipherStream.read();
         resolve(chunk);
@@ -488,10 +493,6 @@ var Handshake = function Handshake(cryptoManager) {
         return reject();
       }, DECIPHER_STREAM_TIMEOUT * 1000);
     });
-  };
-
-  this._handshakeFail = function (message) {
-    _this._reject && _this._reject(message);
   };
 
   this._cryptoManager = cryptoManager;
@@ -510,9 +511,6 @@ var Handshake = function Handshake(cryptoManager) {
  * //EJQCe6JReTQlq9F6bioK84nc9QsFTpiCIqeTAZE4t6Di5pF8qrUgQvREHrl4Nw0D
  * //R7ECODgxc/r5+XFh9wIDAQAB
  * //-----END PUBLIC KEY-----
- *
- * @param buf
- * @returns {*}
  */
 ;
 
