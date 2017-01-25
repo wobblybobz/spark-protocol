@@ -375,7 +375,7 @@ class Handshake {
     });
 
   _onDecipherStreamTimeout = (): Promise<*> =>
-    new Promise((resolve: () => void, reject: () => void): void =>
+    new Promise((resolve: () => void, reject: () => void): number =>
       setTimeout(
         (): void => reject(),
         DECIPHER_STREAM_TIMEOUT * 1000,
