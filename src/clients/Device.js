@@ -585,7 +585,7 @@ class Device extends EventEmitter {
         systemInformation: nullthrows(this._systemInformation),
       };
     } catch (error) {
-      throw new Error(`No device state!: ${error.message}`);
+      throw new Error('No device state!');
     }
   };
 
@@ -871,62 +871,82 @@ class Device extends EventEmitter {
    * Checks our cache to see if we have the function state, otherwise requests
    * it from the core, listens for it, and resolves our deferred on success
    */
-  _ensureWeHaveIntrospectionData = async (counter: number = 0): Promise<*> => {
+  _ensureWeHaveIntrospectionData = async (): Promise<void> => {
     if (this._hasFunctionState()) {
       return;
     }
 
+    const getDescribeData = async (): Promise<?{
+      functionState: Object,
+      systemInformation: Object,
+    }> => {
+      try {
+        const token = this.sendMessage('Describe');
+        const systemMessage = await this.listenFor(
+          'DescribeReturn',
+          null,
+          token,
+        );
+
+        // Sometimes this listener will
+        const functionStateAwaitable = this.listenFor(
+          'DescribeReturn',
+          null,
+          token,
+        );
+
+        // got a description, is it any good?
+        const data = systemMessage.getPayload();
+        const systemInformation = JSON.parse(data.toString());
+
+        // In the newer firmware the application data comes in a later message.
+        // We run a race to see if the function state comes in the first response.
+
+        const functionState = await Promise.race([
+          functionStateAwaitable.then((applicationMessage: Message): Object => {
+            // got a description, is it any good?
+            const applicationMessageData = applicationMessage.getPayload();
+            return JSON.parse(applicationMessageData.toString());
+          }),
+          new Promise((resolve: (systemInformation: Object) => void) => {
+            if (systemInformation.f && systemInformation.v) {
+              resolve(systemInformation);
+            }
+          }),
+        ]);
+        if (functionState && functionState.v) {
+          // 'v':{'temperature':2}
+          functionState.v = Messages.translateIntTypes(functionState.v);
+        }
+
+        return { functionState, systemInformation };
+      } catch (error) {
+        return null;
+      }
+    };
+
     try {
-      const token = this.sendMessage('Describe');
-      const systemMessage = await this.listenFor(
-        'DescribeReturn',
-        null,
-        token,
-      );
+      // sometimes the second describe message comes before we have listenFor
+      // promise setup, in those cases we are trying to refetch the data again.
+      const MAX_TRIES = 3;
+      let triesCounter = 0;
 
-      // Sometimes this listener will
-      const functionStateAwaitable = this.listenFor(
-        'DescribeReturn',
-        null,
-        token,
-      );
-
-      // got a description, is it any good?
-      const data = systemMessage.getPayload();
-      const systemInformation = JSON.parse(data.toString());
-
-      // In the newer firmware the application data comes in a later message.
-      // We run a race to see if the function state comes in the first response.
-      let gotFunctionState = false;
-      const functionState = await Promise.race([
-        functionStateAwaitable.then((applicationMessage: Message): Object => {
-          gotFunctionState = true;
-          // got a description, is it any good?
-          const applicationMessageData = applicationMessage.getPayload();
-          return JSON.parse(applicationMessageData.toString());
-        }),
-        new Promise((resolve: (systemInformation: Object) => void) => {
-          if (systemInformation.f && systemInformation.v) {
-            gotFunctionState = true;
-            resolve(systemInformation);
-          }
-        }),
-      ]);
-
-      // only retry 3 times
-      if (!gotFunctionState && counter && counter < 3) {
-        await this._ensureWeHaveIntrospectionData((counter || 0) + 1);
-        return;
+      let deviceDescription = await getDescribeData();
+      while (!deviceDescription && triesCounter < MAX_TRIES) {
+        deviceDescription = await getDescribeData();
+        triesCounter += 1;
       }
 
-      if (functionState && functionState.v) {
-        // 'v':{'temperature':2}
-        functionState.v = Messages.translateIntTypes(functionState.v);
+      if (!deviceDescription) {
+        throw new Error('can\'t get describe data');
       }
+
+      const { functionState, systemInformation } = deviceDescription;
 
       this._systemInformation = systemInformation;
       this._deviceFunctionState = functionState;
     } catch (error) {
+      logger.error(`_ensureWeHaveIntrospectionData error: ${error}`);
       throw error;
     }
   };
