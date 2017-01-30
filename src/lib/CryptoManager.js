@@ -11,7 +11,7 @@ const HASH_TYPE = 'sha1';
 class CryptoManager {
   _deviceKeyRepository: Repository<string>;
   _serverKeyRepository: ServerKeyRepository;
-  _privateServerKey: ?Object;
+  _serverPrivateKey: Object;
   _serverKeyPassword: ?string;
 
   constructor(
@@ -22,6 +22,10 @@ class CryptoManager {
     this._deviceKeyRepository = deviceKeyRepository;
     this._serverKeyRepository = serverKeyRepository;
     this._serverKeyPassword = serverKeyPassword;
+
+    (async (): Promise<void> => {
+      this._serverPrivateKey = await this._getServerPrivateKey();
+    })();
   }
 
   _createCryptoStream = (
@@ -42,7 +46,6 @@ class CryptoManager {
   };
 
   _createServerKeys = async (): Promise<Object> => {
-    // todo password?
     const privateKey = ursa.generatePrivateKey();
 
     await this._serverKeyRepository.createKeys(
@@ -54,20 +57,17 @@ class CryptoManager {
   };
 
   _getServerPrivateKey = async (): Promise<Object> => {
-    if (!this._privateServerKey) {
-      const privateKeyString =
-        await this._serverKeyRepository.getPrivateKey();
+    const privateKeyString =
+      await this._serverKeyRepository.getPrivateKey();
 
-      if (!privateKeyString) {
-        return await this._createServerKeys();
-      }
-
-      this._privateServerKey = ursa.createPrivateKey(
-        privateKeyString,
-        this._serverKeyPassword || undefined,
-      );
+    if (!privateKeyString) {
+      return await this._createServerKeys();
     }
-    return this._privateServerKey;
+
+    return ursa.createPrivateKey(
+      privateKeyString,
+      this._serverKeyPassword || undefined,
+    );
   };
 
   createAESCipherStream = (sessionKey: Buffer): CryptoStream =>
@@ -94,7 +94,7 @@ class CryptoManager {
   };
 
   decrypt = async (data: Buffer): Promise<Buffer> =>
-    (await this._getServerPrivateKey()).decrypt(
+    this._serverPrivateKey.decrypt(
       data,
       /* input buffer encoding */undefined,
       /* output buffer encoding*/undefined,
@@ -143,7 +143,7 @@ class CryptoManager {
   };
 
   sign = async (hash: Buffer): Promise<Buffer> =>
-    (await this._getServerPrivateKey()).privateEncrypt(hash);
+    this._serverPrivateKey.privateEncrypt(hash);
 }
 
 export default CryptoManager;
