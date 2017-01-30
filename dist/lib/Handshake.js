@@ -202,6 +202,15 @@ var Handshake = function Handshake(cryptoManager) {
 
           case 22:
             handshakeBuffer = _context2.sent;
+
+            if (handshakeBuffer) {
+              _context2.next = 25;
+              break;
+            }
+
+            throw new Error('wrong device public keys');
+
+          case 25:
             return _context2.abrupt('return', {
               cipherStream: cipherStream,
               decipherStream: decipherStream,
@@ -210,7 +219,7 @@ var Handshake = function Handshake(cryptoManager) {
               pendingBuffers: [].concat((0, _toConsumableArray3.default)(_this._pendingBuffers))
             });
 
-          case 24:
+          case 26:
           case 'end':
             return _context2.stop();
         }
