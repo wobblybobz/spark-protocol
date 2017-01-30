@@ -52,6 +52,10 @@ var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
+var _moniker = require('moniker');
+
+var _moniker2 = _interopRequireDefault(_moniker);
+
 var _Device = require('../clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
@@ -70,25 +74,25 @@ var _Messages2 = _interopRequireDefault(_Messages);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
-*/
+var NAME_GENERATOR = _moniker2.default.generator([_moniker2.default.adjective, _moniker2.default.noun]); /*
+                                                                                                         *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                                                                                                         *
+                                                                                                         *   This program is free software; you can redistribute it and/or
+                                                                                                         *   modify it under the terms of the GNU Lesser General Public
+                                                                                                         *   License as published by the Free Software Foundation, either
+                                                                                                         *   version 3 of the License, or (at your option) any later version.
+                                                                                                         *
+                                                                                                         *   This program is distributed in the hope that it will be useful,
+                                                                                                         *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                                                                                                         *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                                                                                                         *   Lesser General Public License for more details.
+                                                                                                         *
+                                                                                                         *   You should have received a copy of the GNU Lesser General Public
+                                                                                                         *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                                                                                                         *
+                                                                                                         * 
+                                                                                                         *
+                                                                                                         */
 
 var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_NAMES.FLASH_AVAILABLE, _Device.SYSTEM_EVENT_NAMES.FLASH_PROGRESS, _Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, _Device.SYSTEM_EVENT_NAMES.SAFE_MODE, _Device.SYSTEM_EVENT_NAMES.SPARK_STATUS];
 
@@ -118,11 +122,19 @@ var DeviceServer = function () {
                           connectionKey = '_' + connectionIdCounter;
                           handshake = new _Handshake2.default(_this._cryptoManager);
                           device = new _Device2.default(socket, connectionKey, handshake);
-                          deviceID = device.getID();
+
+
+                          _logger2.default.log('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Connection ID: ' + connectionIdCounter));
+
                           _context.next = 7;
-                          return _this._deviceAttributeRepository.getById(device.getID());
+                          return device.startupProtocol();
 
                         case 7:
+                          deviceID = device.getID();
+                          _context.next = 10;
+                          return _this._deviceAttributeRepository.getById(device.getID());
+
+                        case 10:
                           deviceAttributes = _context.sent;
                           ownerID = deviceAttributes && deviceAttributes.ownerID;
 
@@ -165,14 +177,9 @@ var DeviceServer = function () {
                             return _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'failed', deviceID, ownerID);
                           });
 
-                          _context.next = 20;
-                          return device.startupProtocol();
+                          device.ready();
 
-                        case 20:
-
-                          _logger2.default.log('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Connection ID: ' + connectionIdCounter));
-
-                        case 21:
+                        case 22:
                         case 'end':
                           return _context.stop();
                       }
@@ -289,7 +296,9 @@ var DeviceServer = function () {
                         case 11:
                           description = _context5.sent;
                           _FirmwareManager$getA = _FirmwareManager2.default.getAppModule(description.systemInformation), uuid = _FirmwareManager$getA.uuid;
-                          deviceAttributes = (0, _extends3.default)({}, existingAttributes, {
+                          deviceAttributes = (0, _extends3.default)({
+                            name: NAME_GENERATOR.choose()
+                          }, existingAttributes, {
                             appHash: uuid,
                             deviceID: deviceID,
                             ip: device.getRemoteIPAddress(),
@@ -393,16 +402,7 @@ var DeviceServer = function () {
 
                         case 3:
                           deviceAttributes = _context7.sent;
-
-                          if (deviceAttributes) {
-                            _context7.next = 6;
-                            break;
-                          }
-
-                          throw new Error('Could not find device attributes for device: ' + deviceID);
-
-                        case 6:
-                          ownerID = deviceAttributes.ownerID;
+                          ownerID = deviceAttributes && deviceAttributes.ownerID;
                           eventData = {
                             data: message.getPayloadLength() === 0 ? '' : message.getPayload().toString(),
                             deviceID: deviceID,
@@ -435,20 +435,20 @@ var DeviceServer = function () {
                           }
 
                           if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-                            _context7.next = 15;
+                            _context7.next = 13;
                             break;
                           }
 
-                          _context7.next = 15;
+                          _context7.next = 13;
                           return _this._onDeviceClaimCodeMessage(message, device);
 
-                        case 15:
+                        case 13:
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_IP)) {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.GET_NAME, device.getRemoteIPAddress(), deviceID, ownerID);
                           }
 
-                          if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_NAME)) {
+                          if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_NAME) && deviceAttributes) {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.GET_NAME, deviceAttributes.name, deviceID, ownerID);
                           }
 
@@ -490,7 +490,7 @@ var DeviceServer = function () {
                             // if device version is old, do OTA update with patch
                           }
 
-                        case 24:
+                        case 22:
                         case 'end':
                           return _context7.stop();
                       }
@@ -648,6 +648,19 @@ var DeviceServer = function () {
       return _this._devicesById.get(deviceID);
     };
 
+    this.publishSpecialEvent = function (eventName, data, deviceID, userID) {
+      if (!userID) {
+        return;
+      }
+      _this._eventPublisher.publish({
+        data: data,
+        deviceID: deviceID,
+        isPublic: false,
+        name: eventName,
+        userID: userID
+      });
+    };
+
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = cryptoManager;
@@ -675,44 +688,6 @@ var DeviceServer = function () {
         return _logger2.default.log('Server started on port: ' + serverPort);
       });
     }
-  }, {
-    key: 'publishSpecialEvent',
-    value: function () {
-      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee11(eventName, data, deviceID, userID) {
-        return _regenerator2.default.wrap(function _callee11$(_context11) {
-          while (1) {
-            switch (_context11.prev = _context11.next) {
-              case 0:
-                if (userID) {
-                  _context11.next = 2;
-                  break;
-                }
-
-                return _context11.abrupt('return');
-
-              case 2:
-                this._eventPublisher.publish({
-                  data: data,
-                  deviceID: deviceID,
-                  isPublic: false,
-                  name: eventName,
-                  userID: userID
-                });
-
-              case 3:
-              case 'end':
-                return _context11.stop();
-            }
-          }
-        }, _callee11, this);
-      }));
-
-      function publishSpecialEvent(_x12, _x13, _x14, _x15) {
-        return _ref7.apply(this, arguments);
-      }
-
-      return publishSpecialEvent;
-    }()
   }]);
   return DeviceServer;
 }();

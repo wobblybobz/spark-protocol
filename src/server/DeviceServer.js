@@ -34,6 +34,7 @@ import net from 'net';
 import crypto from 'crypto';
 import nullthrows from 'nullthrows';
 import moment from 'moment';
+import Moniker from 'moniker';
 import Device from '../clients/Device';
 
 import FirmwareManager from '../lib/FirmwareManager';
@@ -49,6 +50,8 @@ type DeviceServerConfig = {|
   host: string,
   port: number,
 |};
+
+const NAME_GENERATOR = Moniker.generator([Moniker.adjective, Moniker.noun]);
 
 const SPECIAL_EVENTS = [
   SYSTEM_EVENT_NAMES.APP_HASH,
@@ -111,6 +114,14 @@ class DeviceServer {
         connectionKey,
         handshake,
       );
+
+      logger.log(
+        `Connection from: ${device.getRemoteIPAddress()} - ` +
+        `Connection ID: ${connectionIdCounter}`,
+      );
+
+      await device.startupProtocol();
+
       const deviceID = device.getID();
       const deviceAttributes =
         await this._deviceAttributeRepository.getById(device.getID());
@@ -160,7 +171,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.FLASH_STARTED,
-        (): Promise<void> => this.publishSpecialEvent(
+        (): void => this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'started',
           deviceID,
@@ -170,7 +181,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.FLASH_SUCCESS,
-        (): Promise<void> => this.publishSpecialEvent(
+        (): void => this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'success',
           deviceID,
@@ -180,7 +191,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.FLASH_FAILED,
-        (): Promise<void> => this.publishSpecialEvent(
+        (): void => this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.FLASH_STATUS,
           'failed',
           deviceID,
@@ -188,12 +199,7 @@ class DeviceServer {
         ),
       );
 
-      await device.startupProtocol();
-
-      logger.log(
-        `Connection from: ${device.getRemoteIPAddress()} - ` +
-        `Connection ID: ${connectionIdCounter}`,
-      );
+      device.ready();
     } catch (error) {
       logger.error(`Device startup failed: ${error.message}`);
     }
@@ -268,6 +274,7 @@ class DeviceServer {
       );
 
       const deviceAttributes = {
+        name: NAME_GENERATOR.choose(),
         ...existingAttributes,
         appHash: uuid,
         deviceID,
@@ -327,12 +334,7 @@ class DeviceServer {
       const deviceID = device.getID();
       const deviceAttributes =
         await this._deviceAttributeRepository.getById(deviceID);
-      if (!deviceAttributes) {
-        throw new Error(
-          `Could not find device attributes for device: ${deviceID}`,
-        );
-      }
-      const ownerID = deviceAttributes.ownerID;
+      const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
       const eventData = {
         data: message.getPayloadLength() === 0
@@ -382,7 +384,7 @@ class DeviceServer {
         );
       }
 
-      if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME)) {
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME) && deviceAttributes) {
         this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.GET_NAME,
           deviceAttributes.name,
@@ -527,12 +529,12 @@ class DeviceServer {
   getDevice = (deviceID: string): ?Device =>
     this._devicesById.get(deviceID);
 
-  async publishSpecialEvent(
+  publishSpecialEvent = (
     eventName: string,
     data: string,
     deviceID: string,
     userID: ?string,
-  ): Promise<void> {
+  ) => {
     if (!userID) {
       return;
     }
