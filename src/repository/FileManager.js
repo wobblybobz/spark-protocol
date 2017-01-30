@@ -30,7 +30,7 @@ class FileManager {
       return;
     }
 
-    fs.unlink(filePath);
+    fs.unlinkSync(filePath);
   }
 
   getAllData(): Array<string> {

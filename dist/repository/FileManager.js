@@ -55,7 +55,7 @@ var FileManager = function () {
         return;
       }
 
-      _fs2.default.unlink(filePath);
+      _fs2.default.unlinkSync(filePath);
     }
   }, {
     key: 'getAllData',
