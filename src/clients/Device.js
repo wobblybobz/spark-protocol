@@ -219,6 +219,7 @@ class Device extends EventEmitter {
       });
     } catch (error) {
       this.disconnect(error);
+      throw error;
     }
   };
 

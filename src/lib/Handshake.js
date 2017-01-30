@@ -147,6 +147,10 @@ class Handshake {
       this._onDecipherStreamTimeout(),
     ]);
 
+    if (!handshakeBuffer) {
+      throw new Error('wrong device public keys');
+    }
+
     return {
       cipherStream,
       decipherStream,
