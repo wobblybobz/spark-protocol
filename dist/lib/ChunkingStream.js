@@ -136,7 +136,7 @@ var ChunkingStream = function (_Transform) {
     };
 
     _this._transform = function (chunk, encoding, callback) {
-      var buffer = Buffer.from(chunk);
+      var buffer = new Buffer(chunk);
       if (_this._outgoing) {
         // we should be passed whole messages here.
         // write our length first, then message, then bail.
