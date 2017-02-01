@@ -123,7 +123,7 @@ class ChunkingStream extends Transform {
     encoding: string,
     callback: Function,
   ) => {
-    const buffer = Buffer.from(chunk);
+    const buffer = new Buffer(chunk);
     if (this._outgoing) {
       // we should be passed whole messages here.
       // write our length first, then message, then bail.
