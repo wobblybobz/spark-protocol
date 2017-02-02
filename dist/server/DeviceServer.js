@@ -368,7 +368,7 @@ var DeviceServer = function () {
                 _context6.prev = 4;
                 _context6.t1 = _context6['catch'](0);
 
-                console.log(_context6.t1);
+                _logger2.default.error(_context6.t1);
 
               case 7:
               case 'end':
@@ -467,8 +467,7 @@ var DeviceServer = function () {
                           }
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.LAST_RESET)) {
-                            // This should be sent to the stream in DeviceServer
-                            console.log('LAST_RESET', eventData.data);
+                            _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.LAST_RESET, eventData.data, deviceID, ownerID);
                           }
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.MAX_BINARY)) {
@@ -480,7 +479,7 @@ var DeviceServer = function () {
                           }
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
-                            console.log(eventData.data);
+                            _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE, eventData.data, deviceID, ownerID);
                           }
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
@@ -506,7 +505,7 @@ var DeviceServer = function () {
                 _context8.prev = 4;
                 _context8.t1 = _context8['catch'](0);
 
-                console.log(_context8.t1.message, _context8.t1.stack);
+                _logger2.default.error(_context8.t1);
 
               case 7:
               case 'end':

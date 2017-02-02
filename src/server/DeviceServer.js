@@ -321,7 +321,7 @@ class DeviceServer {
         }
       }
     } catch (error) {
-      console.log(error);
+      logger.error(error);
     }
   };
 
@@ -415,8 +415,12 @@ class DeviceServer {
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.LAST_RESET)) {
-        // This should be sent to the stream in DeviceServer
-        console.log('LAST_RESET', eventData.data);
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.LAST_RESET,
+          eventData.data,
+          deviceID,
+          ownerID,
+        );
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.MAX_BINARY)) {
@@ -430,7 +434,12 @@ class DeviceServer {
       if (
         eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)
       ) {
-        console.log(eventData.data);
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.SAFE_MODE,
+          eventData.data,
+          deviceID,
+          ownerID,
+        );
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
@@ -440,7 +449,7 @@ class DeviceServer {
         // if device version is old, do OTA update with patch
       }
     } catch (error) {
-      console.log(error.message, error.stack);
+      logger.error(error);
     }
   };
 
