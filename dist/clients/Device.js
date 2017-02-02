@@ -5,10 +5,6 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.DEVICE_MESSAGE_EVENTS_NAMES = exports.SYSTEM_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = undefined;
 
-var _typeof2 = require('babel-runtime/helpers/typeof');
-
-var _typeof3 = _interopRequireDefault(_typeof2);
-
 var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
@@ -980,194 +976,116 @@ var Device = function (_EventEmitter) {
       };
     }();
 
-    _this._ensureWeHaveIntrospectionData = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee13() {
-      var getDescribeData, MAX_TRIES, triesCounter, deviceDescription, _deviceDescription, _functionState, _systemInformation;
-
-      return _regenerator2.default.wrap(function _callee13$(_context13) {
+    _this._ensureWeHaveIntrospectionData = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee11() {
+      var result;
+      return _regenerator2.default.wrap(function _callee11$(_context11) {
         while (1) {
-          switch (_context13.prev = _context13.next) {
+          switch (_context11.prev = _context11.next) {
             case 0:
               if (!_this._hasFunctionState()) {
-                _context13.next = 2;
+                _context11.next = 2;
                 break;
               }
 
-              return _context13.abrupt('return');
+              return _context11.abrupt('return');
 
             case 2:
-              getDescribeData = function () {
-                var _ref12 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee12() {
-                  var _ret2;
+              _context11.prev = 2;
 
-                  return _regenerator2.default.wrap(function _callee12$(_context12) {
-                    while (1) {
-                      switch (_context12.prev = _context12.next) {
-                        case 0:
-                          _context12.prev = 0;
-                          return _context12.delegateYield(_regenerator2.default.mark(function _callee11() {
-                            var token, systemMessage, functionStateAwaitable, data, systemInformation, functionState;
-                            return _regenerator2.default.wrap(function _callee11$(_context11) {
-                              while (1) {
-                                switch (_context11.prev = _context11.next) {
-                                  case 0:
-                                    token = _this.sendMessage('Describe');
-                                    _context11.next = 3;
-                                    return _this.listenFor('DescribeReturn', null, token);
+              // Because some firmware versions do not send the app + system state in a
+              // single message, we cannot use `listenFor` and instead have to write
+              // some hacky code that duplicates a lot of the functionality
+              _this.sendMessage('Describe');
+              _context11.next = 6;
+              return new _promise2.default(function (resolve, reject) {
+                var timeout = setTimeout(function () {
+                  cleanUpListeners();
+                  reject(new Error('Request timed out'));
+                }, KEEP_ALIVE_TIMEOUT);
 
-                                  case 3:
-                                    systemMessage = _context11.sent;
+                var systemInformation = null;
+                var functionState = null;
+                var handler = function handler(message) {
+                  var payload = message.getPayload();
+                  if (!payload) {
+                    reject(new Error('Payload empty for Describe message'));
+                  }
 
+                  var data = JSON.parse(payload.toString());
 
-                                    // Sometimes this listener will
-                                    functionStateAwaitable = _this.listenFor('DescribeReturn', null, token);
+                  if (!systemInformation) {
+                    systemInformation = data;
+                  }
 
-                                    // got a description, is it any good?
+                  if (data && data.v) {
+                    functionState = data;
+                    // 'v':{'temperature':2}
+                    functionState.v = _Messages2.default.translateIntTypes(functionState.v);
+                  }
 
-                                    data = systemMessage.getPayload();
-                                    systemInformation = JSON.parse(data.toString());
+                  if (!systemInformation || !functionState) {
+                    return;
+                  }
 
-                                    // In the newer firmware the application data comes in a later message.
-                                    // We run a race to see if the function state comes in the first response.
-
-                                    _context11.next = 9;
-                                    return _promise2.default.race([functionStateAwaitable.then(function (applicationMessage) {
-                                      // got a description, is it any good?
-                                      var applicationMessageData = applicationMessage.getPayload();
-                                      return JSON.parse(applicationMessageData.toString());
-                                    }), new _promise2.default(function (resolve) {
-                                      if (systemInformation.f && systemInformation.v) {
-                                        resolve(systemInformation);
-                                      }
-                                    })]);
-
-                                  case 9:
-                                    functionState = _context11.sent;
-
-                                    if (functionState && functionState.v) {
-                                      // 'v':{'temperature':2}
-                                      functionState.v = _Messages2.default.translateIntTypes(functionState.v);
-                                    }
-
-                                    return _context11.abrupt('return', {
-                                      v: { functionState: functionState, systemInformation: systemInformation }
-                                    });
-
-                                  case 12:
-                                  case 'end':
-                                    return _context11.stop();
-                                }
-                              }
-                            }, _callee11, _this2);
-                          })(), 't0', 2);
-
-                        case 2:
-                          _ret2 = _context12.t0;
-
-                          if (!((typeof _ret2 === 'undefined' ? 'undefined' : (0, _typeof3.default)(_ret2)) === "object")) {
-                            _context12.next = 5;
-                            break;
-                          }
-
-                          return _context12.abrupt('return', _ret2.v);
-
-                        case 5:
-                          _context12.next = 10;
-                          break;
-
-                        case 7:
-                          _context12.prev = 7;
-                          _context12.t1 = _context12['catch'](0);
-                          return _context12.abrupt('return', null);
-
-                        case 10:
-                        case 'end':
-                          return _context12.stop();
-                      }
-                    }
-                  }, _callee12, _this2, [[0, 7]]);
-                }));
-
-                return function getDescribeData() {
-                  return _ref12.apply(this, arguments);
+                  clearTimeout(timeout);
+                  cleanUpListeners();
+                  resolve({ functionState: functionState, systemInformation: systemInformation });
                 };
-              }();
 
-              _context13.prev = 3;
+                var disconnectHandler = function disconnectHandler() {
+                  cleanUpListeners();
+                  reject();
+                };
 
-              // sometimes the second describe message comes before we have listenFor
-              // promise setup, in those cases we are trying to refetch the data again.
-              MAX_TRIES = 3;
-              triesCounter = 0;
-              _context13.next = 8;
-              return getDescribeData();
+                var cleanUpListeners = function cleanUpListeners() {
+                  _this.removeListener('DescribeReturn', handler);
+                  _this.removeListener('disconnect', disconnectHandler);
+                };
 
-            case 8:
-              deviceDescription = _context13.sent;
+                _this.on('DescribeReturn', handler);
+                _this.on('disconnect', disconnectHandler);
+              });
 
-            case 9:
-              if (!(!deviceDescription && triesCounter < MAX_TRIES)) {
-                _context13.next = 16;
-                break;
-              }
+            case 6:
+              result = _context11.sent;
 
-              _context13.next = 12;
-              return getDescribeData();
 
-            case 12:
-              deviceDescription = _context13.sent;
-
-              triesCounter += 1;
-              _context13.next = 9;
+              _this._systemInformation = result.systemInformation;
+              _this._deviceFunctionState = result.functionState;
+              _context11.next = 15;
               break;
 
-            case 16:
-              if (deviceDescription) {
-                _context13.next = 18;
-                break;
-              }
+            case 11:
+              _context11.prev = 11;
+              _context11.t0 = _context11['catch'](2);
 
-              throw new Error('can\'t get describe data');
+              _logger2.default.error('_ensureWeHaveIntrospectionData error: ' + _context11.t0);
+              throw _context11.t0;
 
-            case 18:
-              _deviceDescription = deviceDescription, _functionState = _deviceDescription.functionState, _systemInformation = _deviceDescription.systemInformation;
-
-
-              _this._systemInformation = _systemInformation;
-              _this._deviceFunctionState = _functionState;
-              _context13.next = 27;
-              break;
-
-            case 23:
-              _context13.prev = 23;
-              _context13.t0 = _context13['catch'](3);
-
-              _logger2.default.error('_ensureWeHaveIntrospectionData error: ' + _context13.t0);
-              throw _context13.t0;
-
-            case 27:
+            case 15:
             case 'end':
-              return _context13.stop();
+              return _context11.stop();
           }
         }
-      }, _callee13, _this2, [[3, 23]]);
+      }, _callee11, _this2, [[2, 11]]);
     }));
-    _this.getSystemInformation = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee14() {
-      return _regenerator2.default.wrap(function _callee14$(_context14) {
+    _this.getSystemInformation = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee12() {
+      return _regenerator2.default.wrap(function _callee12$(_context12) {
         while (1) {
-          switch (_context14.prev = _context14.next) {
+          switch (_context12.prev = _context12.next) {
             case 0:
-              _context14.next = 2;
+              _context12.next = 2;
               return _this._ensureWeHaveIntrospectionData();
 
             case 2:
-              return _context14.abrupt('return', _this._systemInformation);
+              return _context12.abrupt('return', _this._systemInformation);
 
             case 3:
             case 'end':
-              return _context14.stop();
+              return _context12.stop();
           }
         }
-      }, _callee14, _this2);
+      }, _callee12, _this2);
     }));
 
     _this.onCoreEvent = function (event) {

@@ -875,75 +875,69 @@ class Device extends EventEmitter {
       return;
     }
 
-    const getDescribeData = async (): Promise<?{
-      functionState: Object,
-      systemInformation: Object,
-    }> => {
-      try {
-        const token = this.sendMessage('Describe');
-        const systemMessage = await this.listenFor(
-          'DescribeReturn',
-          null,
-          token,
-        );
-
-        // Sometimes this listener will
-        const functionStateAwaitable = this.listenFor(
-          'DescribeReturn',
-          null,
-          token,
-        );
-
-        // got a description, is it any good?
-        const data = systemMessage.getPayload();
-        const systemInformation = JSON.parse(data.toString());
-
-        // In the newer firmware the application data comes in a later message.
-        // We run a race to see if the function state comes in the first response.
-
-        const functionState = await Promise.race([
-          functionStateAwaitable.then((applicationMessage: Message): Object => {
-            // got a description, is it any good?
-            const applicationMessageData = applicationMessage.getPayload();
-            return JSON.parse(applicationMessageData.toString());
-          }),
-          new Promise((resolve: (systemInformation: Object) => void) => {
-            if (systemInformation.f && systemInformation.v) {
-              resolve(systemInformation);
-            }
-          }),
-        ]);
-        if (functionState && functionState.v) {
-          // 'v':{'temperature':2}
-          functionState.v = Messages.translateIntTypes(functionState.v);
-        }
-
-        return { functionState, systemInformation };
-      } catch (error) {
-        return null;
-      }
-    };
-
     try {
-      // sometimes the second describe message comes before we have listenFor
-      // promise setup, in those cases we are trying to refetch the data again.
-      const MAX_TRIES = 3;
-      let triesCounter = 0;
+      // Because some firmware versions do not send the app + system state in a
+      // single message, we cannot use `listenFor` and instead have to write
+      // some hacky code that duplicates a lot of the functionality
+      this.sendMessage('Describe');
+      const result = await new Promise((
+        resolve: (message: Message) => void,
+        reject: (error?: Error) => void,
+      ) => {
+        const timeout = setTimeout(
+          () => {
+            cleanUpListeners();
+            reject(new Error('Request timed out'));
+          },
+          KEEP_ALIVE_TIMEOUT,
+        );
 
-      let deviceDescription = await getDescribeData();
-      while (!deviceDescription && triesCounter < MAX_TRIES) {
-        deviceDescription = await getDescribeData();
-        triesCounter += 1;
-      }
+        let systemInformation = null;
+        let functionState = null;
+        const handler = (message: Message) => {
+          const payload = message.getPayload();
+          if (!payload) {
+            reject(new Error('Payload empty for Describe message'));
+          }
 
-      if (!deviceDescription) {
-        throw new Error('can\'t get describe data');
-      }
+          const data = JSON.parse(payload.toString());
 
-      const { functionState, systemInformation } = deviceDescription;
 
-      this._systemInformation = systemInformation;
-      this._deviceFunctionState = functionState;
+          if (!systemInformation) {
+            systemInformation = data;
+          }
+
+          if (data && data.v) {
+            functionState = data;
+            // 'v':{'temperature':2}
+            functionState.v = Messages.translateIntTypes(functionState.v);
+          }
+
+          if (!systemInformation || !functionState) {
+            return;
+          }
+
+          clearTimeout(timeout);
+          cleanUpListeners();
+          resolve({ functionState, systemInformation });
+        };
+
+        const disconnectHandler = () => {
+          cleanUpListeners();
+          reject();
+        };
+
+        const cleanUpListeners = () => {
+          this.removeListener('DescribeReturn', handler);
+          this.removeListener('disconnect', disconnectHandler);
+        };
+
+        this.on('DescribeReturn', handler);
+        this.on('disconnect', disconnectHandler);
+      });
+
+      this._systemInformation = result.systemInformation;
+      this._deviceFunctionState = result.functionState;
     } catch (error) {
       logger.error(`_ensureWeHaveIntrospectionData error: ${error}`);
       throw error;
