@@ -117,7 +117,7 @@ class DeviceServer {
 
       logger.log(
         `Connection from: ${device.getRemoteIPAddress()} - ` +
-        `Connection ID: ${connectionIdCounter}`,
+          `Connection ID: ${connectionIdCounter}`,
       );
 
       await device.startupProtocol();
@@ -209,10 +209,6 @@ class DeviceServer {
     device: Device,
   ): Promise<void> => {
     const deviceID = device.getID();
-    const connectionKey = device.getConnectionKey();
-    const deviceAttributes =
-      await this._deviceAttributeRepository.getById(deviceID);
-    const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
     const newDevice = this._devicesById.get(deviceID);
     if (device !== newDevice) {
@@ -221,6 +217,11 @@ class DeviceServer {
 
     this._devicesById.delete(deviceID);
     this._eventPublisher.unsubscribeBySubscriberID(deviceID);
+
+    const connectionKey = device.getConnectionKey();
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+    const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
     this.publishSpecialEvent(
       SYSTEM_EVENT_NAMES.SPARK_STATUS,
@@ -257,7 +258,7 @@ class DeviceServer {
           'Device was already connected. Reconnecting.\r\n',
         );
 
-        this._onDeviceDisconnect(device)
+        this._onDeviceDisconnect(device);
       }
 
       this._devicesById.set(deviceID, device);

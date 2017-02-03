@@ -212,32 +212,34 @@ var DeviceServer = function () {
 
     this._onDeviceDisconnect = function () {
       var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(device) {
-        var deviceID, connectionKey, deviceAttributes, ownerID, newDevice;
+        var deviceID, newDevice, connectionKey, deviceAttributes, ownerID;
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
                 deviceID = device.getID();
-                connectionKey = device.getConnectionKey();
-                _context3.next = 4;
-                return _this._deviceAttributeRepository.getById(deviceID);
-
-              case 4:
-                deviceAttributes = _context3.sent;
-                ownerID = deviceAttributes && deviceAttributes.ownerID;
                 newDevice = _this._devicesById.get(deviceID);
 
                 if (!(device !== newDevice)) {
-                  _context3.next = 9;
+                  _context3.next = 4;
                   break;
                 }
 
                 return _context3.abrupt('return');
 
-              case 9:
+              case 4:
 
                 _this._devicesById.delete(deviceID);
                 _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
+
+                connectionKey = device.getConnectionKey();
+                _context3.next = 9;
+                return _this._deviceAttributeRepository.getById(deviceID);
+
+              case 9:
+                deviceAttributes = _context3.sent;
+                ownerID = deviceAttributes && deviceAttributes.ownerID;
+
 
                 _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'offline', deviceID, ownerID);
                 _logger2.default.log('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + ('' + (connectionKey || 'no connection key')));

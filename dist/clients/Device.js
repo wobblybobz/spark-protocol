@@ -990,13 +990,21 @@ var Device = function (_EventEmitter) {
               return _context11.abrupt('return');
 
             case 2:
-              _context11.prev = 2;
+              _context11.next = 4;
+              return new _promise2.default(function (resolve) {
+                return setTimeout(function () {
+                  return resolve();
+                }, 10);
+              });
+
+            case 4:
+              _context11.prev = 4;
 
               // Because some firmware versions do not send the app + system state in a
               // single message, we cannot use `listenFor` and instead have to write
               // some hacky code that duplicates a lot of the functionality
               _this.sendMessage('Describe');
-              _context11.next = 6;
+              _context11.next = 8;
               return new _promise2.default(function (resolve, reject) {
                 var timeout = setTimeout(function () {
                   cleanUpListeners();
@@ -1046,28 +1054,28 @@ var Device = function (_EventEmitter) {
                 _this.on('disconnect', disconnectHandler);
               });
 
-            case 6:
+            case 8:
               result = _context11.sent;
 
 
               _this._systemInformation = result.systemInformation;
               _this._deviceFunctionState = result.functionState;
-              _context11.next = 15;
+              _context11.next = 17;
               break;
 
-            case 11:
-              _context11.prev = 11;
-              _context11.t0 = _context11['catch'](2);
+            case 13:
+              _context11.prev = 13;
+              _context11.t0 = _context11['catch'](4);
 
               _logger2.default.error('_ensureWeHaveIntrospectionData error: ' + _context11.t0);
               throw _context11.t0;
 
-            case 15:
+            case 17:
             case 'end':
               return _context11.stop();
           }
         }
-      }, _callee11, _this2, [[2, 11]]);
+      }, _callee11, _this2, [[4, 13]]);
     }));
     _this.getSystemInformation = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee12() {
       return _regenerator2.default.wrap(function _callee12$(_context12) {
