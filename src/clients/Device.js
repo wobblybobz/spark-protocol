@@ -1016,6 +1016,8 @@ class Device extends EventEmitter {
 
   getID = (): string => this._id;
 
+  getConnectionKey = (): ?string => this._connectionKey;
+
   getRemoteIPAddress = (): string =>
     this._socket.remoteAddress
       ? this._socket.remoteAddress.toString()

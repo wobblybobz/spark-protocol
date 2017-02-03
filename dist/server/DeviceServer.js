@@ -144,7 +144,7 @@ var DeviceServer = function () {
                           });
 
                           device.on(_Device.DEVICE_EVENT_NAMES.DISCONNECT, function () {
-                            return _this._onDeviceDisconnect(device, connectionKey);
+                            return _this._onDeviceDisconnect(device);
                           });
 
                           device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE, function (message) {
@@ -211,30 +211,38 @@ var DeviceServer = function () {
     }();
 
     this._onDeviceDisconnect = function () {
-      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(device, connectionKey) {
-        var deviceID, deviceAttributes, ownerID;
+      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(device) {
+        var deviceID, connectionKey, deviceAttributes, ownerID, newDevice;
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
                 deviceID = device.getID();
-                _context3.next = 3;
+                connectionKey = device.getConnectionKey();
+                _context3.next = 4;
                 return _this._deviceAttributeRepository.getById(deviceID);
 
-              case 3:
+              case 4:
                 deviceAttributes = _context3.sent;
                 ownerID = deviceAttributes && deviceAttributes.ownerID;
+                newDevice = _this._devicesById.get(deviceID);
 
-
-                if (_this._devicesById.has(deviceID)) {
-                  _this._devicesById.delete(deviceID);
-                  _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
-
-                  _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'offline', deviceID, ownerID);
-                  _logger2.default.log('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + ('' + connectionKey));
+                if (!(device !== newDevice)) {
+                  _context3.next = 9;
+                  break;
                 }
 
-              case 6:
+                return _context3.abrupt('return');
+
+              case 9:
+
+                _this._devicesById.delete(deviceID);
+                _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
+
+                _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'offline', deviceID, ownerID);
+                _logger2.default.log('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + ('' + (connectionKey || 'no connection key')));
+
+              case 13:
               case 'end':
                 return _context3.stop();
             }
@@ -242,7 +250,7 @@ var DeviceServer = function () {
         }, _callee3, _this);
       }));
 
-      return function (_x2, _x3) {
+      return function (_x2) {
         return _ref2.apply(this, arguments);
       };
     }();
@@ -276,6 +284,8 @@ var DeviceServer = function () {
                             existingConnection = _this._devicesById.get(deviceID);
 
                             (0, _nullthrows2.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
+
+                            _this._onDeviceDisconnect(device);
                           }
 
                           _this._devicesById.set(deviceID, device);
@@ -378,7 +388,7 @@ var DeviceServer = function () {
         }, _callee6, _this, [[0, 4]]);
       }));
 
-      return function (_x4) {
+      return function (_x3) {
         return _ref3.apply(this, arguments);
       };
     }();
@@ -515,7 +525,7 @@ var DeviceServer = function () {
         }, _callee8, _this, [[0, 4]]);
       }));
 
-      return function (_x5, _x6, _x7) {
+      return function (_x4, _x5, _x6) {
         return _ref4.apply(this, arguments);
       };
     }();
@@ -571,7 +581,7 @@ var DeviceServer = function () {
         }, _callee9, _this);
       }));
 
-      return function (_x8, _x9) {
+      return function (_x7, _x8) {
         return _ref5.apply(this, arguments);
       };
     }();
@@ -638,7 +648,7 @@ var DeviceServer = function () {
         }, _callee10, _this);
       }));
 
-      return function (_x10, _x11) {
+      return function (_x9, _x10) {
         return _ref6.apply(this, arguments);
       };
     }();

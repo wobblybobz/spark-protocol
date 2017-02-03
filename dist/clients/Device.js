@@ -1143,6 +1143,10 @@ var Device = function (_EventEmitter) {
       return _this._id;
     };
 
+    _this.getConnectionKey = function () {
+      return _this._connectionKey;
+    };
+
     _this.getRemoteIPAddress = function () {
       return _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown';
     };

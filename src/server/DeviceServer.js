@@ -134,7 +134,7 @@ class DeviceServer {
 
       device.on(
         DEVICE_EVENT_NAMES.DISCONNECT,
-        (): Promise<void> => this._onDeviceDisconnect(device, connectionKey),
+        (): Promise<void> => this._onDeviceDisconnect(device),
       );
 
       device.on(
@@ -207,28 +207,31 @@ class DeviceServer {
 
   _onDeviceDisconnect = async (
     device: Device,
-    connectionKey: string,
   ): Promise<void> => {
     const deviceID = device.getID();
+    const connectionKey = device.getConnectionKey();
     const deviceAttributes =
       await this._deviceAttributeRepository.getById(deviceID);
     const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
-    if (this._devicesById.has(deviceID)) {
-      this._devicesById.delete(deviceID);
-      this._eventPublisher.unsubscribeBySubscriberID(deviceID);
-
-      this.publishSpecialEvent(
-        SYSTEM_EVENT_NAMES.SPARK_STATUS,
-        'offline',
-        deviceID,
-        ownerID,
-      );
-      logger.log(
-        `Session ended for device with ID: ${deviceID} with connectionKey: ` +
-        `${connectionKey}`,
-      );
+    const newDevice = this._devicesById.get(deviceID);
+    if (device !== newDevice) {
+      return;
     }
+
+    this._devicesById.delete(deviceID);
+    this._eventPublisher.unsubscribeBySubscriberID(deviceID);
+
+    this.publishSpecialEvent(
+      SYSTEM_EVENT_NAMES.SPARK_STATUS,
+      'offline',
+      deviceID,
+      ownerID,
+    );
+    logger.log(
+      `Session ended for device with ID: ${deviceID} with connectionKey: ` +
+      `${connectionKey || 'no connection key'}`,
+    );
   };
 
   _onDeviceGetTime = (message: Message, device: Device) => {
@@ -253,6 +256,8 @@ class DeviceServer {
         nullthrows(existingConnection).disconnect(
           'Device was already connected. Reconnecting.\r\n',
         );
+
+        this._onDeviceDisconnect(device)
       }
 
       this._devicesById.set(deviceID, device);
