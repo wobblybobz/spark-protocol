@@ -878,7 +878,7 @@ class Device extends EventEmitter {
     // data is ready. This is super hacky but there wasn't another event to
     // listen to.
     await new Promise(
-      (resolve: () => void): number => setTimeout((): void => resolve(), 10),
+      (resolve: () => void) => setTimeout((): void => resolve(), 10),
     );
 
     try {
