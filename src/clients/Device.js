@@ -877,7 +877,9 @@ class Device extends EventEmitter {
     // We need to wait a little bit to make sure that the device's function
     // data is ready. This is super hacky but there wasn't another event to
     // listen to.
-    await new Promise(resolve => setTimeout(() => resolve(), 10));
+    await new Promise(
+      (resolve: () => number) => setTimeout(() => resolve(), 10),
+    );
 
     try {
       // Because some firmware versions do not send the app + system state in a
