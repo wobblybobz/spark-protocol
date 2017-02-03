@@ -200,6 +200,7 @@ var Device = function (_EventEmitter) {
     _this._reservedFlags = 0;
     _this._sendCounter = 0;
     _this._sendToken = 0;
+    _this._socketTimeoutInterval = null;
     _this._tokens = {};
 
     _this.setMaxBinarySize = function (maxBinarySize) {
@@ -277,6 +278,7 @@ var Device = function (_EventEmitter) {
                             return;
                           }
                           _this.routeMessage(chunk);
+                          _this._socketHasUpdated();
                         });
 
                       case 13:
@@ -305,6 +307,15 @@ var Device = function (_EventEmitter) {
         }
       }, _callee3, _this2, [[0, 4]]);
     }));
+
+    _this._socketHasUpdated = function () {
+      if (_this._socketTimeoutInterval) {
+        clearTimeout(_this._socketTimeoutInterval);
+      }
+      _this._socketTimeoutInterval = setTimeout(function () {
+        return _this.disconnect('socket timeout');
+      }, SOCKET_TIMEOUT);
+    };
 
     _this._getHello = function (chunk) {
       var message = _Messages2.default.unwrap(chunk);
@@ -1225,6 +1236,12 @@ var Device = function (_EventEmitter) {
   /**
    * configure our socket and start the handshake
    */
+
+
+  // This handles the case on some operating systems where `socket.setTimeout`
+  // doesn't work. On windows, that function will timeout when if the client
+  // doesn't send a reply. On Linux as long as someone is reading or writing
+  // to a socket it will stay open.
 
 
   /**
