@@ -278,7 +278,7 @@ var Device = function (_EventEmitter) {
                             return;
                           }
                           _this.routeMessage(chunk);
-                          _this._socketHasUpdated();
+                          _this._clientHasWrittenToSocket();
                         });
 
                       case 13:
@@ -308,7 +308,7 @@ var Device = function (_EventEmitter) {
       }, _callee3, _this2, [[0, 4]]);
     }));
 
-    _this._socketHasUpdated = function () {
+    _this._clientHasWrittenToSocket = function () {
       if (_this._socketTimeoutInterval) {
         clearTimeout(_this._socketTimeoutInterval);
       }

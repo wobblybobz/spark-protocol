@@ -217,7 +217,7 @@ class Device extends EventEmitter {
           return;
         }
         this.routeMessage(chunk);
-        this._socketHasUpdated();
+        this._clientHasWrittenToSocket();
       });
     } catch (error) {
       this.disconnect(error);
@@ -229,7 +229,7 @@ class Device extends EventEmitter {
   // doesn't work. On windows, that function will timeout when if the client
   // doesn't send a reply. On Linux as long as someone is reading or writing
   // to a socket it will stay open.
-  _socketHasUpdated = (): void => {
+  _clientHasWrittenToSocket = () => {
     if (this._socketTimeoutInterval) {
       clearTimeout(this._socketTimeoutInterval);
     }
