@@ -258,7 +258,7 @@ class DeviceServer {
           'Device was already connected. Reconnecting.\r\n',
         );
 
-        this._onDeviceDisconnect(device);
+        await this._onDeviceDisconnect(device);
       }
 
       this._devicesById.set(deviceID, device);
