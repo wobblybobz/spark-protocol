@@ -75,27 +75,27 @@ var _nullthrows2 = _interopRequireDefault(_nullthrows);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-// Hello — sent first by Core then by Server immediately after handshake, never again
+// Hello — sent first by Device then by Server immediately after handshake, never again
 // Ignored — sent by either side to respond to a message with a bad counter value.
 // The receiver of an Ignored message can optionally decide to resend a previous message
 // if the indicated bad counter value matches a recently sent message.
 
 // package flasher
-// Chunk — sent by Server to send chunks of a firmware binary to Core
-// ChunkReceived — sent by Core to respond to each chunk,
+// Chunk — sent by Server to send chunks of a firmware binary to Device
+// ChunkReceived — sent by Device to respond to each chunk,
 // indicating the CRC of the received chunk data.
 // if Server receives CRC that does not match the chunk just sent, that chunk is sent again
 // UpdateBegin — sent by Server to initiate an OTA firmware update
-// UpdateReady — sent by Core to indicate readiness to receive firmware chunks
+// UpdateReady — sent by Device to indicate readiness to receive firmware chunks
 // UpdateDone — sent by Server to indicate all firmware chunks have been sent
 
-// FunctionCall — sent by Server to tell Core to call a user-exposed function
-// FunctionReturn — sent by Core in response to FunctionCall to indicate return value.
+// FunctionCall — sent by Server to tell Device to call a user-exposed function
+// FunctionReturn — sent by Device in response to FunctionCall to indicate return value.
 // void functions will not send this message
 // VariableRequest — sent by Server to request the value of a user-exposed variable
-// VariableValue — sent by Core in response to VariableRequest to indicate the value
+// VariableValue — sent by Device in response to VariableRequest to indicate the value
 
-// Event — sent by Core to initiate a Server Sent Event and optionally
+// Event — sent by Device to initiate a Server Sent Event and optionally
 // an HTTP callback to a 3rd party
 // KeyChange — sent by Server to change the AES credentials
 
@@ -190,7 +190,7 @@ var Device = function (_EventEmitter) {
     _this._deviceFunctionState = null;
     _this._disconnectCounter = 0;
     _this._id = '';
-    _this._lastCorePing = new Date();
+    _this._lastDevicePing = new Date();
     _this._maxBinarySize = null;
     _this._otaChunkSize = null;
     _this._particleProductId = 0;
@@ -336,8 +336,8 @@ var Device = function (_EventEmitter) {
         _this._productFirmwareVersion = payloadBuffer.shiftUInt16();
         _this._reservedFlags = payloadBuffer.shiftUInt16();
         _this._platformId = payloadBuffer.shiftUInt16();
-      } catch (exception) {
-        _logger2.default.log('error while parsing hello payload ', exception);
+      } catch (error) {
+        _logger2.default.log('error while parsing hello payload ', error);
       }
     };
 
@@ -372,7 +372,7 @@ var Device = function (_EventEmitter) {
 
       return {
         connected: _this._socket !== null,
-        lastPing: _this._lastCorePing
+        lastPing: _this._lastDevicePing
       };
     };
 
@@ -407,7 +407,7 @@ var Device = function (_EventEmitter) {
 
       _this._incrementReceiveCounter();
       if (message.isEmpty() && message.isConfirmable()) {
-        _this._lastCorePing = new Date();
+        _this._lastDevicePing = new Date();
         _this.sendReply('PingAck', message.getId());
         return;
       }
@@ -723,7 +723,7 @@ var Device = function (_EventEmitter) {
               case 8:
 
                 if (_settings2.default.showVerboseDeviceLogs) {
-                  _logger2.default.log('sending function call to the core', { deviceID: _this._id, functionName: functionName });
+                  _logger2.default.log('sending function call to the device', { deviceID: _this._id, functionName: functionName });
                 }
 
                 writeUrl = function writeUrl(message) {
@@ -881,7 +881,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this.releaseOwnership = function (flasher) {
-      _logger2.default.log('releasing flash ownership ', { coreID: _this._id });
+      _logger2.default.log('releasing flash ownership ', { deviceID: _this._id });
       if (_this._owningFlasher === flasher) {
         _this._owningFlasher = null;
       } else if (_this._owningFlasher) {
@@ -890,7 +890,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this._transformVariableResult = function (name, message) {
-      // grab the variable type, if the core doesn't say, assume it's a 'string'
+      // grab the variable type, if the device doesn't say, assume it's a 'string'
       var variableFunctionState = _this._deviceFunctionState ? _this._deviceFunctionState.v : null;
       var variableType = variableFunctionState && variableFunctionState[name] ? variableFunctionState[name] : 'string';
 
@@ -1107,11 +1107,11 @@ var Device = function (_EventEmitter) {
       }, _callee12, _this2);
     }));
 
-    _this.onCoreEvent = function (event) {
-      _this.sendCoreEvent(event);
+    _this.onDeviceEvent = function (event) {
+      _this.sendDeviceEvent(event);
     };
 
-    _this.sendCoreEvent = function (event) {
+    _this.sendDeviceEvent = function (event) {
       var data = event.data,
           isPublic = event.isPublic,
           name = event.name,
@@ -1124,7 +1124,7 @@ var Device = function (_EventEmitter) {
           message.setMaxAge(ttl);
           message.setTimestamp((0, _moment2.default)(publishedAt).toDate());
         } catch (error) {
-          _logger2.default.error('onCoreHeard - ' + error.message);
+          _logger2.default.error('onDeviceHeard - ' + error.message);
         }
 
         return message;
@@ -1187,7 +1187,7 @@ var Device = function (_EventEmitter) {
           duration: _this._connectionStartTime ? (new Date() - _this._connectionStartTime) / 1000.0 : undefined
         };
 
-        _logger2.default.log(_this._disconnectCounter + ' : Core disconnected: ' + (message || ''), logInfo);
+        _logger2.default.log(_this._disconnectCounter + ' : Device disconnected: ' + (message || ''), logInfo);
       } catch (error) {
         _logger2.default.error('Disconnect log error ' + error);
       }
@@ -1245,7 +1245,7 @@ var Device = function (_EventEmitter) {
 
 
   /**
-   * Deals with messages coming from the core over our secure connection
+   * Deals with messages coming from the device over our secure connection
    * @param data
    */
 
@@ -1266,7 +1266,7 @@ var Device = function (_EventEmitter) {
 
 
   /**
-   * Ensures we have introspection data from the core, and then
+   * Ensures we have introspection data from the device, and then
    * requests a variable value to be sent, when received it transforms
    * the response into the appropriate type
    **/
@@ -1276,13 +1276,13 @@ var Device = function (_EventEmitter) {
 
 
   /**
-   * Asks the core to start or stop its 'raise your hand' signal.
+   * Asks the device to start or stop its 'raise your hand' signal.
    * This will turn `nyan` mode on or off which just flashes the LED a bunch of
    * colors.
    */
 
 
-  // Transforms the result from a core function to the correct type.
+  // Transforms the result from a device function to the correct type.
 
 
   // transforms our object into a nice coap query string
@@ -1290,12 +1290,12 @@ var Device = function (_EventEmitter) {
 
   /**
    * Checks our cache to see if we have the function state, otherwise requests
-   * it from the core, listens for it, and resolves our deferred on success
+   * it from the device, listens for it, and resolves our deferred on success
    */
 
 
   //-------------
-  // Core Events / Spark.publish / Spark.subscribe
+  // Device Events / Spark.publish / Spark.subscribe
   //-------------
 
 

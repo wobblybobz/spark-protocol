@@ -533,7 +533,7 @@ class DeviceServer {
 
     this._eventPublisher.subscribe(
       messageName,
-      device.onCoreEvent,
+      device.onDeviceEvent,
       { mydevices: isFromMyDevices, userID: ownerID },
       deviceID,
     );

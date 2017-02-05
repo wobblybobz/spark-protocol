@@ -86,9 +86,9 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 //
 // UpdateBegin — sent by Server to initiate an OTA firmware update
-// UpdateReady — sent by Core to indicate readiness to receive firmware chunks
-// Chunk — sent by Server to send chunks of a firmware binary to Core
-// ChunkReceived — sent by Core to respond to each chunk, indicating the CRC of
+// UpdateReady — sent by Device to indicate readiness to receive firmware chunks
+// Chunk — sent by Server to send chunks of a firmware binary to Device
+// ChunkReceived — sent by Device to respond to each chunk, indicating the CRC of
 // the received chunk data.  if Server receives CRC that does not match the chunk just sent,
 // that chunk is sent again
 // UpdateDone — sent by Server to indicate all firmware chunks have been sent
@@ -116,7 +116,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var CHUNK_SIZE = 256;
 var MAX_MISSED_CHUNKS = 10;
-var MAX_BINARY_SIZE = 108000; // According to the forums this is the max size for core.
+var MAX_BINARY_SIZE = 108000; // According to the forums this is the max size for device.
 
 var Flasher =
 
@@ -240,7 +240,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
   };
 
   this._claimConnection = function () {
-    // suspend all other messages to the core
+    // suspend all other messages to the device
     if (!_this._client.takeOwnership(_this)) {
       throw new Error('Flasher: Unable to take ownership');
     }
@@ -414,8 +414,8 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
             _this._lastCrc = null;
 
             // while iterating over our file...
-            // Chunk — sent by Server to send chunks of a firmware binary to Core
-            // ChunkReceived — sent by Core to respond to each chunk, indicating the CRC
+            // Chunk — sent by Server to send chunks of a firmware binary to Device
+            // ChunkReceived — sent by Device to respond to each chunk, indicating the CRC
             //  of the received chunk data.  if Server receives CRC that does not match
             //  the chunk just sent, that chunk is sent again
 
@@ -639,7 +639,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
   this._cleanup = function () {
     try {
-      // resume all other messages to the core
+      // resume all other messages to the device
       _this._client.releaseOwnership(_this);
 
       // release our file handle
