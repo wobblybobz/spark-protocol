@@ -643,7 +643,7 @@ var DeviceServer = function () {
 
               case 16:
 
-                _this._eventPublisher.subscribe(messageName, device.onCoreEvent, { mydevices: isFromMyDevices, userID: ownerID }, deviceID);
+                _this._eventPublisher.subscribe(messageName, device.onDeviceEvent, { mydevices: isFromMyDevices, userID: ownerID }, deviceID);
 
                 device.sendReply('SubscribeAck', message.getId());
 

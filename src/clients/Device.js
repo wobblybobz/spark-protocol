@@ -48,27 +48,27 @@ type DeviceDescription = {|
   systemInformation: Object,
 |};
 
-// Hello — sent first by Core then by Server immediately after handshake, never again
+// Hello — sent first by Device then by Server immediately after handshake, never again
 // Ignored — sent by either side to respond to a message with a bad counter value.
 // The receiver of an Ignored message can optionally decide to resend a previous message
 // if the indicated bad counter value matches a recently sent message.
 
 // package flasher
-// Chunk — sent by Server to send chunks of a firmware binary to Core
-// ChunkReceived — sent by Core to respond to each chunk,
+// Chunk — sent by Server to send chunks of a firmware binary to Device
+// ChunkReceived — sent by Device to respond to each chunk,
 // indicating the CRC of the received chunk data.
 // if Server receives CRC that does not match the chunk just sent, that chunk is sent again
 // UpdateBegin — sent by Server to initiate an OTA firmware update
-// UpdateReady — sent by Core to indicate readiness to receive firmware chunks
+// UpdateReady — sent by Device to indicate readiness to receive firmware chunks
 // UpdateDone — sent by Server to indicate all firmware chunks have been sent
 
-// FunctionCall — sent by Server to tell Core to call a user-exposed function
-// FunctionReturn — sent by Core in response to FunctionCall to indicate return value.
+// FunctionCall — sent by Server to tell Device to call a user-exposed function
+// FunctionReturn — sent by Device in response to FunctionCall to indicate return value.
 // void functions will not send this message
 // VariableRequest — sent by Server to request the value of a user-exposed variable
-// VariableValue — sent by Core in response to VariableRequest to indicate the value
+// VariableValue — sent by Device in response to VariableRequest to indicate the value
 
-// Event — sent by Core to initiate a Server Sent Event and optionally
+// Event — sent by Device to initiate a Server Sent Event and optionally
 // an HTTP callback to a 3rd party
 // KeyChange — sent by Server to change the AES credentials
 
@@ -133,7 +133,7 @@ class Device extends EventEmitter {
   _deviceFunctionState: ?Object = null;
   _disconnectCounter: number = 0;
   _id: string = '';
-  _lastCorePing: Date = new Date();
+  _lastDevicePing: Date = new Date();
   _maxBinarySize: ?number = null;
   _otaChunkSize: ?number = null;
   _owningFlasher: ?Flasher;
@@ -258,8 +258,8 @@ class Device extends EventEmitter {
       this._productFirmwareVersion = payloadBuffer.shiftUInt16();
       this._reservedFlags = payloadBuffer.shiftUInt16();
       this._platformId = payloadBuffer.shiftUInt16();
-    } catch (exception) {
-      logger.log('error while parsing hello payload ', exception);
+    } catch (error) {
+      logger.log('error while parsing hello payload ', error);
     }
   };
 
@@ -300,12 +300,12 @@ class Device extends EventEmitter {
 
     return {
       connected: this._socket !== null,
-      lastPing: this._lastCorePing,
+      lastPing: this._lastDevicePing,
     };
   };
 
   /**
-   * Deals with messages coming from the core over our secure connection
+   * Deals with messages coming from the device over our secure connection
    * @param data
    */
   routeMessage = (data: Buffer) => {
@@ -346,7 +346,7 @@ class Device extends EventEmitter {
 
     this._incrementReceiveCounter();
     if (message.isEmpty() && message.isConfirmable()) {
-      this._lastCorePing = new Date();
+      this._lastDevicePing = new Date();
       this.sendReply('PingAck', message.getId());
       return;
     }
@@ -604,7 +604,7 @@ class Device extends EventEmitter {
   };
 
   /**
-   * Ensures we have introspection data from the core, and then
+   * Ensures we have introspection data from the device, and then
    * requests a variable value to be sent, when received it transforms
    * the response into the appropriate type
    **/
@@ -655,7 +655,7 @@ class Device extends EventEmitter {
 
     if (settings.showVerboseDeviceLogs) {
       logger.log(
-        'sending function call to the core',
+        'sending function call to the device',
         { deviceID: this._id, functionName },
       );
     }
@@ -684,7 +684,7 @@ class Device extends EventEmitter {
   };
 
   /**
-   * Asks the core to start or stop its 'raise your hand' signal.
+   * Asks the device to start or stop its 'raise your hand' signal.
    * This will turn `nyan` mode on or off which just flashes the LED a bunch of
    * colors.
    */
@@ -777,7 +777,7 @@ class Device extends EventEmitter {
   };
 
   releaseOwnership = (flasher: Flasher) => {
-    logger.log('releasing flash ownership ', { coreID: this._id });
+    logger.log('releasing flash ownership ', { deviceID: this._id });
     if (this._owningFlasher === flasher) {
       this._owningFlasher = null;
     } else if (this._owningFlasher) {
@@ -794,7 +794,7 @@ class Device extends EventEmitter {
     name: string,
     message: Message,
   ): ?Buffer => {
-    // grab the variable type, if the core doesn't say, assume it's a 'string'
+    // grab the variable type, if the device doesn't say, assume it's a 'string'
     const variableFunctionState = this._deviceFunctionState
       ? this._deviceFunctionState.v
       : null;
@@ -820,7 +820,7 @@ class Device extends EventEmitter {
     return result;
   };
 
-  // Transforms the result from a core function to the correct type.
+  // Transforms the result from a device function to the correct type.
   _transformFunctionResult = (
     name: string,
     message: Message,
@@ -883,7 +883,7 @@ class Device extends EventEmitter {
 
   /**
    * Checks our cache to see if we have the function state, otherwise requests
-   * it from the core, listens for it, and resolves our deferred on success
+   * it from the device, listens for it, and resolves our deferred on success
    */
   _ensureWeHaveIntrospectionData = async (): Promise<void> => {
     if (this._hasFunctionState()) {
@@ -970,13 +970,13 @@ class Device extends EventEmitter {
   };
 
   //-------------
-  // Core Events / Spark.publish / Spark.subscribe
+  // Device Events / Spark.publish / Spark.subscribe
   //-------------
-  onCoreEvent = (event: Event) => {
-    this.sendCoreEvent(event);
+  onDeviceEvent = (event: Event) => {
+    this.sendDeviceEvent(event);
   };
 
-  sendCoreEvent = (event: Event) => {
+  sendDeviceEvent = (event: Event) => {
     const { data, isPublic, name, publishedAt, ttl } = event;
 
     const rawFunction = (message: Message): void => {
@@ -984,7 +984,7 @@ class Device extends EventEmitter {
         message.setMaxAge(ttl);
         message.setTimestamp(moment(publishedAt).toDate());
       } catch (error) {
-        logger.error(`onCoreHeard - ${error.message}`);
+        logger.error(`onDeviceHeard - ${error.message}`);
       }
 
       return message;
@@ -1061,7 +1061,7 @@ class Device extends EventEmitter {
       };
 
       logger.log(
-        `${this._disconnectCounter} : Core disconnected: ${message || ''}`,
+        `${this._disconnectCounter} : Device disconnected: ${message || ''}`,
          logInfo,
       );
     } catch (error) {

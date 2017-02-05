@@ -33,11 +33,11 @@ import logger from './logger';
  1) Socket opens:
 
  2) Server responds with 40 bytes of random data as a nonce.
- Core should read exactly 40 bytes from the socket.
- Timeout: 30 seconds.  If timeout is reached, Core must close TCP socket
+ Device should read exactly 40 bytes from the socket.
+ Timeout: 30 seconds.  If timeout is reached, Device must close TCP socket
  and retry the connection.
 
- Core appends the 12-byte STM32 Unique ID to the nonce,
+ Device appends the 12-byte STM32 Unique ID to the nonce,
  RSA encrypts the 52-byte message with the Server's public key,
  and sends the resulting 256-byte ciphertext to the Server.
  The Server's public key is stored on the external flash chip at address TBD.
@@ -55,7 +55,7 @@ import logger from './logger';
  The first 40 bytes of the message must match the previously sent nonce,
  otherwise Server must close the connection.
  Remaining 12 bytes of message represent STM32 ID.
- Server looks up STM32 ID, retrieving the Core's public RSA key.
+ Server looks up STM32 ID, retrieving the Device's public RSA key.
  If the public key is not found, Server must close the connection.
 
  4) Server creates secure session key
@@ -63,24 +63,24 @@ import logger from './logger';
  for AES-128-CBC encryption.
  The first 16 bytes (MSB first) will be the key, the next 16 bytes (MSB first)
  will be the initialization vector (IV), and the final 8 bytes (MSB first) will be the salt.
- Server RSA encrypts this 40-byte message using the Core's public key
+ Server RSA encrypts this 40-byte message using the Device's public key
  to create a 128-byte ciphertext.
  Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40 bytes generated
  in the previous step as the HMAC key.
  Server signs the HMAC with its RSA private key generating a 256-byte signature.
- Server sends 384 bytes to Core: the ciphertext then the signature.
+ Server sends 384 bytes to Device: the ciphertext then the signature.
 
  5) Release control back to the Device module
- Core creates a protobufs Hello with counter set to the uint32
+ Device creates a protobufs Hello with counter set to the uint32
  represented by the most significant 4 bytes of the IV,
  encrypts the protobufs Hello with AES, and sends the ciphertext to Server.
  Server reads protobufs Hello from socket, taking note of counter.
- Each subsequent message received from Core must have the counter incremented by 1.
+ Each subsequent message received from Device must have the counter incremented by 1.
  After the max uint32, the next message should set the counter to zero.
 
  Server creates protobufs Hello with counter set to a random uint32,
- encrypts the protobufs Hello with AES, and sends the ciphertext to Core.
- Core reads protobufs Hello from socket, taking note of counter.
+ encrypts the protobufs Hello with AES, and sends the ciphertext to Device.
+ Device reads protobufs Hello from socket, taking note of counter.
  Each subsequent message received from Server must have the counter incremented by 1.
  After the max uint32, the next message should set the counter to zero.
 */
@@ -322,7 +322,7 @@ class Handshake {
   }> => {
     const sessionKey = await this._cryptoManager.getRandomBytes(SESSION_BYTES);
 
-    // Server RSA encrypts this 40-byte message using the Core's public key to
+    // Server RSA encrypts this 40-byte message using the Device's public key to
     // create a 128-byte ciphertext.
     const ciphertext = await this._cryptoManager.encrypt(
       devicePublicKey,
@@ -337,7 +337,7 @@ class Handshake {
     // signature.
     const signedhmac = await this._cryptoManager.sign(hash);
 
-    // Server sends ~384 bytes to Core: the ciphertext then the signature.
+    // Server sends ~384 bytes to Device: the ciphertext then the signature.
     const message = Buffer.concat(
       [ciphertext, signedhmac],
       ciphertext.length + signedhmac.length,

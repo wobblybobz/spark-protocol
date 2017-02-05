@@ -285,7 +285,7 @@ class Messages {
       }
 
       case 'double': {
-        // doubles on the core are little-endian
+        // doubles on the device are little-endian
         return bufferReader.shiftDouble(true);
       }
 
