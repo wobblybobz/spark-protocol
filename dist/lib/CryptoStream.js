@@ -47,9 +47,9 @@ var CryptoStream = function (_Transform) {
     _this._getCipher = function (callback) {
       var cipher = null;
       if (_this._encrypt) {
-        cipher = _crypto2.default.createCipheriv(_settings2.default.cryptoSalt, _this._key, _this._iv);
+        cipher = _crypto2.default.createCipheriv(_settings2.default.CRYPTO_SALT, _this._key, _this._iv);
       } else {
-        cipher = _crypto2.default.createDecipheriv(_settings2.default.cryptoSalt, _this._key, _this._iv);
+        cipher = _crypto2.default.createDecipheriv(_settings2.default.CRYPTO_SALT, _this._key, _this._iv);
       }
 
       var cipherText = null;

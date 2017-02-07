@@ -81,8 +81,8 @@ const COUNTER_MAX = 65536;
  * How big can our tokens be in CoAP messages?
  */
 const TOKEN_COUNTER_MAX = 256;
-const KEEP_ALIVE_TIMEOUT = settings.keepaliveTimeout;
-const SOCKET_TIMEOUT = settings.socketTimeout;
+const KEEP_ALIVE_TIMEOUT = settings.KEEP_ALIVE_TIMEOUT;
+const SOCKET_TIMEOUT = settings.SOCKET_TIMEOUT;
 
 export const DEVICE_EVENT_NAMES = {
   DISCONNECT: 'disconnect',
@@ -469,7 +469,7 @@ class Device extends EventEmitter {
     token: ?number,
   ): Promise<*> => {
     const tokenHex = token ? this._toHexString(token) : null;
-    const beVerbose = settings.showVerboseDeviceLogs;
+    const beVerbose = settings.SHOW_VERBOSE_DEVICE_LOGS;
 
     return new Promise((
       resolve: (message: Message) => void,
@@ -653,7 +653,7 @@ class Device extends EventEmitter {
       throw new Error(`Unknown Function ${functionName}`);
     }
 
-    if (settings.showVerboseDeviceLogs) {
+    if (settings.SHOW_VERBOSE_DEVICE_LOGS) {
       logger.log(
         'sending function call to the device',
         { deviceID: this._id, functionName },

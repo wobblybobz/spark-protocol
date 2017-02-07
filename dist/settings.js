@@ -16,23 +16,19 @@ exports.default = {
   DEFAULT_EVENT_TTL: 60,
   DEVICE_DIRECTORY: _path2.default.join(__dirname, '../data/deviceKeys'),
   SERVER_CONFIG: {
-    host: 'localhost',
-    port: 5683
+    HOST: 'localhost',
+    PORT: 5683
   },
   SERVER_KEY_FILENAME: 'default_key.pem',
   SERVER_KEY_PASSWORD: null,
   SERVER_KEYS_DIRECTORY: _path2.default.join(__dirname, '../data/users'),
-  environment: 'prn',
-  /**
-   * Your server crypto keys!
-   */
-  cryptoSalt: 'aes-128-cbc',
-  keepaliveTimeout: 15000, // 15 seconds
-  socketTimeout: 31000, // 31 seconds
 
-  verboseProtocol: false,
-  showVerboseDeviceLogs: false,
-  logApiMessages: true
+  CRYPTO_SALT: 'aes-128-cbc',
+  KEEP_ALIVE_TIMEOUT: 15000, // 15 seconds
+  SOCKET_TIMEOUT: 31000, // 31 seconds
+
+  VERBOSE_PROTOCOL: false,
+  SHOW_VERBOSE_DEVICE_LOGS: false
 }; /*
     *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
     *

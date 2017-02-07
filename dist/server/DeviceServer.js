@@ -699,7 +699,7 @@ var DeviceServer = function () {
         return _logger2.default.error('something blew up ' + error.message);
       });
 
-      var serverPort = this._config.port.toString();
+      var serverPort = this._config.PORT.toString();
       server.listen(serverPort, function () {
         return _logger2.default.log('Server started on port: ' + serverPort);
       });
