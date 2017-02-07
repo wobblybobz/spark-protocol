@@ -128,8 +128,8 @@ var COUNTER_MAX = 65536;
 */
 
 var TOKEN_COUNTER_MAX = 256;
-var KEEP_ALIVE_TIMEOUT = _settings2.default.keepaliveTimeout;
-var SOCKET_TIMEOUT = _settings2.default.socketTimeout;
+var KEEP_ALIVE_TIMEOUT = _settings2.default.KEEP_ALIVE_TIMEOUT;
+var SOCKET_TIMEOUT = _settings2.default.SOCKET_TIMEOUT;
 
 var DEVICE_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = {
   DISCONNECT: 'disconnect',
@@ -498,7 +498,7 @@ var Device = function (_EventEmitter) {
             switch (_context4.prev = _context4.next) {
               case 0:
                 tokenHex = token ? _this._toHexString(token) : null;
-                beVerbose = _settings2.default.showVerboseDeviceLogs;
+                beVerbose = _settings2.default.SHOW_VERBOSE_DEVICE_LOGS;
                 return _context4.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     cleanUpListeners();
@@ -722,7 +722,7 @@ var Device = function (_EventEmitter) {
 
               case 8:
 
-                if (_settings2.default.showVerboseDeviceLogs) {
+                if (_settings2.default.SHOW_VERBOSE_DEVICE_LOGS) {
                   _logger2.default.log('sending function call to the device', { deviceID: _this._id, functionName: functionName });
                 }
 

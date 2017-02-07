@@ -47,10 +47,10 @@ class CryptoStream extends Transform {
   _getCipher = (callback: Function): Duplex => {
     let cipher = null;
     if (this._encrypt) {
-      cipher = crypto.createCipheriv(settings.cryptoSalt, this._key, this._iv);
+      cipher = crypto.createCipheriv(settings.CRYPTO_SALT, this._key, this._iv);
     } else {
       cipher = crypto.createDecipheriv(
-        settings.cryptoSalt,
+        settings.CRYPTO_SALT,
         this._key,
         this._iv,
       );

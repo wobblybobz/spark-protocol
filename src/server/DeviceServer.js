@@ -97,7 +97,7 @@ class DeviceServer {
       logger.error(`something blew up ${error.message}`),
     );
 
-    const serverPort = this._config.port.toString();
+    const serverPort = this._config.PORT.toString();
     server.listen(
       serverPort,
       (): void => logger.log(`Server started on port: ${serverPort}`),
