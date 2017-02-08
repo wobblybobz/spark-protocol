@@ -221,6 +221,12 @@ class DeviceServer {
     const connectionKey = device.getConnectionKey();
     const deviceAttributes =
       await this._deviceAttributeRepository.getById(deviceID);
+
+    await this._deviceAttributeRepository.update({
+      ...deviceAttributes,
+      lastHeard: device.ping().lastPing,
+    });
+
     const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
     this.publishSpecialEvent(
@@ -285,6 +291,7 @@ class DeviceServer {
         appHash: uuid,
         deviceID,
         ip: device.getRemoteIPAddress(),
+        lastHeard: new Date(),
         particleProductId: description.productID,
         productFirmwareVersion: description.firmwareVersion,
       };

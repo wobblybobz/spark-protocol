@@ -238,13 +238,19 @@ var DeviceServer = function () {
 
               case 9:
                 deviceAttributes = _context3.sent;
+                _context3.next = 12;
+                return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
+                  lastHeard: device.ping().lastPing
+                }));
+
+              case 12:
                 ownerID = deviceAttributes && deviceAttributes.ownerID;
 
 
                 _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'offline', deviceID, ownerID);
                 _logger2.default.log('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + ('' + (connectionKey || 'no connection key')));
 
-              case 13:
+              case 15:
               case 'end':
                 return _context3.stop();
             }
@@ -319,6 +325,7 @@ var DeviceServer = function () {
                             appHash: uuid,
                             deviceID: deviceID,
                             ip: device.getRemoteIPAddress(),
+                            lastHeard: new Date(),
                             particleProductId: description.productID,
                             productFirmwareVersion: description.firmwareVersion
                           });
