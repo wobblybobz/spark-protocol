@@ -1,10 +1,15 @@
 // @flow
 
 export type DeviceAttributes = {
-  deviceID: string,
-  ip: string,
-  name: string,
+  appHash: ?string,
   claimCode: ?string,
+  currentBuildTarget: string,
+  deviceID: string,
+  imei?: string,
+  ip: string,
+  isCellular: boolean,
+  last_iccid?: string,
+  name: string,
   ownerID: ?string,
   particleProductId: number,
   productFirmwareVersion: number,
@@ -17,12 +22,12 @@ export type Event = EventData & {
 };
 
 export type EventData = {
-  data: ?Object | string,
+  data?: string,
   deviceID?: ?string,
   isPublic: boolean,
   name: string,
-  ttl: number,
-  userID?: ?string,
+  ttl?: number,
+  userID: string,
 };
 
 export type Repository<TModel> = {
@@ -33,6 +38,10 @@ export type Repository<TModel> = {
   update: (model: TModel) => Promise<TModel>,
 };
 
-export type ServerConfigRepository = {
-  setupKeys(): void,
+export type ServerKeyRepository = {
+  createKeys: (privateKeyPem: Buffer, publicKeyPem: Buffer)=> Promise<{
+    privateKeyPem: Buffer,
+    publicKeyPem: Buffer,
+  }>,
+  getPrivateKey: () => Promise<?string>,
 };

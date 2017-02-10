@@ -21,6 +21,9 @@
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
 import type { Event } from '../types';
+import type Handshake from '../lib/Handshake';
+import type { MessageType } from '../lib/MessageSpecifications';
+import type { FileTransferStoreType } from '../lib/FileTransferStore';
 
 import EventEmitter from 'events';
 import moment from 'moment';
@@ -28,36 +31,44 @@ import moment from 'moment';
 import { Message } from 'h5.coap';
 
 import settings from '../settings';
-import CryptoLib from '../lib/ICrypto';
+import CryptoManager from '../lib/CryptoManager';
 import Messages from '../lib/Messages';
-import Handshake from '../lib/Handshake';
-import utilities from '../lib/utilities';
+import FileTransferStore from '../lib/FileTransferStore';
+
 import Flasher from '../lib/Flasher';
 import logger from '../lib/logger';
 import { BufferReader } from 'h5.buffers';
 import nullthrows from 'nullthrows';
 
-// Hello — sent first by Core then by Server immediately after handshake, never again
+
+type DeviceDescription = {|
+  firmwareVersion: number,
+  productID: number,
+  state: Object,
+  systemInformation: Object,
+|};
+
+// Hello — sent first by Device then by Server immediately after handshake, never again
 // Ignored — sent by either side to respond to a message with a bad counter value.
 // The receiver of an Ignored message can optionally decide to resend a previous message
 // if the indicated bad counter value matches a recently sent message.
 
 // package flasher
-// Chunk — sent by Server to send chunks of a firmware binary to Core
-// ChunkReceived — sent by Core to respond to each chunk,
+// Chunk — sent by Server to send chunks of a firmware binary to Device
+// ChunkReceived — sent by Device to respond to each chunk,
 // indicating the CRC of the received chunk data.
 // if Server receives CRC that does not match the chunk just sent, that chunk is sent again
 // UpdateBegin — sent by Server to initiate an OTA firmware update
-// UpdateReady — sent by Core to indicate readiness to receive firmware chunks
+// UpdateReady — sent by Device to indicate readiness to receive firmware chunks
 // UpdateDone — sent by Server to indicate all firmware chunks have been sent
 
-// FunctionCall — sent by Server to tell Core to call a user-exposed function
-// FunctionReturn — sent by Core in response to FunctionCall to indicate return value.
+// FunctionCall — sent by Server to tell Device to call a user-exposed function
+// FunctionReturn — sent by Device in response to FunctionCall to indicate return value.
 // void functions will not send this message
 // VariableRequest — sent by Server to request the value of a user-exposed variable
-// VariableValue — sent by Core in response to VariableRequest to indicate the value
+// VariableValue — sent by Device in response to VariableRequest to indicate the value
 
-// Event — sent by Core to initiate a Server Sent Event and optionally
+// Event — sent by Device to initiate a Server Sent Event and optionally
 // an HTTP callback to a 3rd party
 // KeyChange — sent by Server to change the AES credentials
 
@@ -70,10 +81,8 @@ const COUNTER_MAX = 65536;
  * How big can our tokens be in CoAP messages?
  */
 const TOKEN_COUNTER_MAX = 256;
-const KEEP_ALIVE_TIMEOUT = settings.keepaliveTimeout;
-const SOCKET_TIMEOUT = settings.socketTimeout;
-const MAX_BINARY_SIZE = 108000; // According to the forums this is the max size.
-
+const KEEP_ALIVE_TIMEOUT = settings.KEEP_ALIVE_TIMEOUT;
+const SOCKET_TIMEOUT = settings.SOCKET_TIMEOUT;
 
 export const DEVICE_EVENT_NAMES = {
   DISCONNECT: 'disconnect',
@@ -83,7 +92,27 @@ export const DEVICE_EVENT_NAMES = {
   READY: 'ready',
 };
 
-// this constants should be consistent with message names in
+export const SYSTEM_EVENT_NAMES = {
+  APP_HASH: 'spark/device/app-hash',
+  CLAIM_CODE: 'spark/device/claim/code',
+  FLASH_AVAILABLE: 'spark/flash/available',
+  FLASH_PROGRESS: 'spark/flash/progress',
+  FLASH_STATUS: 'spark/flash/status',
+  GET_IP: 'spark/device/ip',
+  GET_NAME: 'spark/device/name',
+  GET_RANDOM_BUFFER: 'spark/device/random',
+  IDENTITY: 'spark/device/ident/0',
+  LAST_RESET: 'spark/device/last_reset', // This should just have a friendly string in its payload.
+  MAX_BINARY: 'spark/hardware/max_binary',
+  OTA_CHUNK_SIZE: 'spark/hardware/ota_chunk_size',
+  RESET: 'spark/device/reset',  // send this to reset passing "safe mode"/"dfu"/"reboot"
+  SAFE_MODE: 'spark/device/safemode',
+  SAFE_MODE_UPDATING: 'spark/safe-mode-updater/updating',
+  SPARK_STATUS: 'spark/status',
+  SPARK_SUBSYSTEM: 'spark/cc3000-patch-version',
+};
+
+// These constants should be consistent with message names in
 // MessageSpecifications.js
 export const DEVICE_MESSAGE_EVENTS_NAMES = {
   GET_TIME: 'GetTime',
@@ -104,23 +133,42 @@ class Device extends EventEmitter {
   _deviceFunctionState: ?Object = null;
   _disconnectCounter: number = 0;
   _id: string = '';
-  _lastCorePing: Date = new Date();
+  _lastDevicePing: Date = new Date();
+  _maxBinarySize: ?number = null;
+  _otaChunkSize: ?number = null;
   _owningFlasher: ?Flasher;
   _particleProductId: number = 0;
   _platformId: number = 0;
   _productFirmwareVersion: number = 0;
   _recieveCounter: number = 0;
+  _reservedFlags: number = 0;
   _sendCounter: number = 0;
   _sendToken: number = 0;
   _socket: Socket;
-  _tokens: {[key: string]: string} = {};
+  _socketTimeoutInterval: ?number = null;
+  _systemInformation: ?Object;
+  _tokens: {[key: string]: MessageType} = {};
+  _handshake: Handshake;
 
-  constructor(socket: Socket, connectionKey: string) {
+  constructor(
+    socket: Socket,
+    connectionKey: string,
+    handshake: Handshake,
+  ) {
     super();
 
     this._connectionKey = connectionKey;
     this._socket = socket;
+    this._handshake = handshake;
   }
+
+  setMaxBinarySize = (maxBinarySize: number) => {
+    this._maxBinarySize = maxBinarySize;
+  };
+
+  setOtaChunkSize = (maxBinarySize: number) => {
+    this._otaChunkSize = maxBinarySize;
+  };
 
   /**
    * configure our socket and start the handshake
@@ -143,12 +191,10 @@ class Device extends EventEmitter {
       (): void => this.disconnect('socket timeout'),
     );
 
-    await this.handshake();
+    await this.startHandshake();
   };
 
-  handshake = async (): Promise<*> => {
-    const handshake = new Handshake(this);
-
+  startHandshake = async (): Promise<*> => {
     // when the handshake is done, we can expect two stream properties,
     // '_decipherStream' and '_cipherStream'
     try {
@@ -158,14 +204,11 @@ class Device extends EventEmitter {
         deviceID,
         handshakeBuffer,
         pendingBuffers,
-        sessionKey,
-      } = await handshake.start();
+      } = await this._handshake.start(this);
       this._id = deviceID;
 
       this._getHello(handshakeBuffer);
       this._sendHello(cipherStream, decipherStream);
-
-      this.ready();
 
       pendingBuffers.map((data: Buffer): void => this.routeMessage(data));
       decipherStream.on('readable', () => {
@@ -174,10 +217,26 @@ class Device extends EventEmitter {
           return;
         }
         this.routeMessage(chunk);
+        this._clientHasWrittenToSocket();
       });
     } catch (error) {
       this.disconnect(error);
+      throw error;
     }
+  };
+
+  // This handles the case on some operating systems where `socket.setTimeout`
+  // doesn't work. On windows, that function will timeout when if the client
+  // doesn't send a reply. On Linux as long as someone is reading or writing
+  // to a socket it will stay open.
+  _clientHasWrittenToSocket = () => {
+    if (this._socketTimeoutInterval) {
+      clearTimeout(this._socketTimeoutInterval);
+    }
+    this._socketTimeoutInterval = setTimeout(
+      (): void => this.disconnect('socket timeout'),
+      SOCKET_TIMEOUT,
+    );
   };
 
   _getHello = (chunk: Buffer) => {
@@ -197,9 +256,10 @@ class Device extends EventEmitter {
       const payloadBuffer = new BufferReader(payload);
       this._particleProductId = payloadBuffer.shiftUInt16();
       this._productFirmwareVersion = payloadBuffer.shiftUInt16();
+      this._reservedFlags = payloadBuffer.shiftUInt16();
       this._platformId = payloadBuffer.shiftUInt16();
-    } catch (exception) {
-      logger.log('error while parsing hello payload ', exception);
+    } catch (error) {
+      logger.log('error while parsing hello payload ', error);
     }
   };
 
@@ -208,7 +268,7 @@ class Device extends EventEmitter {
     this._decipherStream = decipherStream;
 
     // client will set the counter property on the message
-    this._sendCounter = CryptoLib.getRandomUINT16();
+    this._sendCounter = CryptoManager.getRandomUINT16();
     this.sendMessage('Hello', {}, null);
   };
 
@@ -240,15 +300,14 @@ class Device extends EventEmitter {
 
     return {
       connected: this._socket !== null,
-      lastPing: this._lastCorePing,
+      lastPing: this._lastDevicePing,
     };
   };
 
   /**
-   * Deals with messages coming from the core over our secure connection
+   * Deals with messages coming from the device over our secure connection
    * @param data
    */
-  // TODO figure out and clean this method
   routeMessage = (data: Buffer) => {
     const message = Messages.unwrap(data);
     if (!message) {
@@ -287,9 +346,7 @@ class Device extends EventEmitter {
 
     this._incrementReceiveCounter();
     if (message.isEmpty() && message.isConfirmable()) {
-      this._lastCorePing = new Date();
-      // var delta = (this._lastCorePing - this._connectionStartTime) / 1000.0;
-      // logger.log('core ping @ ', delta, ' seconds ', { deviceID: this._id });
+      this._lastDevicePing = new Date();
       this.sendReply('PingAck', message.getId());
       return;
     }
@@ -318,7 +375,7 @@ class Device extends EventEmitter {
   };
 
   sendReply = (
-    messageName: string,
+    messageName: MessageType,
     id: number,
     data: ?Buffer,
     token: ?number,
@@ -335,7 +392,7 @@ class Device extends EventEmitter {
     // set our counter
     if (id < 0) {
       this._incrementSendCounter();
-      id = this._sendCounter;
+      id = this._sendCounter; // eslint-disable-line no-param-reassign
     }
 
 
@@ -358,13 +415,11 @@ class Device extends EventEmitter {
     this._cipherStream.write(message);
   };
 
-
   sendMessage = (
-    messageName: string,
+    messageName: MessageType,
     params: ?Object,
     data: ?Buffer,
     requester?: Object,
-    ..._:void[]
   ): number => {
     if (!this._isSocketAvailable(requester, messageName)) {
       logger.error('This client has an exclusive lock.');
@@ -407,44 +462,39 @@ class Device extends EventEmitter {
     return token || 0;
   };
 
-  /**
-   * Adds a listener to our secure message stream
-   * @param name the message type we're waiting on
-   * @param uri - a particular function / variable?
-   * @param token - what message does this go with? (should come from
-   *  sendMessage)
-   */
+  // Adds a listener to our secure message stream
   listenFor = async (
-    eventName: string,
+    eventName: MessageType,
     uri: ?string,
     token: ?number,
-    ..._:void[]
   ): Promise<*> => {
-    const tokenHex = token ? utilities.toHexString(token) : null;
-    const beVerbose = settings.showVerboseDeviceLogs;
+    const tokenHex = token ? this._toHexString(token) : null;
+    const beVerbose = settings.SHOW_VERBOSE_DEVICE_LOGS;
 
-    return new Promise((resolve, reject) => {
+    return new Promise((
+      resolve: (message: Message) => void,
+      reject: (error?: Error) => void,
+    ) => {
       const timeout = setTimeout(
         () => {
           cleanUpListeners();
-          reject('Request timed out');
+          reject(new Error('Request timed out'));
         },
         KEEP_ALIVE_TIMEOUT,
       );
 
       // adds a one time event
-      const handler = (message: Message): void => {
+      const handler = (message: Message) => {
         clearTimeout(timeout);
         if (uri && message.getUriPath().indexOf(uri) !== 0) {
           if (beVerbose) {
             logger.log(
-              'uri filter did not match',
+              'URI filter did not match',
               uri,
               message.getUriPath(),
               { deviceID: this._id },
             );
           }
-          reject();
           return;
         }
 
@@ -457,7 +507,6 @@ class Device extends EventEmitter {
                { deviceID: this._id },
              );
           }
-          reject();
           return;
         }
 
@@ -481,16 +530,10 @@ class Device extends EventEmitter {
   };
 
   _increment = (counter: number, maxSize: number): number => {
-    counter++;
-    return counter < maxSize
-      ? counter
-      : 0;
+    const resultCounter = counter + 1;
+    return resultCounter < maxSize ? resultCounter : 0;
   };
 
-  /**
-   * Gets or wraps
-   * @returns {null}
-   */
   _incrementSendCounter = () => {
     this._sendCounter = this._increment(this._sendCounter, COUNTER_MAX);
   };
@@ -499,9 +542,7 @@ class Device extends EventEmitter {
     this._recieveCounter = this._increment(this._recieveCounter, COUNTER_MAX);
   };
 
-  /**
-   * increments or wraps our token value, and makes sure it isn't in use
-   */
+  // increments or wraps our token value, and makes sure it isn't in use
   _incrementSendToken = (): number => {
     this._sendToken = this._increment(this._sendToken, TOKEN_COUNTER_MAX);
     this._clearToken(this._sendToken);
@@ -511,11 +552,9 @@ class Device extends EventEmitter {
   /**
    * Associates a particular token with a message we're sending, so we know
    * what we're getting back when we get an ACK
-   * @param name
-   * @param sendToken
    */
-  _useToken = (name: string, sendToken: number) => {
-    const key = utilities.toHexString(sendToken);
+  _useToken = (name: MessageType, sendToken: number) => {
+    const key = this._toHexString(sendToken);
 
     if (this._tokens[key]) {
       throw new Error(
@@ -526,12 +565,9 @@ class Device extends EventEmitter {
     this._tokens[key] = name;
   };
 
-  /**
-   * Clears the association with a particular token
-   * @param sendToken
-   */
-  _clearToken = (sendToken: number): void => {
-    const key = utilities.toHexString(sendToken);
+  // clears the association with a particular token
+  _clearToken = (sendToken: number) => {
+    const key = this._toHexString(sendToken);
 
     if (this._tokens[key]) {
       delete this._tokens[key];
@@ -540,8 +576,6 @@ class Device extends EventEmitter {
 
   _getResponseType = (tokenString: string): ?string => {
     const request = this._tokens[tokenString];
-    // logger.log('respType for key ', tokenStr, ' is ', request);
-
     if (!request) {
       return '';
     }
@@ -549,8 +583,7 @@ class Device extends EventEmitter {
     return Messages.getResponseType(request);
   };
 
-  // todo make return type annotation
-  getDescription = async (): Promise<*> => {
+  getDescription = async (): Promise<DeviceDescription> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
@@ -560,9 +593,10 @@ class Device extends EventEmitter {
       await this._ensureWeHaveIntrospectionData();
 
       return {
-        firmware_version: this._productFirmwareVersion,
-        product_id: this._particleProductId,
-        state: this._deviceFunctionState,
+        firmwareVersion: this._productFirmwareVersion,
+        productID: this._particleProductId,
+        state: nullthrows(this._deviceFunctionState),
+        systemInformation: nullthrows(this._systemInformation),
       };
     } catch (error) {
       throw new Error('No device state!');
@@ -570,7 +604,7 @@ class Device extends EventEmitter {
   };
 
   /**
-   * Ensures we have introspection data from the core, and then
+   * Ensures we have introspection data from the device, and then
    * requests a variable value to be sent, when received it transforms
    * the response into the appropriate type
    **/
@@ -600,31 +634,10 @@ class Device extends EventEmitter {
     return this._transformVariableResult(name, message);
   };
 
-  // TODO refactor, make sure if we need this at all
-  setVariableValue = async (
-    name: string,
-    data: Buffer,
-    ..._:void[],
-  ): Promise<*> => {
-    const isBusy = !this._isSocketAvailable(null);
-    if (isBusy) {
-      throw new Error('This device is locked during the flashing process.');
-    }
-
-    // TODO: data type!
-    const payload = Messages.toBinary(data);
-    const token = this.sendMessage('VariableRequest', { name }, payload);
-
-    // are we expecting a response?
-    // watches the messages coming back in, listens for a message of this type
-    // with
-    return await this.listenFor('VariableValue', null, token);
-  };
-
   // call function on device firmware
   callFunction = async (
     functionName: string,
-    functionArguments: Object,
+    functionArguments: {[key: string]: string},
   ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
@@ -640,9 +653,9 @@ class Device extends EventEmitter {
       throw new Error(`Unknown Function ${functionName}`);
     }
 
-    if (settings.showVerboseDeviceLogs) {
+    if (settings.SHOW_VERBOSE_DEVICE_LOGS) {
       logger.log(
-        'sending function call to the core',
+        'sending function call to the device',
         { deviceID: this._id, functionName },
       );
     }
@@ -671,53 +684,39 @@ class Device extends EventEmitter {
   };
 
   /**
-   * Asks the core to start or stop its 'raise your hand' signal.
+   * Asks the device to start or stop its 'raise your hand' signal.
    * This will turn `nyan` mode on or off which just flashes the LED a bunch of
    * colors.
    */
-  raiseYourHand = async(shouldShowSignal: boolean): Promise<*> => {
+  raiseYourHand = async (shouldShowSignal: boolean): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
     }
 
     const token = this.sendMessage(
-      'RaiseYourHand',
+      'SignalStart',
       { _writeCoapUri: Messages.raiseYourHandUrlGenerator(shouldShowSignal) },
       null,
     );
     return await this.listenFor(
-      'RaiseYourHandReturn',
+      'SignalStartReturn',
       null,
       token,
     );
   };
 
-  flash = async (binary: ?Buffer): Promise<string> => {
+  flash = async (
+    binary: ?Buffer,
+    fileTransferStore: FileTransferStoreType = FileTransferStore.FIRMWARE,
+    address: string = '0x0',
+  ): Promise<string> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
     }
 
-    if (!binary || (binary.length === 0)) {
-      logger.log(
-        'flash failed! - file is empty! ',
-        { deviceID: this._id },
-      );
-
-      throw new Error('Update failed - File was too small!');
-    }
-
-    if (binary && binary.length > MAX_BINARY_SIZE) {
-      logger.log(
-        `flash failed! - file is too BIG ${binary.length}`,
-        { deviceID: this._id },
-      );
-
-      throw new Error('Update failed - File was too big!');
-    }
-
-    const flasher = new Flasher(this);
+    const flasher = new Flasher(this, this._maxBinarySize, this._otaChunkSize);
     try {
       logger.log(
         'flash device started! - sending api event',
@@ -726,7 +725,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
-      await flasher.startFlashBuffer(binary);
+      await flasher.startFlashBuffer(binary, fileTransferStore, address);
 
       logger.log(
         'flash device finished! - sending api event',
@@ -776,8 +775,9 @@ class Device extends EventEmitter {
     this._owningFlasher = flasher;
     return true;
   };
-  releaseOwnership = (flasher: Flasher): void => {
-    logger.log('releasing flash ownership ', { coreID: this._id });
+
+  releaseOwnership = (flasher: Flasher) => {
+    logger.log('releasing flash ownership ', { deviceID: this._id });
     if (this._owningFlasher === flasher) {
       this._owningFlasher = null;
     } else if (this._owningFlasher) {
@@ -790,19 +790,11 @@ class Device extends EventEmitter {
     }
   };
 
-
-  /**
-   *
-   * @param name
-   * @param message
-   * @param callback-- callback expects (value, buf, err)
-   * @returns {null}
-   */
   _transformVariableResult = (
     name: string,
     message: Message,
   ): ?Buffer => {
-    // grab the variable type, if the core doesn't say, assume it's a 'string'
+    // grab the variable type, if the device doesn't say, assume it's a 'string'
     const variableFunctionState = this._deviceFunctionState
       ? this._deviceFunctionState.v
       : null;
@@ -821,22 +813,14 @@ class Device extends EventEmitter {
       }
     } catch (error) {
       logger.error(
-        '_transformVariableResult - error transforming response ' +
-        error,
+        `_transformVariableResult - error transforming response: ${error}`,
       );
     }
 
     return result;
   };
 
-
-  /**
-   * Transforms the result from a core function to the correct type.
-   * @param name
-   * @param msg
-   * @param callback
-   * @returns {null}
-   */
+  // Transforms the result from a device function to the correct type.
   _transformFunctionResult = (
     name: string,
     message: Message,
@@ -850,8 +834,7 @@ class Device extends EventEmitter {
       }
     } catch (error) {
       logger.error(
-        '_transformFunctionResult - error transforming response ' +
-        error,
+        `_transformFunctionResult - error transforming response: ${error}`,
       );
       throw error;
     }
@@ -859,127 +842,157 @@ class Device extends EventEmitter {
     return result;
   };
 
-  /**
-   * transforms our object into a nice coap query string
-   * @param name
-   * @param args
-   * @private
-   */
+  // transforms our object into a nice coap query string
   _transformArguments = async (
     name: string,
-    args: ?Object,
+    args: {[key: string]: string},
   ): Promise<?Buffer> => {
-    //logger.log('transform args', { deviceID: this._id });
     if (!args) {
       return null;
     }
 
     await this._ensureWeHaveIntrospectionData();
-    //TODO: lowercase function keys on new state format
-    name = name.toLowerCase();
+    const lowercaseName = name.toLowerCase();
     const deviceFunctionState = nullthrows(this._deviceFunctionState);
 
-    let functionState = deviceFunctionState[name];
+    let functionState = deviceFunctionState[lowercaseName];
     if (!functionState || !functionState.args) {
-      //maybe it's the old protocol?
+      // maybe it's the old protocol?
       const oldProtocolFunctionState = deviceFunctionState.f;
       if (
         oldProtocolFunctionState &&
-        oldProtocolFunctionState.some(fn => fn.toLowerCase() === name)
+        oldProtocolFunctionState.some(
+          (fn: string): boolean => fn.toLowerCase() === lowercaseName,
+        )
       ) {
-        //current / simplified function format (one string arg, int return type)
+        // current/simplified function format (one string arg, int return type)
         functionState = {
-          returns: 'int',
           args: [
             [null, 'string'],
           ],
+          returns: 'int',
         };
       }
     }
 
     if (!functionState || !functionState.args) {
-        return null;
+      return null;
     }
-
     return Messages.buildArguments(args, functionState.args);
   };
 
   /**
    * Checks our cache to see if we have the function state, otherwise requests
-   * it from the core, listens for it, and resolves our deferred on success
-   * @returns {*}
+   * it from the device, listens for it, and resolves our deferred on success
    */
-  _ensureWeHaveIntrospectionData = async (): Promise<*> => {
+  _ensureWeHaveIntrospectionData = async (): Promise<void> => {
     if (this._hasFunctionState()) {
-      return Promise.resolve();
+      return;
     }
+    // We need to wait a little bit to make sure that the device's function
+    // data is ready. This is super hacky but there wasn't another event to
+    // listen to.
+    await new Promise(
+      (resolve: () => void): number => setTimeout((): void => resolve(), 10),
+    );
 
     try {
+      // Because some firmware versions do not send the app + system state in a
+      // single message, we cannot use `listenFor` and instead have to write
+      // some hacky code that duplicates a lot of the functionality
       this.sendMessage('Describe');
-      const systemMessage = await this.listenFor('DescribeReturn', null, null);
+      const result = await new Promise((
+        resolve: (message: Message) => void,
+        reject: (error?: Error) => void,
+      ) => {
+        const timeout = setTimeout(
+          () => {
+            cleanUpListeners();
+            reject(new Error('Request timed out'));
+          },
+          KEEP_ALIVE_TIMEOUT,
+        );
 
-      //got a description, is it any good?
-      const data = systemMessage.getPayload();
-      const firstFunctionState = JSON.parse(data.toString());
-
-      // In the newer firmware the application data comes in a later message.
-      // We run a race to see if the function state comes in the first response.
-      const functionState = await Promise.race([
-        this.listenFor('DescribeReturn', null, null)
-          .then(applicationMessage => {
-            //got a description, is it any good?
-            const data = applicationMessage.getPayload();
-            return JSON.parse(data.toString());
-          }),
-        new Promise((resolve, reject) => {
-          if (firstFunctionState.f && firstFunctionState.v) {
-            resolve(firstFunctionState);
+        let systemInformation = null;
+        let functionState = null;
+        const handler = (message: Message) => {
+          const payload = message.getPayload();
+          if (!payload) {
+            reject(new Error('Payload empty for Describe message'));
           }
-        }),
-      ])
 
-      if (functionState && functionState.v) {
-        //'v':{'temperature':2}
-        functionState.v = Messages.translateIntTypes(functionState.v);
-      }
+          const data = JSON.parse(payload.toString());
 
-      this._deviceFunctionState = functionState;
+          if (!systemInformation) {
+            systemInformation = data;
+          }
+
+          if (data && data.v) {
+            functionState = data;
+            // 'v':{'temperature':2}
+            functionState.v = Messages.translateIntTypes(functionState.v);
+          }
+
+          if (!systemInformation || !functionState) {
+            return;
+          }
+
+          clearTimeout(timeout);
+          cleanUpListeners();
+          resolve({ functionState, systemInformation });
+        };
+
+        const disconnectHandler = () => {
+          cleanUpListeners();
+          reject();
+        };
+
+        const cleanUpListeners = () => {
+          this.removeListener('DescribeReturn', handler);
+          this.removeListener('disconnect', disconnectHandler);
+        };
+
+        this.on('DescribeReturn', handler);
+        this.on('disconnect', disconnectHandler);
+      });
+
+      this._systemInformation = result.systemInformation;
+      this._deviceFunctionState = result.functionState;
     } catch (error) {
+      logger.error(`_ensureWeHaveIntrospectionData error: ${error}`);
       throw error;
     }
   };
 
+  getSystemInformation = async (): ?Object => {
+    await this._ensureWeHaveIntrospectionData();
+    return this._systemInformation;
+  };
 
   //-------------
-  // Core Events / Spark.publish / Spark.subscribe
+  // Device Events / Spark.publish / Spark.subscribe
   //-------------
-  onCoreEvent = (event: Event) => {
-    this.sendCoreEvent(event);
+  onDeviceEvent = (event: Event) => {
+    this.sendDeviceEvent(event);
   };
-  // TODO rework and figure out how to implement subscription with `MY_DEVICES`
-  // right way
-  sendCoreEvent = (event: Event) => {
+
+  sendDeviceEvent = (event: Event) => {
     const { data, isPublic, name, publishedAt, ttl } = event;
 
     const rawFunction = (message: Message): void => {
       try {
-        message.setMaxAge((ttl >= 0) ? ttl : 60);
-        if (publishedAt) {
-          message.setTimestamp(moment(publishedAt).toDate());
-        }
+        message.setMaxAge(ttl);
+        message.setTimestamp(moment(publishedAt).toDate());
       } catch (error) {
-        logger.error(`onCoreHeard - ${error.message}`);
+        logger.error(`onDeviceHeard - ${error.message}`);
       }
 
       return message;
     };
 
-    const messageName = isPublic ? 'PublicEvent' : 'PrivateEvent';
-    // const userID = (this._userId || '').toLowerCase() + '/';
-    // name = name ? name.toString() : name;
-    // if (name && name.indexOf && (name.indexOf(userID)===0)) {
-    //   name = name.substring(userID.length);
-    // }
+    const messageName = isPublic
+      ? DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT
+      : DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT;
 
     this.sendMessage(
       messageName,
@@ -987,21 +1000,19 @@ class Device extends EventEmitter {
         _raw: rawFunction,
         event_name: name.toString(),
       },
-      data && data.toString(),
+      data && new Buffer(data) || null,
     );
   };
 
-  _hasFunctionState = (): boolean => {
-    return !!this._deviceFunctionState;
-  };
+  _hasFunctionState = (): boolean =>
+    !!this._deviceFunctionState;
 
-  _hasParticleVariable = (name: string): boolean => {
-    return !!(
+  _hasParticleVariable = (name: string): boolean =>
+    !!(
       this._deviceFunctionState &&
       this._deviceFunctionState.v &&
       this._deviceFunctionState.v[name]
     );
-  };
 
   _hasSparkFunction = (name: string): boolean => {
     // has state, and... the function is an object, or it's in the function array
@@ -1013,27 +1024,27 @@ class Device extends EventEmitter {
         (
           this._deviceFunctionState.f &&
           this._deviceFunctionState.f.some(
-            fn => fn.toLowerCase() === lowercaseName,
+            (fn: string): boolean => fn.toLowerCase() === lowercaseName,
           )
         )
       )
     );
   };
 
-  // eslint-disable-next-line no-confusing-arrow
+  _toHexString = (value: number): string =>
+    (value < 10 ? '0' : '') + value.toString(16);
+
   getID = (): string => this._id;
 
+  getConnectionKey = (): ?string => this._connectionKey;
 
-  // eslint-disable-next-line no-confusing-arrow
   getRemoteIPAddress = (): string =>
     this._socket.remoteAddress
       ? this._socket.remoteAddress.toString()
       : 'unknown';
 
-
   disconnect = (message: ?string = '') => {
-    // eslint-disable-next-line no-plusplus
-    this._disconnectCounter++;
+    this._disconnectCounter += 1;
 
     if (this._disconnectCounter > 1) {
       // don't multi-disconnect
@@ -1050,7 +1061,7 @@ class Device extends EventEmitter {
       };
 
       logger.log(
-        `${this._disconnectCounter} : Core disconnected: ${message || ''}`,
+        `${this._disconnectCounter} : Device disconnected: ${message || ''}`,
          logInfo,
       );
     } catch (error) {

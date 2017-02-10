@@ -21,20 +21,20 @@
 import type { Event, EventData } from '../types';
 
 import EventEmitter from 'events';
-import moment from 'moment';
-import logger from './logger';
 import nullthrows from 'nullthrows';
-import uuid from './uuid';
+import uuid from 'uuid';
+import settings from '../settings';
 
 const ALL_EVENTS = '*all*';
 
 type FilterOptions = {
   deviceID?: string,
-  userID?: string,
+  mydevices?: boolean,
+  userID: string,
 };
 
 type Subscription = {
-  eventName: string,
+  eventNamePrefix: string,
   id: string,
   listener: (event: Event) => void,
   subscriberID?: string,
@@ -43,80 +43,106 @@ type Subscription = {
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
 
-  _filterEvents = (
-    eventHandler: (event: Event) => void,
-    filterOptions: FilterOptions,
-  ): (event: Event) => void =>
-    (event: Event) => {
-      const { userID, deviceID } = filterOptions;
-      if (
-        event.deviceID &&
-        userID && userID !== event.userID
-      ) {
-        return;
-      }
-
-      if (deviceID && deviceID !== event.deviceID) {
-        return;
-      }
-
-      eventHandler(event);
-    };
-
   publish = (
     eventData: EventData,
-  ): void => {
+  ) => {
+    const ttl = (eventData.ttl && eventData.ttl > 0)
+      ? eventData.ttl
+      : settings.DEFAULT_EVENT_TTL;
+
     const event: Event = {
       ...eventData,
-      publishedAt: moment().toISOString(),
+      publishedAt: new Date(),
+      ttl,
     };
 
-    this.emit(eventData.name, event);
+    this._emitWithPrefix(eventData.name, event);
     this.emit(ALL_EVENTS, event);
   };
 
-
   subscribe = (
-    eventName: string = ALL_EVENTS,
+    eventNamePrefix: string = ALL_EVENTS,
     eventHandler: (event: Event) => void,
-    filterOptions?: FilterOptions = {},
+    filterOptions: FilterOptions,
     subscriberID?: string,
   ): void => {
-    const subscriptionID = uuid();
+    let subscriptionID = uuid();
+    while (this._subscriptionsByID.has(subscriptionID)) {
+      subscriptionID = uuid();
+    }
+
     const listener = this._filterEvents(eventHandler, filterOptions);
 
     this._subscriptionsByID.set(
       subscriptionID,
       {
-        listener,
-        eventName,
+        eventNamePrefix,
         id: subscriptionID,
+        listener,
         subscriberID,
       },
     );
 
-    this.on(eventName, listener);
+    this.on(eventNamePrefix, listener);
     return subscriptionID;
   };
 
-  unsubscribe = (subscriptionID: string): void => {
+  unsubscribe = (subscriptionID: string) => {
     const {
-      eventName,
+      eventNamePrefix,
       listener,
     } = nullthrows(this._subscriptionsByID.get(subscriptionID));
 
-    this.removeListener(eventName, listener);
+    this.removeListener(eventNamePrefix, listener);
     this._subscriptionsByID.delete(subscriptionID);
   };
 
-  unsubscribeBySubscriberID = (subscriberID: string): void => {
+  unsubscribeBySubscriberID = (subscriberID: string) => {
     this._subscriptionsByID
-      .forEach((subscription) => {
-          if(subscription.subscriberID === subscriberID) {
-            this.unsubscribe(subscription.id)
-          }
+      .forEach((subscription: Subscription) => {
+        if (subscription.subscriberID === subscriberID) {
+          this.unsubscribe(subscription.id);
+        }
       });
-  }
+  };
+
+  _emitWithPrefix = (eventName: string, event: Event) => {
+    this.eventNames()
+      .filter(
+        (eventNamePrefix: string): boolean =>
+          eventName.startsWith(eventNamePrefix),
+      )
+      .forEach(
+        (eventNamePrefix: string): boolean =>
+          this.emit(eventNamePrefix, event),
+      );
+  };
+
+  _filterEvents = (
+    eventHandler: (event: Event) => void,
+    filterOptions: FilterOptions,
+  ): (event: Event) => void =>
+    (event: Event) => {
+      // filter private events from another devices
+      if (!event.isPublic && filterOptions.userID !== event.userID) {
+        return;
+      }
+
+      // filter mydevices events
+      if (filterOptions.mydevices && filterOptions.userID !== event.userID) {
+        return;
+      }
+
+      // filter event by deviceID
+      if (
+        filterOptions.deviceID &&
+        event.deviceID !== filterOptions.deviceID
+      ) {
+        return;
+      }
+
+      eventHandler(event);
+    };
 }
 
 export default EventPublisher;

@@ -21,60 +21,61 @@
 *
 */
 
-import type {MessageSpecificationType} from './MessageSpecifications';
+import type {
+  MessageSpecificationType,
+  MessageType,
+} from './MessageSpecifications';
 
-import fs from 'fs';
-import settings from '../settings';
-import {Message} from 'h5.coap';
+import { Message } from 'h5.coap';
 import Option from 'h5.coap/lib/Option';
 import logger from '../lib/logger';
-import {BufferBuilder, BufferReader} from 'h5.buffers';
+import { BufferBuilder, BufferReader } from 'h5.buffers';
 import MessageSpecifications from './MessageSpecifications';
-import nullthrows from 'nullthrows';
+
 
 const _getRouteKey = (code: string, path: string): string => {
-  var uri = code + path;
+  const uri = code + path;
+  const idx = uri.indexOf('/');
 
-  //find the slash.
-  var idx = uri.indexOf('/');
-
-  //this assumes all the messages are one character for now.
-  //if we wanted to change this, we'd need to find the first non message char, '/' or '?',
-  //or use the real coap parsing stuff
+  // this assumes all the messages are one character for now.
+  // if we wanted to change this, we'd need to find the first non message char,
+  // '/' or '?', or use the real coap parsing stuff
   return uri.substr(0, idx + 2);
-}
+};
 
 class Messages {
-  _specifications: Map<string, MessageSpecificationType> =
+  _specifications: Map<MessageType, MessageSpecificationType> =
     new Map(MessageSpecifications);
 
-  /**
-   * Maps CODE + URL to MessageNames as they appear in 'Spec'
-   */
-  _routes: Map<string, string> = new Map(
+  // Maps CODE + URL to MessageNames as they appear in 'Spec'
+  _routes: Map<string, MessageType> = new Map(
     MessageSpecifications
-      .filter(([name, value]) => value.uri)
-      .map(([name, value]) => {
-        //see what it looks like without params
-        const uri = value.template ? value.template.render({}) : value.uri;
-        const routeKey = _getRouteKey(value.code, '/' + (uri || ''));
+      .filter(
+        // eslint-disable-next-line no-unused-vars
+        ([name, value]: [MessageType, MessageSpecificationType]): boolean =>
+          !!value.uri,
+      )
+      .map(
+        (
+          [name, value]: [MessageType, MessageSpecificationType],
+        ): [string, MessageType] => {
+          // see what it looks like without params
+          const uri = value.template ? value.template.render({}) : value.uri;
+          const routeKey = _getRouteKey(value.code, `/${(uri || '')}`);
 
-        return [routeKey, name];
-      },
-    ),
+          return [routeKey, name];
+        },
+      ),
   );
 
   /**
    * does the special URL writing needed directly to the COAP message object,
    * since the URI requires non-text values
-   *
-   * @param showSignal
-   * @returns {Function}
    */
   raiseYourHandUrlGenerator = (
     showSignal: boolean,
-  ): (message: Message) => Buffer => {
-    return (message: Message): Buffer => {
+  ): (message: Message) => Buffer =>
+    (message: Message): Buffer => {
       const buffer = new Buffer(1);
       buffer.writeUInt8(showSignal ? 1 : 0, 0);
 
@@ -82,95 +83,81 @@ class Messages {
       message.addOption(new Option(Message.Option.URI_QUERY, buffer));
       return message;
     };
-  };
-
-  getRouteKey = _getRouteKey;
 
   getRequestType = (message: Message): ?string => {
-    const uri = this.getRouteKey(message.getCode(), message.getUriPath());
+    const uri = _getRouteKey(message.getCode(), message.getUriPath());
     return this._routes.get(uri);
   };
 
-  getResponseType = (name: string): ?string => {
+  getResponseType = (name: MessageType): ?string => {
     const specification = this._specifications.get(name);
     return specification ? specification.Response : null;
   };
 
-  statusIsOkay = (message: Message): boolean => {
-    return message.getCode() < Message.Code.BAD_REQUEST;
-  };
+  statusIsOkay = (message: Message): boolean =>
+    message.getCode() < Message.Code.BAD_REQUEST;
 
-  isNonTypeMessage = (messageName: string): boolean => {
+  isNonTypeMessage = (messageName: MessageType): boolean => {
     const specification = this._specifications.get(messageName);
     if (!specification) {
       return false;
     }
 
     return specification.type === Message.Type.NON;
-  }
+  };
 
-  /**
-   *
-   * @param messageName
-   * @param messageCounterId - must be an unsigned 16 bit integer
-   * @param params
-   * @param data
-   * @param token - helps us associate responses w/ requests
-   * @param onError
-   * @returns {*}
-   */
   wrap = (
-    messageName: string,
+    messageName: MessageType,
     messageCounterId: number,
     params: ?Object,
     data: ?Buffer,
     token: ?number,
   ): ?Buffer => {
-      const specification = this._specifications.get(messageName);
-      if (!specification) {
-        logger.error('Unknown Message Type');
-        return null;
-      }
+    const specification = this._specifications.get(messageName);
+    if (!specification) {
+      logger.error('Unknown Message Type');
+      return null;
+    }
 
-      // Setup the Message
-      let message = new Message();
+    // Setup the Message
+    let message = new Message();
 
-      // Format our url
-      let uri = specification.uri;
-      if (params && params._writeCoapUri) {
-        // for our messages that have nitty gritty urls that require raw bytes
-        // and no strings.
-        message = params._writeCoapUri(message);
-        uri = null;
-      } else if (params && specification.template) {
-        uri = specification.template.render(params);
-      }
+    // Format our url
+    let uri = specification.uri;
+    if (params && params._writeCoapUri) {
+      // for our messages that have nitty gritty urls that require raw bytes
+      // and no strings.
+      message = params._writeCoapUri(message);
+      uri = null;
+    } else if (params && specification.template) {
+      uri = specification.template.render(params);
+    }
 
-      if (uri) {
-        message.setUri(uri);
-      }
+    if (uri) {
+      message.setUri(uri);
+    }
 
-      message.setId(messageCounterId);
+    message.setId(messageCounterId);
 
-      if (token !== null && token !== undefined) {
-        const buffer = new Buffer(1);
-        buffer.writeUInt8(token, 0);
-        message.setToken(buffer);
-      }
+    if (token !== null && token !== undefined) {
+      const buffer = new Buffer(1);
+      buffer.writeUInt8(token, 0);
+      message.setToken(buffer);
+    }
 
-      message.setCode(specification.code);
-      message.setType(specification.type);
+    message.setCode(specification.code);
+    message.setType(specification.type);
 
-      // Set our payload
-      if (data) {
-        message.setPayload(data);
-      }
+    // Set our payload
+    if (data) {
+      message.setPayload(data);
+    }
 
-      if (params && params._raw) {
-        params._raw(message);
-      }
+    if (params && params._raw) {
+      params._raw(message);
+    }
 
-      return message.toBuffer();
+    return message.toBuffer();
   };
 
   unwrap = (data: Buffer): ?Message => {
@@ -180,50 +167,45 @@ class Messages {
 
     try {
       return Message.fromBuffer(data);
-    } catch (exception) {
-      logger.error('Coap Error: ' + exception);
+    } catch (error) {
+      logger.error(`Coap Error: ${error}`);
     }
 
     return null;
   };
 
 
-  //http://en.wikipedia.org/wiki/X.690
-  //=== TYPES: SUBSET OF ASN.1 TAGS ===
+  // http://en.wikipedia.org/wiki/X.690
+  // === TYPES: SUBSET OF ASN.1 TAGS ===
   //
-  //1: BOOLEAN (false=0, true=1)
-  //2: INTEGER (int32)
-  //4: OCTET STRING (arbitrary bytes)
-  //5: NULL (void for return value only)
-  //9: REAL (double)
-
-  /**
-   * Translates the integer variable type enum to user friendly string types
-   * @param varState
-   * @returns {*}
-   * @constructor
-   */
+  // 1: BOOLEAN (false=0, true=1)
+  // 2: INTEGER (int32)
+  // 4: OCTET STRING (arbitrary bytes)
+  // 5: NULL (void for return value only)
+  // 9: REAL (double)
+  // Translates the integer variable type enum to user friendly string types
   translateIntTypes = (varState: ?Object): ?Object => {
     if (!varState) {
-        return null;
+      return null;
     }
+    const translatedVarState = {};
 
-    for (let varName in varState) {
-      if (!varState.hasOwnProperty(varName)) {
-        continue;
-      }
+    Object
+      .getOwnPropertyNames(varState)
+      .forEach(
+        (varName: string) => {
+          const intType = varState && varState[varName];
+          if (typeof intType === 'number') {
+            const str = this.getNameFromTypeInt(intType);
 
-      const intType = varState[varName];
-      if (typeof intType === 'number') {
-        const str = this.getNameFromTypeInt(intType);
+            if (str !== null) {
+              translatedVarState[varName] = str;
+            }
+          }
+        },
+      );
 
-        if (str !== null) {
-          varState[varName] = str;
-        }
-      }
-    }
-
-    return varState;
+    return { ...varState, ...translatedVarState };
   };
 
   getNameFromTypeInt = (typeInt: number): string => {
@@ -249,23 +231,27 @@ class Messages {
       }
 
       default: {
-        logger.error('asked for unknown type: ' + typeInt);
-        throw 'errror getNameFromTypeInt ' + typeInt;
+        logger.error(`asked for unknown type: ${typeInt}`);
+        throw new Error(`error getNameFromTypeInt: ${typeInt}`);
       }
     }
   };
 
-  tryFromBinary = <TType>(buffer: Buffer, typeName: string): ?TType => {
-      let result = null;
-      try {
-        result = this.fromBinary(buffer, typeName);
-      } catch (error) {
-        logger.error('Could not parse type: ${typeName} ${buffer}', error);
-      }
-      return result;
+  // eslint-disable-next-line func-names
+  tryFromBinary = function<TType> (buffer: Buffer, typeName: string): ?TType {
+    let result = null;
+    try {
+      result = this.fromBinary(buffer, typeName);
+    } catch (error) {
+      logger.error(
+        `Could not parse type: ${typeName} ${buffer.toString()} ${error}`,
+      );
+    }
+    return result;
   };
 
-  fromBinary = <TType>(buffer: Buffer, typeName: string): TType => {
+  // eslint-disable-next-line func-names
+  fromBinary = function<TType> (buffer: Buffer, typeName: string): TType {
     const bufferReader = new BufferReader(buffer);
 
     switch (typeName) {
@@ -299,12 +285,12 @@ class Messages {
       }
 
       case 'double': {
-        //doubles on the core are little-endian
+        // doubles on the device are little-endian
         return bufferReader.shiftDouble(true);
       }
 
       case 'buffer': {
-        return ((bufferReader.buffer: any): TType)
+        return ((bufferReader.buffer: any): TType);
       }
 
       case 'string':
@@ -317,11 +303,10 @@ class Messages {
   toBinary = (
     value: ?(string | number | Buffer),
     typeName?: string,
-    bufferBuilder?: BufferBuilder,
+    bufferBuilder?: BufferBuilder = new BufferBuilder(),
   ): Buffer => {
+    // eslint-disable-next-line no-param-reassign
     typeName = typeName || (typeof value);
-
-    bufferBuilder = bufferBuilder || new BufferBuilder();
 
     if (value === null) {
       return bufferBuilder;
@@ -364,49 +349,31 @@ class Messages {
     return bufferBuilder.toBuffer();
   };
 
-  buildArguments = (value: Object, args: Array<Array<any>>): ?Buffer => {
-    console.log('TODO: Type `buildArguments`');
+  buildArguments = (
+    requestArgs: {[key: string]: string},
+    args: Array<Array<any>>,
+  ): ?Buffer => {
     try {
-      var bufferBuilder = new BufferBuilder();
-      args.filter(arg => arg).forEach((arg, index) => {
-        if (index > 0) {
-          this.toBinary('&', 'string', bufferBuilder);
-        }
+      const bufferBuilder = new BufferBuilder();
+      const requestArgsKey = Object.keys(requestArgs)[0];
+      args
+        .filter((arg: Array<any>): boolean => !!arg)
+        .forEach((arg: Array<any>, index: number) => {
+          if (index > 0) {
+            this.toBinary('&', 'string', bufferBuilder);
+          }
 
-        const name = arg[0] || Object.keys(value)[0];
-        const type = arg[1];
-        const val = value[name];
+          const name = arg[0] || requestArgsKey;
+          const type = arg[1];
+          const val = requestArgs[name];
 
-        this.toBinary(val, type, bufferBuilder);
-      })
-      return bufferBuilder.toBuffer();
-    } catch (exception) {
-      logger.error('buildArguments: ', exception);
-    }
-
-    return null;
-  };
-
-  parseArguments = (
-    args: ?Array<Object>,
-    descriptions: Array<[string, string]>,
-  ): ?Array<any> => {
-    try {
-      if (!args || args.length !== descriptions.length) {
-        return null;
-      }
-
-      return descriptions
-        .filter(description => description)
-        .map((description, index) => {
-          const type = description[1];
-          args = nullthrows(args);
-          const value = index < args.length ? args[index] : '';
-
-          this.fromBinary(new Buffer(value, 'binary'), type)
+          this.toBinary(val, type, bufferBuilder);
         });
-    } catch (exception) {
-      logger.error('parseArguments: ', exception);
+
+
+      return bufferBuilder.toBuffer();
+    } catch (error) {
+      logger.error(`buildArguments error: ${error}`);
     }
 
     return null;

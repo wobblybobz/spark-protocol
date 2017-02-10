@@ -1,9 +1,8 @@
 // @flow
 
-import type {DeviceAttributes} from '../types';
-
 import FileManager from './FileManager';
-import uuid from '../lib/uuid';
+import memoizeGet from '../decorators/memoizeGet';
+import memoizeSet from '../decorators/memoizeSet';
 
 const FILE_EXTENSION = '.pub.pem';
 
@@ -14,26 +13,31 @@ class DeviceKeyFileRepository {
     this._fileManager = new FileManager(path);
   }
 
-  create(id: string, data: string): string {
+  @memoizeSet()
+  async create(id: string, data: string): Promise<string> {
     this._fileManager.createFile(id + FILE_EXTENSION, data);
     return data;
   }
 
-  update(id: string, data: string): string {
+  @memoizeSet()
+  async update(id: string, data: string): Promise<string> {
     this._fileManager.writeFile(id + FILE_EXTENSION, data);
     return data;
   }
 
-  delete(id: string): void {
+  @memoizeSet(['id'])
+  async delete(id: string): Promise<void> {
     this._fileManager.deleteFile(id + FILE_EXTENSION);
   }
 
-  getAll(): Array<string> {
+  @memoizeGet()
+  async getAll(): Promise<Array<string>> {
     return this._fileManager.getAllData();
   }
 
-  getById(id: string): Promise<?string> {
-    return Promise.resolve(this._fileManager.getFile(id + FILE_EXTENSION));
+  @memoizeGet(['id'])
+  async getById(id: string): Promise<?string> {
+    return this._fileManager.getFile(id + FILE_EXTENSION);
   }
 }
 
