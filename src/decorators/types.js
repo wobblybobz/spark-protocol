@@ -7,9 +7,9 @@ export type Cache = {
 };
 
 export type Decorator<TType> = (
-  descriptor: Descriptor,
-  name: $Keys<TType>,
   target: TType,
+  name: $Keys<TType>,
+  descriptor: Descriptor,
 ) => Descriptor;
 
 export type Descriptor = {
