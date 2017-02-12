@@ -10,7 +10,21 @@ import CryptoManager from './lib/CryptoManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import settings from './settings';
 
-const defaultBindings = (container: Container) => {
+type Settings = {
+  BINARIES_DIRECTORY: string,
+  DEVICE_DIRECTORY: string,
+  SERVER_KEYS_DIRECTORY: string,
+  SERVER_KEY_FILENAME: string,
+  SERVER_KEY_PASSWORD: ?string,
+};
+
+const defaultBindings = (container: Container, newSettings: Settings) => {
+  settings.BINARIES_DIRECTORY = newSettings.BINARIES_DIRECTORY;
+  settings.DEVICE_DIRECTORY = newSettings.DEVICE_DIRECTORY;
+  settings.SERVER_KEYS_DIRECTORY = newSettings.SERVER_KEYS_DIRECTORY;
+  settings.SERVER_KEY_FILENAME = newSettings.SERVER_KEY_FILENAME;
+  settings.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD || null;
+
   // Settings
   container.bindValue('DEVICE_DIRECTORY', settings.DEVICE_DIRECTORY);
   container.bindValue('SERVER_CONFIG', settings.SERVER_CONFIG);

@@ -40,7 +40,13 @@ var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var defaultBindings = function defaultBindings(container) {
+var defaultBindings = function defaultBindings(container, newSettings) {
+  _settings2.default.BINARIES_DIRECTORY = newSettings.BINARIES_DIRECTORY;
+  _settings2.default.DEVICE_DIRECTORY = newSettings.DEVICE_DIRECTORY;
+  _settings2.default.SERVER_KEYS_DIRECTORY = newSettings.SERVER_KEYS_DIRECTORY;
+  _settings2.default.SERVER_KEY_FILENAME = newSettings.SERVER_KEY_FILENAME;
+  _settings2.default.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD || null;
+
   // Settings
   container.bindValue('DEVICE_DIRECTORY', _settings2.default.DEVICE_DIRECTORY);
   container.bindValue('SERVER_CONFIG', _settings2.default.SERVER_CONFIG);
