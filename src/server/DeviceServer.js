@@ -47,8 +47,8 @@ import {
 } from '../clients/Device';
 
 type DeviceServerConfig = {|
-  host: string,
-  port: number,
+  HOST: string,
+  PORT: number,
 |};
 
 const NAME_GENERATOR = Moniker.generator([Moniker.adjective, Moniker.noun]);

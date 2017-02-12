@@ -20,7 +20,11 @@ export default <TType: Object>(
   keys?: Array<string> = [],
   config: ?MemoizeConfig = null,
 ): Decorator<TType> =>
-  (target: TType, name: $Keys<TType>, descriptor: Descriptor): Descriptor => {
+  (
+    target: TType,
+    name: $Keys<TType>,
+    descriptor: Descriptor,
+  ): Descriptor => {
     const formattedKeys = keys.map(
       (key: string): string => key.replace('?', ''),
     );
