@@ -17,16 +17,16 @@ type OtaUpdate = {
 const platformSettings = Object.entries(specifications);
 const SPECIFICATION_KEY_BY_PLATFORM = new Map(
   Object.values(settings.knownPlatforms).map(
-    (platform: mixed): Array<*> => {
+    (platform: mixed): [mixed, ?string] => {
       const spec = platformSettings.find(
         // eslint-disable-next-line no-unused-vars
-        ([key, value]: Array<*>): boolean =>
+        ([key, value]: [string, mixed]): boolean =>
           (value: any).productName === platform,
       );
 
       return [platform, spec && spec[0]];
     },
-  ).filter((item: Array<*>): boolean => !!item[1]),
+  ).filter((item: [mixed, ?string]): boolean => !!item[1]),
 );
 const FIRMWARE_VERSION =
   versions.find((version: Array<*>): boolean =>
