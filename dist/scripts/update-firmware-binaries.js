@@ -227,7 +227,7 @@ var downloadAppBinaries = function () {
 }();
 
 (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
-  var tags, release, downloadedBinaries, settingsBinaries, specificationsResponse, versionResponse, versionText, startIndex, endIndex, data, mapping, ii;
+  var releases, release, downloadedBinaries, settingsBinaries, specificationsResponse, versionResponse, versionText, startIndex, endIndex, data, mapping, ii;
   return _regenerator2.default.wrap(function _callee3$(_context3) {
     while (1) {
       switch (_context3.prev = _context3.next) {
@@ -257,7 +257,7 @@ var downloadAppBinaries = function () {
           }
 
           _context3.next = 9;
-          return githubAPI.repos.getTags({
+          return githubAPI.repos.getReleases({
             owner: GITHUB_USER,
             page: 0,
             perPage: 30,
@@ -265,25 +265,25 @@ var downloadAppBinaries = function () {
           });
 
         case 9:
-          tags = _context3.sent;
+          releases = _context3.sent;
 
-          tags = tags.filter(function (tag
+          releases = releases.filter(function (release
           // Don't use release candidates.. we only need main releases.
           ) {
-            return !tag.name.includes('-rc') && !tag.name.includes('-pi');
+            return !release.tag_name.includes('-rc') && !release.tag_name.includes('-pi') && release.assets.length > 2;
           });
 
-          tags.sort(function (a, b) {
-            if (a.name < b.name) {
+          releases.sort(function (a, b) {
+            if (a.tag_name < b.tag_name) {
               return 1;
             }
-            if (a.name > b.name) {
+            if (a.tag_name > b.tag_name) {
               return -1;
             }
             return 0;
           });
 
-          versionTag = tags[0].name;
+          versionTag = releases[0].tag_name;
 
         case 13:
           _context3.next = 15;
