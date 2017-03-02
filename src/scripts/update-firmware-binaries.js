@@ -182,29 +182,30 @@ const downloadAppBinaries = async (): Promise<*> => {
 
   // Download firmware binaries
   if (process.argv.length !== 3) {
-    let tags = await githubAPI.repos.getTags({
+    let releases = await githubAPI.repos.getReleases({
       owner: GITHUB_USER,
       page: 0,
       perPage: 30,
       repo: GITHUB_FIRMWARE_REPOSITORY,
     });
-    tags = tags.filter((tag: Object): boolean =>
+    releases = releases.filter((release: Object): boolean =>
       // Don't use release candidates.. we only need main releases.
-      !tag.name.includes('-rc') &&
-      !tag.name.includes('-pi'),
+      !release.tag_name.includes('-rc') &&
+      !release.tag_name.includes('-pi') &&
+      release.assets.length > 2,
     );
 
-    tags.sort((a: Object, b: Object): number => {
-      if (a.name < b.name) {
+    releases.sort((a: Object, b: Object): number => {
+      if (a.tag_name < b.tag_name) {
         return 1;
       }
-      if (a.name > b.name) {
+      if (a.tag_name > b.tag_name) {
         return -1;
       }
       return 0;
     });
 
-    versionTag = tags[0].name;
+    versionTag = releases[0].tag_name;
   }
 
   const release = await githubAPI.repos.getReleaseByTag({
