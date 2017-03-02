@@ -45,7 +45,7 @@ var defaultBindings = function defaultBindings(container, newSettings) {
   _settings2.default.DEVICE_DIRECTORY = newSettings.DEVICE_DIRECTORY;
   _settings2.default.SERVER_KEYS_DIRECTORY = newSettings.SERVER_KEYS_DIRECTORY;
   _settings2.default.SERVER_KEY_FILENAME = newSettings.SERVER_KEY_FILENAME;
-  _settings2.default.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD || null;
+  _settings2.default.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD;
 
   // Settings
   container.bindValue('DEVICE_DIRECTORY', _settings2.default.DEVICE_DIRECTORY);
