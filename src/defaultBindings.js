@@ -23,7 +23,7 @@ const defaultBindings = (container: Container, newSettings: Settings) => {
   settings.DEVICE_DIRECTORY = newSettings.DEVICE_DIRECTORY;
   settings.SERVER_KEYS_DIRECTORY = newSettings.SERVER_KEYS_DIRECTORY;
   settings.SERVER_KEY_FILENAME = newSettings.SERVER_KEY_FILENAME;
-  settings.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD || null;
+  settings.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD;
 
   // Settings
   container.bindValue('DEVICE_DIRECTORY', settings.DEVICE_DIRECTORY);

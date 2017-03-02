@@ -29,7 +29,7 @@ export default {
     PORT: 5683,
   },
   SERVER_KEY_FILENAME: 'default_key.pem',
-  SERVER_KEY_PASSWORD: null,
+  SERVER_KEY_PASSWORD: (null: ?string),
   SERVER_KEYS_DIRECTORY: path.join(__dirname, '../data/users'),
 
   CRYPTO_SALT: 'aes-128-cbc',
