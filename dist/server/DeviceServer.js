@@ -347,20 +347,19 @@ var DeviceServer = function () {
                           systemInformation = description.systemInformation;
 
                           if (!(!_this._enableSystemFirmwareAutoupdates || !systemInformation)) {
-                            _context4.next = 24;
+                            _context4.next = 23;
                             break;
                           }
 
-                          console.log('herhehr');
                           return _context4.abrupt('return', {
                             v: void 0
                           });
 
-                        case 24:
-                          _context4.next = 26;
+                        case 23:
+                          _context4.next = 25;
                           return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
 
-                        case 26:
+                        case 25:
                           config = _context4.sent;
 
 
@@ -374,7 +373,7 @@ var DeviceServer = function () {
                             }, 1000);
                           }
 
-                        case 28:
+                        case 27:
                         case 'end':
                           return _context4.stop();
                       }
