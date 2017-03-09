@@ -17,6 +17,7 @@
   "scripts": {
     "build": "babel ./src --out-dir ./dist",
     "lint": "eslint --fix --max-warnings 0 -- .",
+    "postinstall": "npm run update-firmware",
     "start": "babel ./src --out-dir ./dist --watch",
     "test": "ava",
     "test:watch": "ava --watch",
