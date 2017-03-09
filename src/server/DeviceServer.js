@@ -318,7 +318,6 @@ class DeviceServer {
         !this._enableSystemFirmwareAutoupdates ||
         !systemInformation
       ) {
-        console.log('herhehr');
         return;
       }
 
