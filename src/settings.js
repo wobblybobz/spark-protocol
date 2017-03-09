@@ -24,7 +24,8 @@ export default {
   BINARIES_DIRECTORY: path.join(__dirname, '../data/binaries'),
   DEFAULT_EVENT_TTL: 60,
   DEVICE_DIRECTORY: path.join(__dirname, '../data/deviceKeys'),
-  SERVER_CONFIG: {
+  TCP_DEVICE_SERVER_CONFIG: {
+    ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES: true,
     HOST: 'localhost',
     PORT: 5683,
   },

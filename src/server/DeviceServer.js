@@ -311,27 +311,32 @@ class DeviceServer {
       }
 
       const systemInformation = description.systemInformation;
-      if (systemInformation) {
-        const config = await FirmwareManager.getOtaSystemUpdateConfig(
-          systemInformation,
+      if (
+        !this._config.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES ||
+        !systemInformation
+      ) {
+        return;
+      }
+
+      const config = await FirmwareManager.getOtaSystemUpdateConfig(
+        systemInformation,
+      );
+
+      if (config) {
+        setTimeout(
+          () => {
+            this.publishSpecialEvent(
+              SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+              // Lets the user know if it's the system update part 1/2/3
+              config.moduleIndex + 1,
+              deviceID,
+              ownerID,
+            );
+
+            device.flash(config.systemFile);
+          },
+          1000,
         );
-
-        if (config) {
-          setTimeout(
-            () => {
-              this.publishSpecialEvent(
-                SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-                // Lets the user know if it's the system update part 1/2/3
-                config.moduleIndex + 1,
-                deviceID,
-                ownerID,
-              );
-
-              device.flash(config.systemFile);
-            },
-            1000,
-          );
-        }
       }
     } catch (error) {
       logger.error(error);

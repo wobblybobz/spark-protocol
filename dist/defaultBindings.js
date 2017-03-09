@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _extends2 = require('babel-runtime/helpers/extends');
+
+var _extends3 = _interopRequireDefault(_extends2);
+
 var _constitute = require('constitute');
 
 var _DeviceAttributeFileRepository = require('./repository/DeviceAttributeFileRepository');
@@ -40,19 +44,15 @@ var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var defaultBindings = function defaultBindings(container, newSettings) {
-  _settings2.default.BINARIES_DIRECTORY = newSettings.BINARIES_DIRECTORY;
-  _settings2.default.DEVICE_DIRECTORY = newSettings.DEVICE_DIRECTORY;
-  _settings2.default.SERVER_KEYS_DIRECTORY = newSettings.SERVER_KEYS_DIRECTORY;
-  _settings2.default.SERVER_KEY_FILENAME = newSettings.SERVER_KEY_FILENAME;
-  _settings2.default.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD || null;
+var defaultBindings = function defaultBindings(container, serverSettings) {
+  var mergedSettings = (0, _extends3.default)({}, _settings2.default, serverSettings);
 
   // Settings
-  container.bindValue('DEVICE_DIRECTORY', _settings2.default.DEVICE_DIRECTORY);
-  container.bindValue('SERVER_CONFIG', _settings2.default.SERVER_CONFIG);
-  container.bindValue('SERVER_KEY_FILENAME', _settings2.default.SERVER_KEY_FILENAME);
-  container.bindValue('SERVER_KEY_PASSWORD', _settings2.default.SERVER_KEY_PASSWORD);
-  container.bindValue('SERVER_KEYS_DIRECTORY', _settings2.default.SERVER_KEYS_DIRECTORY);
+  container.bindValue('DEVICE_DIRECTORY', mergedSettings.DEVICE_DIRECTORY);
+  container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
+  container.bindValue('SERVER_KEY_FILENAME', mergedSettings.SERVER_KEY_FILENAME);
+  container.bindValue('SERVER_KEY_PASSWORD', mergedSettings.SERVER_KEY_PASSWORD);
+  container.bindValue('SERVER_KEYS_DIRECTORY', mergedSettings.SERVER_KEYS_DIRECTORY);
 
   // Repository
   container.bindClass('DeviceAttributeRepository', _DeviceAttributeFileRepository2.default, ['DEVICE_DIRECTORY']);
@@ -65,6 +65,6 @@ var defaultBindings = function defaultBindings(container, newSettings) {
   container.bindClass('CryptoManager', _CryptoManager2.default, ['DeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
 
   // Device server
-  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'SERVER_CONFIG']);
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG']);
 };
 exports.default = defaultBindings;
