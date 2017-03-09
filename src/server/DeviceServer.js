@@ -69,6 +69,7 @@ class DeviceServer {
   _cryptoManager: CryptoManager;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
   _devicesById: Map<string, Device> = new Map();
+  _enableSystemFirmwareAutoupdates: boolean;
   _eventPublisher: EventPublisher;
 
   constructor(
@@ -77,12 +78,14 @@ class DeviceServer {
     cryptoManager: CryptoManager,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
+    enableSystemFirmwareAutoupdates: boolean,
   ) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
+    this._enableSystemFirmwareAutoupdates = enableSystemFirmwareAutoupdates;
   }
 
   start() {
@@ -311,27 +314,33 @@ class DeviceServer {
       }
 
       const systemInformation = description.systemInformation;
-      if (systemInformation) {
-        const config = await FirmwareManager.getOtaSystemUpdateConfig(
-          systemInformation,
+      if (
+        !this._enableSystemFirmwareAutoupdates ||
+        !systemInformation
+      ) {
+        console.log('herhehr');
+        return;
+      }
+
+      const config = await FirmwareManager.getOtaSystemUpdateConfig(
+        systemInformation,
+      );
+
+      if (config) {
+        setTimeout(
+          () => {
+            this.publishSpecialEvent(
+              SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+              // Lets the user know if it's the system update part 1/2/3
+              config.moduleIndex + 1,
+              deviceID,
+              ownerID,
+            );
+
+            device.flash(config.systemFile);
+          },
+          1000,
         );
-
-        if (config) {
-          setTimeout(
-            () => {
-              this.publishSpecialEvent(
-                SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-                // Lets the user know if it's the system update part 1/2/3
-                config.moduleIndex + 1,
-                deviceID,
-                ownerID,
-              );
-
-              device.flash(config.systemFile);
-            },
-            1000,
-          );
-        }
       }
     } catch (error) {
       logger.error(error);

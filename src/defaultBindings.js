@@ -8,29 +8,34 @@ import EventPublisher from './lib/EventPublisher';
 import ClaimCodeManager from './lib/ClaimCodeManager';
 import CryptoManager from './lib/CryptoManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
-import settings from './settings';
+import protocolSettings from './settings';
 
-type Settings = {
+type ServerSettings = {
   BINARIES_DIRECTORY: string,
   DEVICE_DIRECTORY: string,
-  SERVER_KEYS_DIRECTORY: string,
+  ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES: boolean,
   SERVER_KEY_FILENAME: string,
   SERVER_KEY_PASSWORD: ?string,
+  SERVER_KEYS_DIRECTORY: string,
+  TCP_DEVICE_SERVER_CONFIG: {
+    HOST: string,
+    PORT: number,
+  },
 };
 
-const defaultBindings = (container: Container, newSettings: Settings) => {
-  settings.BINARIES_DIRECTORY = newSettings.BINARIES_DIRECTORY;
-  settings.DEVICE_DIRECTORY = newSettings.DEVICE_DIRECTORY;
-  settings.SERVER_KEYS_DIRECTORY = newSettings.SERVER_KEYS_DIRECTORY;
-  settings.SERVER_KEY_FILENAME = newSettings.SERVER_KEY_FILENAME;
-  settings.SERVER_KEY_PASSWORD = newSettings.SERVER_KEY_PASSWORD;
+const defaultBindings = (
+  container: Container,
+  serverSettings: ServerSettings,
+) => {
+  const mergedSettings = { ...protocolSettings, ...serverSettings };
 
   // Settings
-  container.bindValue('DEVICE_DIRECTORY', settings.DEVICE_DIRECTORY);
-  container.bindValue('SERVER_CONFIG', settings.SERVER_CONFIG);
-  container.bindValue('SERVER_KEY_FILENAME', settings.SERVER_KEY_FILENAME);
-  container.bindValue('SERVER_KEY_PASSWORD', settings.SERVER_KEY_PASSWORD);
-  container.bindValue('SERVER_KEYS_DIRECTORY', settings.SERVER_KEYS_DIRECTORY);
+  container.bindValue('DEVICE_DIRECTORY', mergedSettings.DEVICE_DIRECTORY);
+  container.bindValue('ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES', mergedSettings.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES);
+  container.bindValue('SERVER_KEY_FILENAME', mergedSettings.SERVER_KEY_FILENAME);
+  container.bindValue('SERVER_KEY_PASSWORD', mergedSettings.SERVER_KEY_PASSWORD);
+  container.bindValue('SERVER_KEYS_DIRECTORY', mergedSettings.SERVER_KEYS_DIRECTORY);
+  container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
 
   // Repository
   container.bindClass(
@@ -71,7 +76,8 @@ const defaultBindings = (container: Container, newSettings: Settings) => {
       'ClaimCodeManager',
       'CryptoManager',
       'EventPublisher',
-      'SERVER_CONFIG',
+      'TCP_DEVICE_SERVER_CONFIG',
+      'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES',
     ],
   );
 };
