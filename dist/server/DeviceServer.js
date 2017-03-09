@@ -103,7 +103,7 @@ var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_
 var connectionIdCounter = 0;
 
 var DeviceServer = function () {
-  function DeviceServer(deviceAttributeRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig) {
+  function DeviceServer(deviceAttributeRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig, enableSystemFirmwareAutoupdates) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
@@ -346,20 +346,21 @@ var DeviceServer = function () {
 
                           systemInformation = description.systemInformation;
 
-                          if (!(!_this._config.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES || !systemInformation)) {
-                            _context4.next = 23;
+                          if (!(!_this._enableSystemFirmwareAutoupdates || !systemInformation)) {
+                            _context4.next = 24;
                             break;
                           }
 
+                          console.log('herhehr');
                           return _context4.abrupt('return', {
                             v: void 0
                           });
 
-                        case 23:
-                          _context4.next = 25;
+                        case 24:
+                          _context4.next = 26;
                           return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
 
-                        case 25:
+                        case 26:
                           config = _context4.sent;
 
 
@@ -373,7 +374,7 @@ var DeviceServer = function () {
                             }, 1000);
                           }
 
-                        case 27:
+                        case 28:
                         case 'end':
                           return _context4.stop();
                       }
@@ -696,6 +697,7 @@ var DeviceServer = function () {
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
+    this._enableSystemFirmwareAutoupdates = enableSystemFirmwareAutoupdates;
   }
 
   (0, _createClass3.default)(DeviceServer, [{

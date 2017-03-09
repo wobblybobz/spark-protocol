@@ -13,11 +13,11 @@ import protocolSettings from './settings';
 type ServerSettings = {
   BINARIES_DIRECTORY: string,
   DEVICE_DIRECTORY: string,
+  ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES: boolean,
   SERVER_KEY_FILENAME: string,
   SERVER_KEY_PASSWORD: ?string,
   SERVER_KEYS_DIRECTORY: string,
   TCP_DEVICE_SERVER_CONFIG: {
-    ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES: boolean,
     HOST: string,
     PORT: number,
   },
@@ -31,10 +31,11 @@ const defaultBindings = (
 
   // Settings
   container.bindValue('DEVICE_DIRECTORY', mergedSettings.DEVICE_DIRECTORY);
-  container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
+  container.bindValue('ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES', mergedSettings.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES);
   container.bindValue('SERVER_KEY_FILENAME', mergedSettings.SERVER_KEY_FILENAME);
   container.bindValue('SERVER_KEY_PASSWORD', mergedSettings.SERVER_KEY_PASSWORD);
   container.bindValue('SERVER_KEYS_DIRECTORY', mergedSettings.SERVER_KEYS_DIRECTORY);
+  container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
 
   // Repository
   container.bindClass(
@@ -76,6 +77,7 @@ const defaultBindings = (
       'CryptoManager',
       'EventPublisher',
       'TCP_DEVICE_SERVER_CONFIG',
+      'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES',
     ],
   );
 };

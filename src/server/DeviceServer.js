@@ -69,6 +69,7 @@ class DeviceServer {
   _cryptoManager: CryptoManager;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
   _devicesById: Map<string, Device> = new Map();
+  _enableSystemFirmwareAutoupdates: boolean;
   _eventPublisher: EventPublisher;
 
   constructor(
@@ -77,12 +78,14 @@ class DeviceServer {
     cryptoManager: CryptoManager,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
+    enableSystemFirmwareAutoupdates: boolean,
   ) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
+    this._enableSystemFirmwareAutoupdates = enableSystemFirmwareAutoupdates;
   }
 
   start() {
@@ -312,9 +315,10 @@ class DeviceServer {
 
       const systemInformation = description.systemInformation;
       if (
-        !this._config.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES ||
+        !this._enableSystemFirmwareAutoupdates ||
         !systemInformation
       ) {
+        console.log('herhehr');
         return;
       }
 
