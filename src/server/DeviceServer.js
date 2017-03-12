@@ -107,6 +107,41 @@ class DeviceServer {
     );
   }
 
+  _updateDeviceSystemFirmware = async (device: Device): Promise<void> => {
+    const description = await device.getDescription();
+    const systemInformation = description.systemInformation;
+    if (!systemInformation) {
+      return;
+    }
+
+    const deviceID = device.getID();
+    const deviceAttributes =
+      await this._deviceAttributeRepository.getById(deviceID);
+    const ownerID = deviceAttributes && deviceAttributes.ownerID;
+
+    const config = await FirmwareManager.getOtaSystemUpdateConfig(
+      systemInformation,
+    );
+    if (!config) {
+      return;
+    }
+
+    setTimeout(
+      async (): Promise<void> => {
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+          // Lets the user know if it's the system update part 1/2/3
+          config.moduleIndex + 1,
+          deviceID,
+          ownerID,
+        );
+
+        await device.flash(config.systemFile);
+      },
+      1000,
+    );
+  };
+
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
     try {
       connectionIdCounter += 1;
@@ -312,35 +347,6 @@ class DeviceServer {
           ownerID,
         );
       }
-
-      const systemInformation = description.systemInformation;
-      if (
-        !this._enableSystemFirmwareAutoupdates ||
-        !systemInformation
-      ) {
-        return;
-      }
-
-      const config = await FirmwareManager.getOtaSystemUpdateConfig(
-        systemInformation,
-      );
-
-      if (config) {
-        setTimeout(
-          () => {
-            this.publishSpecialEvent(
-              SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-              // Lets the user know if it's the system update part 1/2/3
-              config.moduleIndex + 1,
-              deviceID,
-              ownerID,
-            );
-
-            device.flash(config.systemFile);
-          },
-          1000,
-        );
-      }
     } catch (error) {
       logger.error(error);
     }
@@ -452,15 +458,17 @@ class DeviceServer {
         device.setOtaChunkSize(Number.parseInt(nullthrows(eventData.data), 10));
       }
 
-      if (
-        eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)
-      ) {
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)) {
         this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.SAFE_MODE,
           eventData.data,
           deviceID,
           ownerID,
         );
+
+        if (this._enableSystemFirmwareAutoupdates) {
+          await this._updateDeviceSystemFirmware(device);
+        }
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {

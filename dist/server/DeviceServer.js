@@ -8,10 +8,6 @@ var _parseInt = require('babel-runtime/core-js/number/parse-int');
 
 var _parseInt2 = _interopRequireDefault(_parseInt);
 
-var _typeof2 = require('babel-runtime/helpers/typeof');
-
-var _typeof3 = _interopRequireDefault(_typeof2);
-
 var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
@@ -109,18 +105,95 @@ var DeviceServer = function () {
     (0, _classCallCheck3.default)(this, DeviceServer);
     this._devicesById = new _map2.default();
 
-    this._onNewSocketConnection = function () {
-      var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(socket) {
+    this._updateDeviceSystemFirmware = function () {
+      var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(device) {
+        var description, systemInformation, deviceID, deviceAttributes, ownerID, config;
         return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                _context2.prev = 0;
-                return _context2.delegateYield(_regenerator2.default.mark(function _callee() {
-                  var connectionKey, handshake, device, deviceID, deviceAttributes, ownerID;
+                _context2.next = 2;
+                return device.getDescription();
+
+              case 2:
+                description = _context2.sent;
+                systemInformation = description.systemInformation;
+
+                if (systemInformation) {
+                  _context2.next = 6;
+                  break;
+                }
+
+                return _context2.abrupt('return');
+
+              case 6:
+                deviceID = device.getID();
+                _context2.next = 9;
+                return _this._deviceAttributeRepository.getById(deviceID);
+
+              case 9:
+                deviceAttributes = _context2.sent;
+                ownerID = deviceAttributes && deviceAttributes.ownerID;
+                _context2.next = 13;
+                return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
+
+              case 13:
+                config = _context2.sent;
+
+                if (config) {
+                  _context2.next = 16;
+                  break;
+                }
+
+                return _context2.abrupt('return');
+
+              case 16:
+
+                setTimeout((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
                   return _regenerator2.default.wrap(function _callee$(_context) {
                     while (1) {
                       switch (_context.prev = _context.next) {
+                        case 0:
+                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+                          // Lets the user know if it's the system update part 1/2/3
+                          config.moduleIndex + 1, deviceID, ownerID);
+
+                          _context.next = 3;
+                          return device.flash(config.systemFile);
+
+                        case 3:
+                        case 'end':
+                          return _context.stop();
+                      }
+                    }
+                  }, _callee, _this);
+                })), 1000);
+
+              case 17:
+              case 'end':
+                return _context2.stop();
+            }
+          }
+        }, _callee2, _this);
+      }));
+
+      return function (_x) {
+        return _ref.apply(this, arguments);
+      };
+    }();
+
+    this._onNewSocketConnection = function () {
+      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(socket) {
+        return _regenerator2.default.wrap(function _callee4$(_context4) {
+          while (1) {
+            switch (_context4.prev = _context4.next) {
+              case 0:
+                _context4.prev = 0;
+                return _context4.delegateYield(_regenerator2.default.mark(function _callee3() {
+                  var connectionKey, handshake, device, deviceID, deviceAttributes, ownerID;
+                  return _regenerator2.default.wrap(function _callee3$(_context3) {
+                    while (1) {
+                      switch (_context3.prev = _context3.next) {
                         case 0:
                           connectionIdCounter += 1;
                           connectionKey = '_' + connectionIdCounter;
@@ -130,16 +203,16 @@ var DeviceServer = function () {
 
                           _logger2.default.log('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Connection ID: ' + connectionIdCounter));
 
-                          _context.next = 7;
+                          _context3.next = 7;
                           return device.startupProtocol();
 
                         case 7:
                           deviceID = device.getID();
-                          _context.next = 10;
+                          _context3.next = 10;
                           return _this._deviceAttributeRepository.getById(device.getID());
 
                         case 10:
-                          deviceAttributes = _context.sent;
+                          deviceAttributes = _context3.sent;
                           ownerID = deviceAttributes && deviceAttributes.ownerID;
 
 
@@ -185,51 +258,51 @@ var DeviceServer = function () {
 
                         case 22:
                         case 'end':
-                          return _context.stop();
+                          return _context3.stop();
                       }
                     }
-                  }, _callee, _this);
+                  }, _callee3, _this);
                 })(), 't0', 2);
 
               case 2:
-                _context2.next = 7;
+                _context4.next = 7;
                 break;
 
               case 4:
-                _context2.prev = 4;
-                _context2.t1 = _context2['catch'](0);
+                _context4.prev = 4;
+                _context4.t1 = _context4['catch'](0);
 
-                _logger2.default.error('Device startup failed: ' + _context2.t1.message);
+                _logger2.default.error('Device startup failed: ' + _context4.t1.message);
 
               case 7:
               case 'end':
-                return _context2.stop();
+                return _context4.stop();
             }
           }
-        }, _callee2, _this, [[0, 4]]);
+        }, _callee4, _this, [[0, 4]]);
       }));
 
-      return function (_x) {
-        return _ref.apply(this, arguments);
+      return function (_x2) {
+        return _ref3.apply(this, arguments);
       };
     }();
 
     this._onDeviceDisconnect = function () {
-      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(device) {
+      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(device) {
         var deviceID, newDevice, connectionKey, deviceAttributes, ownerID;
-        return _regenerator2.default.wrap(function _callee3$(_context3) {
+        return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
-            switch (_context3.prev = _context3.next) {
+            switch (_context5.prev = _context5.next) {
               case 0:
                 deviceID = device.getID();
                 newDevice = _this._devicesById.get(deviceID);
 
                 if (!(device !== newDevice)) {
-                  _context3.next = 4;
+                  _context5.next = 4;
                   break;
                 }
 
-                return _context3.abrupt('return');
+                return _context5.abrupt('return');
 
               case 4:
 
@@ -237,12 +310,12 @@ var DeviceServer = function () {
                 _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
                 connectionKey = device.getConnectionKey();
-                _context3.next = 9;
+                _context5.next = 9;
                 return _this._deviceAttributeRepository.getById(deviceID);
 
               case 9:
-                deviceAttributes = _context3.sent;
-                _context3.next = 12;
+                deviceAttributes = _context5.sent;
+                _context5.next = 12;
                 return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
                   lastHeard: device.ping().lastPing
                 }));
@@ -256,14 +329,14 @@ var DeviceServer = function () {
 
               case 15:
               case 'end':
-                return _context3.stop();
+                return _context5.stop();
             }
           }
-        }, _callee3, _this);
+        }, _callee5, _this);
       }));
 
-      return function (_x2) {
-        return _ref2.apply(this, arguments);
+      return function (_x3) {
+        return _ref4.apply(this, arguments);
       };
     }();
 
@@ -275,164 +348,109 @@ var DeviceServer = function () {
     };
 
     this._onDeviceReady = function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(device) {
-        var _ret2;
+      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(device) {
+        var deviceID, existingConnection, existingAttributes, ownerID, description, _FirmwareManager$getA, uuid, deviceAttributes;
 
-        return _regenerator2.default.wrap(function _callee5$(_context5) {
+        return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
-            switch (_context5.prev = _context5.next) {
+            switch (_context6.prev = _context6.next) {
               case 0:
-                _context5.prev = 0;
-                return _context5.delegateYield(_regenerator2.default.mark(function _callee4() {
-                  var deviceID, existingConnection, existingAttributes, ownerID, description, _FirmwareManager$getA, uuid, deviceAttributes, systemInformation, config;
+                _context6.prev = 0;
 
-                  return _regenerator2.default.wrap(function _callee4$(_context4) {
-                    while (1) {
-                      switch (_context4.prev = _context4.next) {
-                        case 0:
-                          _logger2.default.log('Device online!');
-                          deviceID = device.getID();
+                _logger2.default.log('Device online!');
+                deviceID = device.getID();
 
-                          if (!_this._devicesById.has(deviceID)) {
-                            _context4.next = 7;
-                            break;
-                          }
-
-                          existingConnection = _this._devicesById.get(deviceID);
-
-                          (0, _nullthrows2.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
-
-                          _context4.next = 7;
-                          return _this._onDeviceDisconnect(device);
-
-                        case 7:
-
-                          _this._devicesById.set(deviceID, device);
-
-                          _context4.next = 10;
-                          return _this._deviceAttributeRepository.getById(deviceID);
-
-                        case 10:
-                          existingAttributes = _context4.sent;
-                          ownerID = existingAttributes && existingAttributes.ownerID;
-
-
-                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID);
-
-                          _context4.next = 15;
-                          return device.getDescription();
-
-                        case 15:
-                          description = _context4.sent;
-                          _FirmwareManager$getA = _FirmwareManager2.default.getAppModule(description.systemInformation), uuid = _FirmwareManager$getA.uuid;
-                          deviceAttributes = (0, _extends3.default)({
-                            name: NAME_GENERATOR.choose()
-                          }, existingAttributes, {
-                            appHash: uuid,
-                            deviceID: deviceID,
-                            ip: device.getRemoteIPAddress(),
-                            lastHeard: new Date(),
-                            particleProductId: description.productID,
-                            productFirmwareVersion: description.firmwareVersion
-                          });
-
-
-                          _this._deviceAttributeRepository.update(deviceAttributes);
-
-                          // Send app-hash if this is a new app firmware
-                          if (!existingAttributes || uuid !== existingAttributes.appHash) {
-                            _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, uuid, deviceID, ownerID);
-                          }
-
-                          systemInformation = description.systemInformation;
-
-                          if (!(!_this._enableSystemFirmwareAutoupdates || !systemInformation)) {
-                            _context4.next = 23;
-                            break;
-                          }
-
-                          return _context4.abrupt('return', {
-                            v: void 0
-                          });
-
-                        case 23:
-                          _context4.next = 25;
-                          return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
-
-                        case 25:
-                          config = _context4.sent;
-
-
-                          if (config) {
-                            setTimeout(function () {
-                              _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-                              // Lets the user know if it's the system update part 1/2/3
-                              config.moduleIndex + 1, deviceID, ownerID);
-
-                              device.flash(config.systemFile);
-                            }, 1000);
-                          }
-
-                        case 27:
-                        case 'end':
-                          return _context4.stop();
-                      }
-                    }
-                  }, _callee4, _this);
-                })(), 't0', 2);
-
-              case 2:
-                _ret2 = _context5.t0;
-
-                if (!((typeof _ret2 === 'undefined' ? 'undefined' : (0, _typeof3.default)(_ret2)) === "object")) {
-                  _context5.next = 5;
+                if (!_this._devicesById.has(deviceID)) {
+                  _context6.next = 8;
                   break;
                 }
 
-                return _context5.abrupt('return', _ret2.v);
+                existingConnection = _this._devicesById.get(deviceID);
 
-              case 5:
-                _context5.next = 10;
+                (0, _nullthrows2.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
+
+                _context6.next = 8;
+                return _this._onDeviceDisconnect(device);
+
+              case 8:
+
+                _this._devicesById.set(deviceID, device);
+
+                _context6.next = 11;
+                return _this._deviceAttributeRepository.getById(deviceID);
+
+              case 11:
+                existingAttributes = _context6.sent;
+                ownerID = existingAttributes && existingAttributes.ownerID;
+
+
+                _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID);
+
+                _context6.next = 16;
+                return device.getDescription();
+
+              case 16:
+                description = _context6.sent;
+                _FirmwareManager$getA = _FirmwareManager2.default.getAppModule(description.systemInformation), uuid = _FirmwareManager$getA.uuid;
+                deviceAttributes = (0, _extends3.default)({
+                  name: NAME_GENERATOR.choose()
+                }, existingAttributes, {
+                  appHash: uuid,
+                  deviceID: deviceID,
+                  ip: device.getRemoteIPAddress(),
+                  lastHeard: new Date(),
+                  particleProductId: description.productID,
+                  productFirmwareVersion: description.firmwareVersion
+                });
+
+
+                _this._deviceAttributeRepository.update(deviceAttributes);
+
+                // Send app-hash if this is a new app firmware
+                if (!existingAttributes || uuid !== existingAttributes.appHash) {
+                  _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, uuid, deviceID, ownerID);
+                }
+                _context6.next = 26;
                 break;
 
-              case 7:
-                _context5.prev = 7;
-                _context5.t1 = _context5['catch'](0);
+              case 23:
+                _context6.prev = 23;
+                _context6.t0 = _context6['catch'](0);
 
-                _logger2.default.error(_context5.t1);
+                _logger2.default.error(_context6.t0);
 
-              case 10:
+              case 26:
               case 'end':
-                return _context5.stop();
+                return _context6.stop();
             }
           }
-        }, _callee5, _this, [[0, 7]]);
+        }, _callee6, _this, [[0, 23]]);
       }));
 
-      return function (_x3) {
-        return _ref3.apply(this, arguments);
+      return function (_x4) {
+        return _ref5.apply(this, arguments);
       };
     }();
 
     this._onDeviceSentMessage = function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(message, isPublic, device) {
-        return _regenerator2.default.wrap(function _callee7$(_context7) {
+      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(message, isPublic, device) {
+        return _regenerator2.default.wrap(function _callee8$(_context8) {
           while (1) {
-            switch (_context7.prev = _context7.next) {
+            switch (_context8.prev = _context8.next) {
               case 0:
-                _context7.prev = 0;
-                return _context7.delegateYield(_regenerator2.default.mark(function _callee6() {
+                _context8.prev = 0;
+                return _context8.delegateYield(_regenerator2.default.mark(function _callee7() {
                   var deviceID, deviceAttributes, ownerID, eventData, eventName, shouldSwallowEvent, cryptoString;
-                  return _regenerator2.default.wrap(function _callee6$(_context6) {
+                  return _regenerator2.default.wrap(function _callee7$(_context7) {
                     while (1) {
-                      switch (_context6.prev = _context6.next) {
+                      switch (_context7.prev = _context7.next) {
                         case 0:
                           deviceID = device.getID();
-                          _context6.next = 3;
+                          _context7.next = 3;
                           return _this._deviceAttributeRepository.getById(deviceID);
 
                         case 3:
-                          deviceAttributes = _context6.sent;
+                          deviceAttributes = _context7.sent;
                           ownerID = deviceAttributes && deviceAttributes.ownerID;
                           eventData = {
                             data: message.getPayloadLength() === 0 ? '' : message.getPayload().toString(),
@@ -466,11 +484,11 @@ var DeviceServer = function () {
                           }
 
                           if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-                            _context6.next = 13;
+                            _context7.next = 13;
                             break;
                           }
 
-                          _context6.next = 13;
+                          _context7.next = 13;
                           return _this._onDeviceClaimCodeMessage(message, device);
 
                         case 13:
@@ -509,9 +527,22 @@ var DeviceServer = function () {
                             device.setOtaChunkSize((0, _parseInt2.default)((0, _nullthrows2.default)(eventData.data), 10));
                           }
 
-                          if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
-                            _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE, eventData.data, deviceID, ownerID);
+                          if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
+                            _context7.next = 25;
+                            break;
                           }
+
+                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE, eventData.data, deviceID, ownerID);
+
+                          if (!_this._enableSystemFirmwareAutoupdates) {
+                            _context7.next = 25;
+                            break;
+                          }
+
+                          _context7.next = 25;
+                          return _this._updateDeviceSystemFirmware(device);
+
+                        case 25:
 
                           if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
                             // TODO: Test this with a Core device
@@ -520,71 +551,71 @@ var DeviceServer = function () {
                             // if device version is old, do OTA update with patch
                           }
 
-                        case 22:
+                        case 26:
                         case 'end':
-                          return _context6.stop();
+                          return _context7.stop();
                       }
                     }
-                  }, _callee6, _this);
+                  }, _callee7, _this);
                 })(), 't0', 2);
 
               case 2:
-                _context7.next = 7;
+                _context8.next = 7;
                 break;
 
               case 4:
-                _context7.prev = 4;
-                _context7.t1 = _context7['catch'](0);
+                _context8.prev = 4;
+                _context8.t1 = _context8['catch'](0);
 
-                _logger2.default.error(_context7.t1);
+                _logger2.default.error(_context8.t1);
 
               case 7:
               case 'end':
-                return _context7.stop();
+                return _context8.stop();
             }
           }
-        }, _callee7, _this, [[0, 4]]);
+        }, _callee8, _this, [[0, 4]]);
       }));
 
-      return function (_x4, _x5, _x6) {
-        return _ref4.apply(this, arguments);
+      return function (_x5, _x6, _x7) {
+        return _ref6.apply(this, arguments);
       };
     }();
 
     this._onDeviceClaimCodeMessage = function () {
-      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(message, device) {
+      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(message, device) {
         var claimCode, deviceID, deviceAttributes, claimRequestUserID;
-        return _regenerator2.default.wrap(function _callee8$(_context8) {
+        return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
-            switch (_context8.prev = _context8.next) {
+            switch (_context9.prev = _context9.next) {
               case 0:
                 claimCode = message.getPayload().toString();
                 deviceID = device.getID();
-                _context8.next = 4;
+                _context9.next = 4;
                 return _this._deviceAttributeRepository.getById(deviceID);
 
               case 4:
-                deviceAttributes = _context8.sent;
+                deviceAttributes = _context9.sent;
 
                 if (!(!deviceAttributes || deviceAttributes.ownerID || deviceAttributes.claimCode === claimCode)) {
-                  _context8.next = 7;
+                  _context9.next = 7;
                   break;
                 }
 
-                return _context8.abrupt('return');
+                return _context9.abrupt('return');
 
               case 7:
                 claimRequestUserID = _this._claimCodeManager.getUserIDByClaimCode(claimCode);
 
                 if (claimRequestUserID) {
-                  _context8.next = 10;
+                  _context9.next = 10;
                   break;
                 }
 
-                return _context8.abrupt('return');
+                return _context9.abrupt('return');
 
               case 10:
-                _context8.next = 12;
+                _context9.next = 12;
                 return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
                   claimCode: claimCode,
                   ownerID: claimRequestUserID
@@ -596,23 +627,23 @@ var DeviceServer = function () {
 
               case 13:
               case 'end':
-                return _context8.stop();
+                return _context9.stop();
             }
           }
-        }, _callee8, _this);
+        }, _callee9, _this);
       }));
 
-      return function (_x7, _x8) {
-        return _ref5.apply(this, arguments);
+      return function (_x8, _x9) {
+        return _ref7.apply(this, arguments);
       };
     }();
 
     this._onDeviceSubscribe = function () {
-      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(message, device) {
+      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10(message, device) {
         var messageName, deviceID, deviceAttributes, ownerID, query, isFromMyDevices;
-        return _regenerator2.default.wrap(function _callee9$(_context9) {
+        return _regenerator2.default.wrap(function _callee10$(_context10) {
           while (1) {
-            switch (_context9.prev = _context9.next) {
+            switch (_context10.prev = _context10.next) {
               case 0:
                 // uri -> /e/?u    --> firehose for all my devices
                 // uri -> /e/ (deviceid in body)   --> allowed
@@ -621,22 +652,22 @@ var DeviceServer = function () {
                 // uri -> /e/event_name?u (deviceid)    --> deviceid?
                 messageName = message.getUriPath().substr(3);
                 deviceID = device.getID();
-                _context9.next = 4;
+                _context10.next = 4;
                 return _this._deviceAttributeRepository.getById(deviceID);
 
               case 4:
-                deviceAttributes = _context9.sent;
+                deviceAttributes = _context10.sent;
                 ownerID = deviceAttributes && deviceAttributes.ownerID;
                 query = message.getUriQuery();
                 isFromMyDevices = query && !!query.match('u');
 
                 if (messageName) {
-                  _context9.next = 11;
+                  _context10.next = 11;
                   break;
                 }
 
                 device.sendReply('SubscribeFail', message.getId());
-                return _context9.abrupt('return');
+                return _context10.abrupt('return');
 
               case 11:
 
@@ -647,13 +678,13 @@ var DeviceServer = function () {
                 });
 
                 if (ownerID) {
-                  _context9.next = 16;
+                  _context10.next = 16;
                   break;
                 }
 
                 device.sendReply('SubscribeAck', message.getId());
                 _logger2.default.log('device with ID ' + deviceID + ' wasn\'t subscribed to' + (messageName + ' event: the device is unclaimed.'));
-                return _context9.abrupt('return');
+                return _context10.abrupt('return');
 
               case 16:
 
@@ -663,14 +694,14 @@ var DeviceServer = function () {
 
               case 18:
               case 'end':
-                return _context9.stop();
+                return _context10.stop();
             }
           }
-        }, _callee9, _this);
+        }, _callee10, _this);
       }));
 
-      return function (_x9, _x10) {
-        return _ref6.apply(this, arguments);
+      return function (_x10, _x11) {
+        return _ref8.apply(this, arguments);
       };
     }();
 
