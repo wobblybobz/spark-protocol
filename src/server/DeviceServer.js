@@ -69,7 +69,7 @@ class DeviceServer {
   _cryptoManager: CryptoManager;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
   _devicesById: Map<string, Device> = new Map();
-  _enableSystemFirmwareAutoupdates: boolean;
+  _areSystemFirmwareAutoupdatesEnabled: boolean;
   _eventPublisher: EventPublisher;
 
   constructor(
@@ -78,14 +78,15 @@ class DeviceServer {
     cryptoManager: CryptoManager,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
-    enableSystemFirmwareAutoupdates: boolean,
+    areSystemFirmwareAutoupdatesEnabled: boolean,
   ) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
-    this._enableSystemFirmwareAutoupdates = enableSystemFirmwareAutoupdates;
+    this._areSystemFirmwareAutoupdatesEnabled =
+      areSystemFirmwareAutoupdatesEnabled;
   }
 
   start() {
@@ -106,6 +107,40 @@ class DeviceServer {
       (): void => logger.log(`Server started on port: ${serverPort}`),
     );
   }
+
+  _updateDeviceSystemFirmware = async (
+    device: Device,
+    ownerID: ?string,
+  ): Promise<void> => {
+    const description = await device.getDescription();
+    const systemInformation = description.systemInformation;
+    if (!systemInformation) {
+      return;
+    }
+    const deviceID = device.getID();
+
+    const config = await FirmwareManager.getOtaSystemUpdateConfig(
+      systemInformation,
+    );
+    if (!config) {
+      return;
+    }
+
+    setTimeout(
+      async (): Promise<void> => {
+        this.publishSpecialEvent(
+          SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
+          // Lets the user know if it's the system update part 1/2/3
+          config.moduleIndex + 1,
+          deviceID,
+          ownerID,
+        );
+
+        await device.flash(config.systemFile);
+      },
+      1000,
+    );
+  };
 
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
     try {
@@ -312,35 +347,6 @@ class DeviceServer {
           ownerID,
         );
       }
-
-      const systemInformation = description.systemInformation;
-      if (
-        !this._enableSystemFirmwareAutoupdates ||
-        !systemInformation
-      ) {
-        return;
-      }
-
-      const config = await FirmwareManager.getOtaSystemUpdateConfig(
-        systemInformation,
-      );
-
-      if (config) {
-        setTimeout(
-          () => {
-            this.publishSpecialEvent(
-              SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
-              // Lets the user know if it's the system update part 1/2/3
-              config.moduleIndex + 1,
-              deviceID,
-              ownerID,
-            );
-
-            device.flash(config.systemFile);
-          },
-          1000,
-        );
-      }
     } catch (error) {
       logger.error(error);
     }
@@ -452,15 +458,20 @@ class DeviceServer {
         device.setOtaChunkSize(Number.parseInt(nullthrows(eventData.data), 10));
       }
 
-      if (
-        eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)
-      ) {
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.SAFE_MODE)) {
         this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.SAFE_MODE,
           eventData.data,
           deviceID,
           ownerID,
         );
+
+        if (this._areSystemFirmwareAutoupdatesEnabled) {
+          await this._updateDeviceSystemFirmware(
+            device,
+            ownerID,
+          );
+        }
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
