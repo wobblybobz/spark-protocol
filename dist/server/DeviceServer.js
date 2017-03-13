@@ -99,15 +99,15 @@ var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_
 var connectionIdCounter = 0;
 
 var DeviceServer = function () {
-  function DeviceServer(deviceAttributeRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig, enableSystemFirmwareAutoupdates) {
+  function DeviceServer(deviceAttributeRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig, areSystemFirmwareAutoupdatesEnabled) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
     this._devicesById = new _map2.default();
 
     this._updateDeviceSystemFirmware = function () {
-      var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(device) {
-        var description, systemInformation, deviceID, deviceAttributes, ownerID, config;
+      var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(device, ownerID) {
+        var description, systemInformation, deviceID, config;
         return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
@@ -129,25 +129,19 @@ var DeviceServer = function () {
               case 6:
                 deviceID = device.getID();
                 _context2.next = 9;
-                return _this._deviceAttributeRepository.getById(deviceID);
-
-              case 9:
-                deviceAttributes = _context2.sent;
-                ownerID = deviceAttributes && deviceAttributes.ownerID;
-                _context2.next = 13;
                 return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
 
-              case 13:
+              case 9:
                 config = _context2.sent;
 
                 if (config) {
-                  _context2.next = 16;
+                  _context2.next = 12;
                   break;
                 }
 
                 return _context2.abrupt('return');
 
-              case 16:
+              case 12:
 
                 setTimeout((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
                   return _regenerator2.default.wrap(function _callee$(_context) {
@@ -169,7 +163,7 @@ var DeviceServer = function () {
                   }, _callee, _this);
                 })), 1000);
 
-              case 17:
+              case 13:
               case 'end':
                 return _context2.stop();
             }
@@ -177,7 +171,7 @@ var DeviceServer = function () {
         }, _callee2, _this);
       }));
 
-      return function (_x) {
+      return function (_x, _x2) {
         return _ref.apply(this, arguments);
       };
     }();
@@ -282,7 +276,7 @@ var DeviceServer = function () {
         }, _callee4, _this, [[0, 4]]);
       }));
 
-      return function (_x2) {
+      return function (_x3) {
         return _ref3.apply(this, arguments);
       };
     }();
@@ -335,7 +329,7 @@ var DeviceServer = function () {
         }, _callee5, _this);
       }));
 
-      return function (_x3) {
+      return function (_x4) {
         return _ref4.apply(this, arguments);
       };
     }();
@@ -427,7 +421,7 @@ var DeviceServer = function () {
         }, _callee6, _this, [[0, 23]]);
       }));
 
-      return function (_x4) {
+      return function (_x5) {
         return _ref5.apply(this, arguments);
       };
     }();
@@ -534,13 +528,13 @@ var DeviceServer = function () {
 
                           _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE, eventData.data, deviceID, ownerID);
 
-                          if (!_this._enableSystemFirmwareAutoupdates) {
+                          if (!_this._areSystemFirmwareAutoupdatesEnabled) {
                             _context7.next = 25;
                             break;
                           }
 
                           _context7.next = 25;
-                          return _this._updateDeviceSystemFirmware(device);
+                          return _this._updateDeviceSystemFirmware(device, ownerID);
 
                         case 25:
 
@@ -577,7 +571,7 @@ var DeviceServer = function () {
         }, _callee8, _this, [[0, 4]]);
       }));
 
-      return function (_x5, _x6, _x7) {
+      return function (_x6, _x7, _x8) {
         return _ref6.apply(this, arguments);
       };
     }();
@@ -633,7 +627,7 @@ var DeviceServer = function () {
         }, _callee9, _this);
       }));
 
-      return function (_x8, _x9) {
+      return function (_x9, _x10) {
         return _ref7.apply(this, arguments);
       };
     }();
@@ -700,7 +694,7 @@ var DeviceServer = function () {
         }, _callee10, _this);
       }));
 
-      return function (_x10, _x11) {
+      return function (_x11, _x12) {
         return _ref8.apply(this, arguments);
       };
     }();
@@ -727,7 +721,7 @@ var DeviceServer = function () {
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
-    this._enableSystemFirmwareAutoupdates = enableSystemFirmwareAutoupdates;
+    this._areSystemFirmwareAutoupdatesEnabled = areSystemFirmwareAutoupdatesEnabled;
   }
 
   (0, _createClass3.default)(DeviceServer, [{

@@ -69,7 +69,7 @@ class DeviceServer {
   _cryptoManager: CryptoManager;
   _deviceAttributeRepository: Repository<DeviceAttributes>;
   _devicesById: Map<string, Device> = new Map();
-  _enableSystemFirmwareAutoupdates: boolean;
+  _areSystemFirmwareAutoupdatesEnabled: boolean;
   _eventPublisher: EventPublisher;
 
   constructor(
@@ -78,14 +78,15 @@ class DeviceServer {
     cryptoManager: CryptoManager,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
-    enableSystemFirmwareAutoupdates: boolean,
+    areSystemFirmwareAutoupdatesEnabled: boolean,
   ) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
-    this._enableSystemFirmwareAutoupdates = enableSystemFirmwareAutoupdates;
+    this._areSystemFirmwareAutoupdatesEnabled =
+      areSystemFirmwareAutoupdatesEnabled;
   }
 
   start() {
@@ -107,17 +108,16 @@ class DeviceServer {
     );
   }
 
-  _updateDeviceSystemFirmware = async (device: Device): Promise<void> => {
+  _updateDeviceSystemFirmware = async (
+    device: Device,
+    ownerID: ?string,
+  ): Promise<void> => {
     const description = await device.getDescription();
     const systemInformation = description.systemInformation;
     if (!systemInformation) {
       return;
     }
-
     const deviceID = device.getID();
-    const deviceAttributes =
-      await this._deviceAttributeRepository.getById(deviceID);
-    const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
     const config = await FirmwareManager.getOtaSystemUpdateConfig(
       systemInformation,
@@ -466,8 +466,11 @@ class DeviceServer {
           ownerID,
         );
 
-        if (this._enableSystemFirmwareAutoupdates) {
-          await this._updateDeviceSystemFirmware(device);
+        if (this._areSystemFirmwareAutoupdatesEnabled) {
+          await this._updateDeviceSystemFirmware(
+            device,
+            ownerID,
+          );
         }
       }
 
