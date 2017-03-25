@@ -274,11 +274,11 @@ var Device = function (_EventEmitter) {
                         });
                         decipherStream.on('readable', function () {
                           var chunk = decipherStream.read();
+                          _this._clientHasWrittenToSocket();
                           if (!chunk) {
                             return;
                           }
                           _this.routeMessage(chunk);
-                          _this._clientHasWrittenToSocket();
                         });
 
                       case 13:

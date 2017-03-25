@@ -213,11 +213,11 @@ class Device extends EventEmitter {
       pendingBuffers.map((data: Buffer): void => this.routeMessage(data));
       decipherStream.on('readable', () => {
         const chunk = ((decipherStream.read(): any): Buffer);
+        this._clientHasWrittenToSocket();
         if (!chunk) {
           return;
         }
         this.routeMessage(chunk);
-        this._clientHasWrittenToSocket();
       });
     } catch (error) {
       this.disconnect(error);
