@@ -128,6 +128,7 @@ var ChunkingStream = function (_Transform) {
         _this.process(remainder, callback);
       } else {
         process.nextTick(callback);
+        return;
       }
 
       if (!remainder && callback) {

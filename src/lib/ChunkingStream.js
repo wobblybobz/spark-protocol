@@ -111,6 +111,7 @@ class ChunkingStream extends Transform {
       this.process(remainder, callback);
     } else {
       process.nextTick(callback);
+      return;
     }
 
     if (!remainder && callback) {
