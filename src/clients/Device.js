@@ -212,12 +212,14 @@ class Device extends EventEmitter {
 
       pendingBuffers.map((data: Buffer): void => this.routeMessage(data));
       decipherStream.on('readable', () => {
-        const chunk = ((decipherStream.read(): any): Buffer);
-        this._clientHasWrittenToSocket();
-        if (!chunk) {
-          return;
-        }
-        this.routeMessage(chunk);
+        process.nextTick(() => {
+          const chunk = ((decipherStream.read(): any): Buffer);
+          this._clientHasWrittenToSocket();
+          if (!chunk) {
+            return;
+          }
+          this.routeMessage(chunk);
+        });
       });
     } catch (error) {
       this.disconnect(error);
@@ -457,7 +459,7 @@ class Device extends EventEmitter {
       return -1;
     }
 
-    this._cipherStream.write(message);
+    process.nextTick((): bool => nullthrows(this._cipherStream).write(message));
 
     return token || 0;
   };
