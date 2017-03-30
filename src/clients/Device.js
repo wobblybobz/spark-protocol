@@ -349,6 +349,7 @@ class Device extends EventEmitter {
     this._incrementReceiveCounter();
     if (message.isEmpty() && message.isConfirmable()) {
       this._lastDevicePing = new Date();
+      console.log('Ping', this._id, message.getId());
       this.sendReply('PingAck', message.getId());
       return;
     }
@@ -480,7 +481,7 @@ class Device extends EventEmitter {
       const timeout = setTimeout(
         () => {
           cleanUpListeners();
-          reject(new Error('Request timed out'));
+          reject(new Error('Request timed out', eventName));
         },
         KEEP_ALIVE_TIMEOUT,
       );
@@ -910,7 +911,7 @@ class Device extends EventEmitter {
         const timeout = setTimeout(
           () => {
             cleanUpListeners();
-            reject(new Error('Request timed out'));
+            reject(new Error('Request timed out', 'Describe'));
           },
           KEEP_ALIVE_TIMEOUT,
         );
@@ -1048,6 +1049,11 @@ class Device extends EventEmitter {
   disconnect = (message: ?string = '') => {
     this._disconnectCounter += 1;
 
+    if (this._socketTimeoutInterval) {
+      clearTimeout(this._socketTimeoutInterval);
+      this._socketTimeoutInterval = null;
+    }
+
     if (this._disconnectCounter > 1) {
       // don't multi-disconnect
       return;
@@ -1070,13 +1076,6 @@ class Device extends EventEmitter {
       logger.error(`Disconnect log error ${error}`);
     }
 
-    try {
-      this._socket.end();
-      this._socket.destroy();
-    } catch (error) {
-      logger.error(`Disconnect TCPSocket error: ${error}`);
-    }
-
     if (this._decipherStream) {
       try {
         this._decipherStream.end();
@@ -1093,6 +1092,13 @@ class Device extends EventEmitter {
       } catch (error) {
         logger.error(`Error cleaning up cipherStream: ${error}`);
       }
+    }
+
+    try {
+      //this._socket.end();
+      this._socket.destroy();
+    } catch (error) {
+      logger.error(`Disconnect TCPSocket error: ${error}`);
     }
 
     this.emit(DEVICE_EVENT_NAMES.DISCONNECT, message);

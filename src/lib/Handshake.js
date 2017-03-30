@@ -344,8 +344,10 @@ class Handshake {
     );
     this._socket.write(message);
 
-    const decipherStream = this._cryptoManager.createAESDecipherStream(sessionKey);
-    const cipherStream = this._cryptoManager.createAESCipherStream(sessionKey);
+    const decipherStream =
+      this._cryptoManager.createAESDecipherStream(sessionKey);
+    const cipherStream =
+      this._cryptoManager.createAESCipherStream(sessionKey);
 
     if (this._useChunkingStream) {
       const chunkingIn = new ChunkingStream({ outgoing: false });

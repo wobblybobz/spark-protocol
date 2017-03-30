@@ -100,7 +100,7 @@ class CryptoStream extends Transform {
       }
       cipherText = null;
 
-      callback();
+      process.nextTick((): void => callback());
     });
 
     return cipher;

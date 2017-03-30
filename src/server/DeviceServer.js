@@ -564,6 +564,8 @@ class DeviceServer {
       deviceID,
     );
 
+    console.log('SUBSCRIBED');
+
     device.sendReply('SubscribeAck', message.getId());
   };
 

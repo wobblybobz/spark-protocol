@@ -655,9 +655,11 @@ var DeviceServer = function () {
 
                 _this._eventPublisher.subscribe(messageName, device.onDeviceEvent, { mydevices: isFromMyDevices, userID: ownerID }, deviceID);
 
+                console.log('SUBSCRIBED');
+
                 device.sendReply('SubscribeAck', message.getId());
 
-              case 18:
+              case 19:
               case 'end':
                 return _context8.stop();
             }

@@ -108,13 +108,12 @@ class ChunkingStream extends Transform {
       this._incomingBuffer = null;
       this._incomingIndex = -1;
       this._expectedLength = -1;
-      this.process(remainder, callback);
+      if (!remainder && callback) {
+        process.nextTick(callback);
+      } else {
+        process.nextTick((): void => this.process(remainder, callback));
+      }
     } else {
-      process.nextTick(callback);
-      return;
-    }
-
-    if (!remainder && callback) {
       process.nextTick(callback);
     }
   };
@@ -124,7 +123,10 @@ class ChunkingStream extends Transform {
     encoding: string,
     callback: Function,
   ) => {
-    const buffer = new Buffer(chunk);
+    const buffer = Buffer.isBuffer(chunk)
+      ? ((chunk: any): Buffer)
+      : new Buffer(chunk);
+
     if (this._outgoing) {
       // we should be passed whole messages here.
       // write our length first, then message, then bail.
@@ -135,7 +137,7 @@ class ChunkingStream extends Transform {
       // Collect chunks until we hit an expected size, and then trigger a
       // readable
       try {
-        this.process(buffer, callback);
+        process.nextTick((): void => this.process(buffer, callback));
       } catch (error) {
         logger.error(`ChunkingStream error!: ${error}`);
       }

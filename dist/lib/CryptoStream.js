@@ -90,7 +90,9 @@ var CryptoStream = function (_Transform) {
         }
         cipherText = null;
 
-        callback();
+        process.nextTick(function () {
+          return callback();
+        });
       });
 
       return cipher;

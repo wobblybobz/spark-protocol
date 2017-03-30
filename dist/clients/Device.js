@@ -395,6 +395,7 @@ var Device = function (_EventEmitter) {
       _this._incrementReceiveCounter();
       if (message.isEmpty() && message.isConfirmable()) {
         _this._lastDevicePing = new Date();
+        console.log('Ping', _this._id, message.getId());
         _this.sendReply('PingAck', message.getId());
         return;
       }
@@ -491,7 +492,7 @@ var Device = function (_EventEmitter) {
                 return _context3.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     cleanUpListeners();
-                    reject(new Error('Request timed out'));
+                    reject(new Error('Request timed out', eventName));
                   }, KEEP_ALIVE_TIMEOUT);
 
                   // adds a one time event
@@ -1008,7 +1009,7 @@ var Device = function (_EventEmitter) {
               return new _promise2.default(function (resolve, reject) {
                 var timeout = setTimeout(function () {
                   cleanUpListeners();
-                  reject(new Error('Request timed out'));
+                  reject(new Error('Request timed out', 'Describe'));
                 }, KEEP_ALIVE_TIMEOUT);
 
                 var systemInformation = null;
@@ -1164,6 +1165,11 @@ var Device = function (_EventEmitter) {
 
       _this._disconnectCounter += 1;
 
+      if (_this._socketTimeoutInterval) {
+        clearTimeout(_this._socketTimeoutInterval);
+        _this._socketTimeoutInterval = null;
+      }
+
       if (_this._disconnectCounter > 1) {
         // don't multi-disconnect
         return;
@@ -1179,13 +1185,6 @@ var Device = function (_EventEmitter) {
         _logger2.default.log(_this._disconnectCounter + ' : Device disconnected: ' + (message || ''), logInfo);
       } catch (error) {
         _logger2.default.error('Disconnect log error ' + error);
-      }
-
-      try {
-        _this._socket.end();
-        _this._socket.destroy();
-      } catch (error) {
-        _logger2.default.error('Disconnect TCPSocket error: ' + error);
       }
 
       if (_this._decipherStream) {
@@ -1204,6 +1203,13 @@ var Device = function (_EventEmitter) {
         } catch (error) {
           _logger2.default.error('Error cleaning up cipherStream: ' + error);
         }
+      }
+
+      try {
+        //this._socket.end();
+        _this._socket.destroy();
+      } catch (error) {
+        _logger2.default.error('Disconnect TCPSocket error: ' + error);
       }
 
       _this.emit(DEVICE_EVENT_NAMES.DISCONNECT, message);

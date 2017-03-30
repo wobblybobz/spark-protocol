@@ -125,19 +125,21 @@ var ChunkingStream = function (_Transform) {
         _this._incomingBuffer = null;
         _this._incomingIndex = -1;
         _this._expectedLength = -1;
-        _this.process(remainder, callback);
+        if (!remainder && callback) {
+          process.nextTick(callback);
+        } else {
+          process.nextTick(function () {
+            return _this.process(remainder, callback);
+          });
+        }
       } else {
-        process.nextTick(callback);
-        return;
-      }
-
-      if (!remainder && callback) {
         process.nextTick(callback);
       }
     };
 
     _this._transform = function (chunk, encoding, callback) {
-      var buffer = new Buffer(chunk);
+      var buffer = Buffer.isBuffer(chunk) ? chunk : new Buffer(chunk);
+
       if (_this._outgoing) {
         // we should be passed whole messages here.
         // write our length first, then message, then bail.
@@ -148,7 +150,9 @@ var ChunkingStream = function (_Transform) {
         // Collect chunks until we hit an expected size, and then trigger a
         // readable
         try {
-          _this.process(buffer, callback);
+          process.nextTick(function () {
+            return _this.process(buffer, callback);
+          });
         } catch (error) {
           _logger2.default.error('ChunkingStream error!: ' + error);
         }
