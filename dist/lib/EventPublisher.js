@@ -138,6 +138,11 @@ var EventPublisher = function (_EventEmitter) {
           return;
         }
 
+        // filter private events with wrong connectionID
+        if (!event.isPublic && filterOptions.connectionID && event.connectionID !== filterOptions.connectionID) {
+          return;
+        }
+
         // filter mydevices events
         if (filterOptions.mydevices && filterOptions.userID !== event.userID) {
           return;

@@ -364,6 +364,7 @@ class DeviceServer {
       const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
       const eventData = {
+        connectionID: device.getConnectionKey(),
         data: message.getPayloadLength() === 0
           ? ''
           : message.getPayload().toString(),
@@ -557,10 +558,16 @@ class DeviceServer {
       return;
     }
 
+    const isSystemEvent = messageName.startsWith('spark');
+
     this._eventPublisher.subscribe(
       messageName,
       device.onDeviceEvent,
-      { mydevices: isFromMyDevices, userID: ownerID },
+      {
+        connectionID: isSystemEvent ? device.getConnectionKey() : null,
+        mydevices: isFromMyDevices,
+        userID: ownerID,
+      },
       deviceID,
     );
 
