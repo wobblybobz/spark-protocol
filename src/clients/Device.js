@@ -349,7 +349,6 @@ class Device extends EventEmitter {
     this._incrementReceiveCounter();
     if (message.isEmpty() && message.isConfirmable()) {
       this._lastDevicePing = new Date();
-      console.log('Ping', this._id, message.getId());
       this.sendReply('PingAck', message.getId());
       return;
     }
