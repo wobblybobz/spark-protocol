@@ -28,6 +28,7 @@ import settings from '../settings';
 const ALL_EVENTS = '*all*';
 
 type FilterOptions = {
+  connectionID?: ?string,
   deviceID?: string,
   mydevices?: boolean,
   userID: string,
@@ -125,6 +126,15 @@ class EventPublisher extends EventEmitter {
     (event: Event) => {
       // filter private events from another devices
       if (!event.isPublic && filterOptions.userID !== event.userID) {
+        return;
+      }
+
+      // filter private events with wrong connectionID
+      if (
+        !event.isPublic &&
+        filterOptions.connectionID &&
+        event.connectionID !== filterOptions.connectionID
+      ) {
         return;
       }
 

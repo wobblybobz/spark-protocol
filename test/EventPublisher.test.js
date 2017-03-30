@@ -79,6 +79,30 @@ test(
 );
 
 test(
+  'should filter event by connectionID',
+  t => {
+    const eventPublisher = new EventPublisher();
+    const handler = sinon.spy();
+    const connectionID = '123';
+    const eventData = {
+      name: TEST_EVENT_NAME,
+      userID: TestData.getID(),
+      isPublic: false,
+    };
+
+    eventPublisher.subscribe(
+      eventData.name,
+      handler,
+      { connectionID },
+    );
+
+    eventPublisher.publish(eventData);
+
+    t.falsy(handler.called);
+  }
+);
+
+test(
   'should filter event by deviceID',
   t => {
     const eventPublisher = new EventPublisher();
