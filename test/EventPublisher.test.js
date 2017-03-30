@@ -27,7 +27,9 @@ test(
 
     eventPublisher.publish(eventData);
 
-    t.truthy(handler.called);
+    process.nextTick(() => {
+      t.truthy(handler.called);
+    })
   }
 );
 
@@ -50,8 +52,9 @@ test(
     );
 
     eventPublisher.publish(eventData);
-
-    t.truthy(handler.called);
+    process.nextTick(() => {
+      t.truthy(handler.called);
+    })
   }
 );
 
@@ -74,7 +77,10 @@ test(
 
     eventPublisher.publish(eventData);
 
-    t.falsy(handler.called);
+
+    process.nextTick(() => {
+      t.falsy(handler.called);
+    });
   }
 );
 
@@ -98,7 +104,9 @@ test(
 
     eventPublisher.publish(eventData);
 
-    t.falsy(handler.called);
+    process.nextTick(() => {
+      t.falsy(handler.called);
+    });
   }
 );
 
@@ -133,7 +141,10 @@ test(
 
     eventPublisher.publish(deviceEvent);
     eventPublisher.publish(notDeviceEvent);
-    t.falsy(handler.called);
+
+    process.nextTick(() => {
+      t.falsy(handler.called);
+    });
   }
 );
 
@@ -175,10 +186,18 @@ test(
     );
 
     eventPublisher.publish(myDevicePublicEvent);
-    t.is(handler.callCount, 1);
+    process.nextTick(() => {
+      t.is(handler.callCount, 1);
+    });
+
     eventPublisher.publish(myDevicesPrivateEvent);
-    t.is(handler.callCount, 2);
+    process.nextTick(() => {
+      t.is(handler.callCount, 2);
+    });
+
     eventPublisher.publish(anotherOwnerPublicEvent);
-    t.is(handler.callCount, 2);
+    process.nextTick(() => {
+      t.is(handler.callCount, 2);
+    })
   }
 );

@@ -153,7 +153,9 @@ var EventPublisher = function (_EventEmitter) {
           return;
         }
 
-        eventHandler(event);
+        process.nextTick(function () {
+          return eventHandler(event);
+        });
       };
     }, _temp), (0, _possibleConstructorReturn3.default)(_this, _ret);
   }
