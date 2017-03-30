@@ -1206,7 +1206,7 @@ var Device = function (_EventEmitter) {
       }
 
       try {
-        //this._socket.end();
+        _this._socket.end();
         _this._socket.destroy();
       } catch (error) {
         _logger2.default.error('Disconnect TCPSocket error: ' + error);

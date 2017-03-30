@@ -1095,7 +1095,7 @@ class Device extends EventEmitter {
     }
 
     try {
-      //this._socket.end();
+      this._socket.end();
       this._socket.destroy();
     } catch (error) {
       logger.error(`Disconnect TCPSocket error: ${error}`);
