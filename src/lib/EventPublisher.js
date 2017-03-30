@@ -151,7 +151,7 @@ class EventPublisher extends EventEmitter {
         return;
       }
 
-      eventHandler(event);
+      process.nextTick((): void => eventHandler(event));
     };
 }
 
