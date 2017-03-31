@@ -211,7 +211,7 @@ var Device = function (_EventEmitter) {
       _this._otaChunkSize = maxBinarySize;
     };
 
-    _this.startupProtocol = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
+    _this.startProtocolInitialization = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
       return _regenerator2.default.wrap(function _callee$(_context) {
         while (1) {
           switch (_context.prev = _context.next) {
@@ -241,7 +241,7 @@ var Device = function (_EventEmitter) {
       }, _callee, _this2);
     }));
     _this.startHandshake = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
-      var _ref3, cipherStream, decipherStream, deviceID, handshakeBuffer, pendingBuffers;
+      var _ref3, cipherStream, decipherStream, deviceID, handshakeBuffer;
 
       return _regenerator2.default.wrap(function _callee2$(_context2) {
         while (1) {
@@ -257,43 +257,46 @@ var Device = function (_EventEmitter) {
               decipherStream = _ref3.decipherStream;
               deviceID = _ref3.deviceID;
               handshakeBuffer = _ref3.handshakeBuffer;
-              pendingBuffers = _ref3.pendingBuffers;
+
 
               _this._id = deviceID;
+              _this._cipherStream = cipherStream;
+              _this._decipherStream = decipherStream;
 
               _this._getHello(handshakeBuffer);
-              _this._sendHello(cipherStream, decipherStream);
-
-              pendingBuffers.map(function (data) {
-                return _this.routeMessage(data);
-              });
-              decipherStream.on('readable', function () {
-                process.nextTick(function () {
-                  var chunk = decipherStream.read();
-                  _this._clientHasWrittenToSocket();
-                  if (!chunk) {
-                    return;
-                  }
-                  _this.routeMessage(chunk);
-                });
-              });
-              _context2.next = 20;
+              _context2.next = 18;
               break;
 
-            case 16:
-              _context2.prev = 16;
+            case 14:
+              _context2.prev = 14;
               _context2.t0 = _context2['catch'](0);
 
               _this.disconnect(_context2.t0);
               throw _context2.t0;
 
-            case 20:
+            case 18:
             case 'end':
               return _context2.stop();
           }
         }
-      }, _callee2, _this2, [[0, 16]]);
+      }, _callee2, _this2, [[0, 14]]);
     }));
+
+    _this.completeProtocolInitialization = function () {
+      try {
+        _this._sendHello();
+        (0, _nullthrows2.default)(_this._decipherStream).on('readable', function () {
+          var chunk = (0, _nullthrows2.default)(_this._decipherStream).read();
+          _this._clientHasWrittenToSocket();
+          if (!chunk) {
+            return;
+          }
+          _this.routeMessage(chunk);
+        });
+      } catch (error) {
+        _logger2.default.error('completeProtocolInitialization: ' + error);
+      }
+    };
 
     _this._clientHasWrittenToSocket = function () {
       if (_this._socketTimeoutInterval) {
@@ -328,10 +331,7 @@ var Device = function (_EventEmitter) {
       }
     };
 
-    _this._sendHello = function (cipherStream, decipherStream) {
-      _this._cipherStream = cipherStream;
-      _this._decipherStream = decipherStream;
-
+    _this._sendHello = function () {
       // client will set the counter property on the message
       _this._sendCounter = _CryptoManager2.default.getRandomUINT16();
       _this.sendMessage('Hello', {}, null);

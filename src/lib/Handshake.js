@@ -97,7 +97,6 @@ class Handshake {
   _socket: Socket;
   _isSendingHello: boolean = false;
   _deviceID: string;
-  _pendingBuffers: Array<Buffer> = [];
   _useChunkingStream: boolean = true;
 
   constructor(cryptoManager: CryptoManager) {
@@ -156,7 +155,6 @@ class Handshake {
       decipherStream,
       deviceID,
       handshakeBuffer,
-      pendingBuffers: [...this._pendingBuffers],
     };
   };
 

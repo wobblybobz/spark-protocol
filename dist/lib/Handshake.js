@@ -122,7 +122,6 @@ var Handshake = function Handshake(cryptoManager) {
 
   (0, _classCallCheck3.default)(this, Handshake);
   this._isSendingHello = false;
-  this._pendingBuffers = [];
   this._useChunkingStream = true;
 
   this.start = function () {
@@ -215,8 +214,7 @@ var Handshake = function Handshake(cryptoManager) {
               cipherStream: cipherStream,
               decipherStream: decipherStream,
               deviceID: deviceID,
-              handshakeBuffer: handshakeBuffer,
-              pendingBuffers: [].concat((0, _toConsumableArray3.default)(_this._pendingBuffers))
+              handshakeBuffer: handshakeBuffer
             });
 
           case 26:
