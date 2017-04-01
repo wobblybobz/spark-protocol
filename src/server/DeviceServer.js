@@ -153,14 +153,26 @@ class DeviceServer {
         handshake,
       );
 
+      await device.startProtocolInitialization();
+
+      const deviceID = device.getID();
+
+      if (this._devicesById.has(deviceID)) {
+        const existingConnection = this._devicesById.get(deviceID);
+        nullthrows(existingConnection).disconnect(
+          'Device was already connected. Reconnecting.\r\n',
+        );
+
+        await this._onDeviceDisconnect(device);
+      }
+
+      device.completeProtocolInitialization();
+
       logger.log(
         `Connection from: ${device.getRemoteIPAddress()} - ` +
           `Connection ID: ${connectionIdCounter}`,
       );
 
-      await device.startupProtocol();
-
-      const deviceID = device.getID();
       const deviceAttributes =
         await this._deviceAttributeRepository.getById(device.getID());
       const ownerID = deviceAttributes && deviceAttributes.ownerID;
@@ -295,15 +307,6 @@ class DeviceServer {
     try {
       logger.log('Device online!');
       const deviceID = device.getID();
-
-      if (this._devicesById.has(deviceID)) {
-        const existingConnection = this._devicesById.get(deviceID);
-        nullthrows(existingConnection).disconnect(
-          'Device was already connected. Reconnecting.\r\n',
-        );
-
-        await this._onDeviceDisconnect(device);
-      }
 
       this._devicesById.set(deviceID, device);
 

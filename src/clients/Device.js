@@ -173,7 +173,7 @@ class Device extends EventEmitter {
   /**
    * configure our socket and start the handshake
    */
-  startupProtocol = async (): Promise<void> => {
+  startProtocolInitialization = async (): Promise<void> => {
     this._socket.setNoDelay(true);
     this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); // every 15 second(s)
     this._socket.setTimeout(SOCKET_TIMEOUT);
@@ -203,27 +203,35 @@ class Device extends EventEmitter {
         decipherStream,
         deviceID,
         handshakeBuffer,
-        pendingBuffers,
       } = await this._handshake.start(this);
+
       this._id = deviceID;
+      this._cipherStream = cipherStream;
+      this._decipherStream = decipherStream;
 
       this._getHello(handshakeBuffer);
-      this._sendHello(cipherStream, decipherStream);
+    } catch (error) {
+      this.disconnect(error);
+      throw error;
+    }
+  };
 
-      pendingBuffers.map((data: Buffer): void => this.routeMessage(data));
-      decipherStream.on('readable', () => {
-        process.nextTick(() => {
-          const chunk = ((decipherStream.read(): any): Buffer);
+  completeProtocolInitialization = () => {
+    try {
+      this._sendHello();
+      nullthrows(this._decipherStream).on(
+        'readable',
+        () => {
+          const chunk = ((nullthrows(this._decipherStream).read(): any): Buffer);
           this._clientHasWrittenToSocket();
           if (!chunk) {
             return;
           }
           this.routeMessage(chunk);
-        });
-      });
+        },
+      );
     } catch (error) {
-      this.disconnect(error);
-      throw error;
+      logger.error(`completeProtocolInitialization: ${error}`);
     }
   };
 
@@ -265,10 +273,7 @@ class Device extends EventEmitter {
     }
   };
 
-  _sendHello = (cipherStream: Duplex, decipherStream: Duplex) => {
-    this._cipherStream = cipherStream;
-    this._decipherStream = decipherStream;
-
+  _sendHello = () => {
     // client will set the counter property on the message
     this._sendCounter = CryptoManager.getRandomUINT16();
     this.sendMessage('Hello', {}, null);
