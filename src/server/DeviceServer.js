@@ -162,94 +162,93 @@ class DeviceServer {
         nullthrows(existingConnection).disconnect(
           'Device was already connected. Reconnecting.\r\n',
         );
-
-        await this._onDeviceDisconnect(device);
       }
 
-      device.completeProtocolInitialization();
+      process.nextTick(async (): Promise<void> => {
+        logger.log(
+          `Connection from: ${device.getRemoteIPAddress()} - ` +
+            `Connection ID: ${connectionIdCounter}`,
+        );
 
-      logger.log(
-        `Connection from: ${device.getRemoteIPAddress()} - ` +
-          `Connection ID: ${connectionIdCounter}`,
-      );
+        const deviceAttributes =
+          await this._deviceAttributeRepository.getById(device.getID());
+        const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
-      const deviceAttributes =
-        await this._deviceAttributeRepository.getById(device.getID());
-      const ownerID = deviceAttributes && deviceAttributes.ownerID;
+        device.on(
+          DEVICE_EVENT_NAMES.READY,
+          (): Promise<void> => this._onDeviceReady(device),
+        );
 
-      device.on(
-        DEVICE_EVENT_NAMES.READY,
-        (): Promise<void> => this._onDeviceReady(device),
-      );
+        device.on(
+          DEVICE_EVENT_NAMES.DISCONNECT,
+          (): Promise<void> => this._onDeviceDisconnect(device),
+        );
 
-      device.on(
-        DEVICE_EVENT_NAMES.DISCONNECT,
-        (): Promise<void> => this._onDeviceDisconnect(device),
-      );
+        device.on(
+          DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
+          (message: Message): Promise<void> =>
+            this._onDeviceSubscribe(message, device),
+        );
 
-      device.on(
-        DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
-        (message: Message): Promise<void> =>
-          this._onDeviceSubscribe(message, device),
-      );
+        device.on(
+          DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
+          (message: Message): Promise<void> =>
+            this._onDeviceSentMessage(
+              message,
+              /* isPublic */false,
+              device,
+            ),
+        );
 
-      device.on(
-        DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
-        (message: Message): Promise<void> =>
-          this._onDeviceSentMessage(
-            message,
-            /* isPublic */false,
-            device,
+        device.on(
+          DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
+          (message: Message): Promise<void> =>
+            this._onDeviceSentMessage(
+              message,
+              /* isPublic */true,
+              device,
+            ),
+        );
+
+        device.on(
+          DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
+          (message: Message): void =>
+            this._onDeviceGetTime(message, device),
+        );
+
+        device.on(
+          DEVICE_EVENT_NAMES.FLASH_STARTED,
+          (): void => this.publishSpecialEvent(
+            SYSTEM_EVENT_NAMES.FLASH_STATUS,
+            'started',
+            deviceID,
+            ownerID,
           ),
-      );
+        );
 
-      device.on(
-        DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
-        (message: Message): Promise<void> =>
-          this._onDeviceSentMessage(
-            message,
-            /* isPublic */true,
-            device,
+        device.on(
+          DEVICE_EVENT_NAMES.FLASH_SUCCESS,
+          (): void => this.publishSpecialEvent(
+            SYSTEM_EVENT_NAMES.FLASH_STATUS,
+            'success',
+            deviceID,
+            ownerID,
           ),
-      );
+        );
 
-      device.on(
-        DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
-        (message: Message): void =>
-          this._onDeviceGetTime(message, device),
-      );
+        device.on(
+          DEVICE_EVENT_NAMES.FLASH_FAILED,
+          (): void => this.publishSpecialEvent(
+            SYSTEM_EVENT_NAMES.FLASH_STATUS,
+            'failed',
+            deviceID,
+            ownerID,
+          ),
+        );
 
-      device.on(
-        DEVICE_EVENT_NAMES.FLASH_STARTED,
-        (): void => this.publishSpecialEvent(
-          SYSTEM_EVENT_NAMES.FLASH_STATUS,
-          'started',
-          deviceID,
-          ownerID,
-        ),
-      );
-
-      device.on(
-        DEVICE_EVENT_NAMES.FLASH_SUCCESS,
-        (): void => this.publishSpecialEvent(
-          SYSTEM_EVENT_NAMES.FLASH_STATUS,
-          'success',
-          deviceID,
-          ownerID,
-        ),
-      );
-
-      device.on(
-        DEVICE_EVENT_NAMES.FLASH_FAILED,
-        (): void => this.publishSpecialEvent(
-          SYSTEM_EVENT_NAMES.FLASH_STATUS,
-          'failed',
-          deviceID,
-          ownerID,
-        ),
-      );
-
-      device.ready();
+        device.completeProtocolInitialization();
+        device.ready();
+      });
     } catch (error) {
       logger.error(`Device startup failed: ${error.message}`);
     }
