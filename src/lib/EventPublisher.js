@@ -20,6 +20,7 @@
 
 import type { Event, EventData } from '../types';
 
+import cluster from 'cluster';
 import EventEmitter from 'events';
 import nullthrows from 'nullthrows';
 import uuid from 'uuid';
@@ -44,6 +45,20 @@ type Subscription = {
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
 
+  constructor(useCluster: boolean) {
+    super();
+
+    if (useCluster) {
+      // the worker get event from master hub and publish it without
+      // broadcasting cause event.fromMaster === true
+      if (cluster.isWorker) {
+        process.on('message', (event: Event) => {
+          this.publish(event);
+        });
+      }
+    }
+  }
+
   publish = (
     eventData: EventData,
   ) => {
@@ -59,6 +74,11 @@ class EventPublisher extends EventEmitter {
 
     this._emitWithPrefix(eventData.name, event);
     this.emit(ALL_EVENTS, event);
+
+    // broadcast events only from the current worker
+    if (!event.fromMaster && cluster.isWorker) {
+      (process: any).send(event);
+    }
   };
 
   subscribe = (

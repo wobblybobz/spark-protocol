@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _values = require('babel-runtime/core-js/object/values');
+
+var _values2 = _interopRequireDefault(_values);
+
 var _parseInt = require('babel-runtime/core-js/number/parse-int');
 
 var _parseInt2 = _interopRequireDefault(_parseInt);
@@ -60,6 +64,10 @@ var _Device = require('../clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
 
+var _cluster = require('cluster');
+
+var _cluster2 = _interopRequireDefault(_cluster);
+
 var _FirmwareManager = require('../lib/FirmwareManager');
 
 var _FirmwareManager2 = _interopRequireDefault(_FirmwareManager);
@@ -74,32 +82,34 @@ var _Messages2 = _interopRequireDefault(_Messages);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var NAME_GENERATOR = _moniker2.default.generator([_moniker2.default.adjective, _moniker2.default.noun]); /*
-                                                                                                         *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                                                                                                         *
-                                                                                                         *   This program is free software; you can redistribute it and/or
-                                                                                                         *   modify it under the terms of the GNU Lesser General Public
-                                                                                                         *   License as published by the Free Software Foundation, either
-                                                                                                         *   version 3 of the License, or (at your option) any later version.
-                                                                                                         *
-                                                                                                         *   This program is distributed in the hope that it will be useful,
-                                                                                                         *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                                                                                                         *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                                                                                                         *   Lesser General Public License for more details.
-                                                                                                         *
-                                                                                                         *   You should have received a copy of the GNU Lesser General Public
-                                                                                                         *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                                                                                                         *
-                                                                                                         * 
-                                                                                                         *
-                                                                                                         */
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
+
+var NAME_GENERATOR = _moniker2.default.generator([_moniker2.default.adjective, _moniker2.default.noun]);
 
 var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_NAMES.FLASH_AVAILABLE, _Device.SYSTEM_EVENT_NAMES.FLASH_PROGRESS, _Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, _Device.SYSTEM_EVENT_NAMES.SAFE_MODE, _Device.SYSTEM_EVENT_NAMES.SPARK_STATUS];
 
 var connectionIdCounter = 0;
 
 var DeviceServer = function () {
-  function DeviceServer(deviceAttributeRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig, areSystemFirmwareAutoupdatesEnabled) {
+  function DeviceServer(deviceAttributeRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig, areSystemFirmwareAutoupdatesEnabled, useCluster) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
@@ -737,6 +747,20 @@ var DeviceServer = function () {
     this._claimCodeManager = claimCodeManager;
     this._eventPublisher = eventPublisher;
     this._areSystemFirmwareAutoupdatesEnabled = areSystemFirmwareAutoupdatesEnabled;
+
+    // Master listens to events from workers and broadcast them
+    // to all other workers except the owner.
+    if (useCluster && _cluster2.default.isMaster) {
+      _cluster2.default.on('message', function (eventOwnerWorker, event) {
+        (0, _values2.default)(_cluster2.default.workers).forEach(function (worker) {
+          if (eventOwnerWorker.id === worker.id) {
+            return;
+          }
+
+          worker.send((0, _extends3.default)({}, event, { fromMaster: true }));
+        });
+      });
+    }
   }
 
   (0, _createClass3.default)(DeviceServer, [{

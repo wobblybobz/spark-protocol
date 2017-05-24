@@ -39,4 +39,6 @@ export default {
 
   VERBOSE_PROTOCOL: false,
   SHOW_VERBOSE_DEVICE_LOGS: false,
+
+  USE_CLUSTER: false,
 };

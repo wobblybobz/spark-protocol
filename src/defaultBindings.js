@@ -36,6 +36,7 @@ const defaultBindings = (
   container.bindValue('SERVER_KEY_PASSWORD', mergedSettings.SERVER_KEY_PASSWORD);
   container.bindValue('SERVER_KEYS_DIRECTORY', mergedSettings.SERVER_KEYS_DIRECTORY);
   container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
+  container.bindValue('USE_CLUSTER', mergedSettings.CLUSTERING.USE_CLUSTER);
 
   // Repository
   container.bindClass(
@@ -55,7 +56,7 @@ const defaultBindings = (
   );
 
   // Utils
-  container.bindClass('EventPublisher', EventPublisher, []);
+  container.bindClass('EventPublisher', EventPublisher, ['USE_CLUSTER']);
   container.bindClass('ClaimCodeManager', ClaimCodeManager, []);
   container.bindClass(
     'CryptoManager',
@@ -78,6 +79,7 @@ const defaultBindings = (
       'EventPublisher',
       'TCP_DEVICE_SERVER_CONFIG',
       'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES',
+      'USE_CLUSTER',
     ],
   );
 };

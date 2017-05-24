@@ -54,6 +54,7 @@ var defaultBindings = function defaultBindings(container, serverSettings) {
   container.bindValue('SERVER_KEY_PASSWORD', mergedSettings.SERVER_KEY_PASSWORD);
   container.bindValue('SERVER_KEYS_DIRECTORY', mergedSettings.SERVER_KEYS_DIRECTORY);
   container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
+  container.bindValue('USE_CLUSTER', mergedSettings.CLUSTERING.USE_CLUSTER);
 
   // Repository
   container.bindClass('DeviceAttributeRepository', _DeviceAttributeFileRepository2.default, ['DEVICE_DIRECTORY']);
@@ -61,11 +62,11 @@ var defaultBindings = function defaultBindings(container, serverSettings) {
   container.bindClass('ServerKeyRepository', _ServerKeyFileRepository2.default, ['SERVER_KEYS_DIRECTORY', 'SERVER_KEY_FILENAME']);
 
   // Utils
-  container.bindClass('EventPublisher', _EventPublisher2.default, []);
+  container.bindClass('EventPublisher', _EventPublisher2.default, ['USE_CLUSTER']);
   container.bindClass('ClaimCodeManager', _ClaimCodeManager2.default, []);
   container.bindClass('CryptoManager', _CryptoManager2.default, ['DeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
 
   // Device server
-  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES']);
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES', 'USE_CLUSTER']);
 };
 exports.default = defaultBindings;
