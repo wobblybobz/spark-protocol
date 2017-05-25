@@ -4,6 +4,14 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _objectWithoutProperties2 = require('babel-runtime/helpers/objectWithoutProperties');
+
+var _objectWithoutProperties3 = _interopRequireDefault(_objectWithoutProperties2);
+
+var _values = require('babel-runtime/core-js/object/values');
+
+var _values2 = _interopRequireDefault(_values);
+
 var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
@@ -90,12 +98,9 @@ var EventPublisher = function (_EventEmitter) {
         ttl: ttl
       });
 
-      _this._emitWithPrefix(eventData.name, event);
-      _this.emit(ALL_EVENTS, event);
-
-      // broadcast events only from the current worker
-      if (!event.fromMaster && _cluster2.default.isWorker) {
-        process.send(event);
+      _this._publish(event);
+      if (_this._useCluster) {
+        _this._broadcastToCluster(event);
       }
     };
 
@@ -140,6 +145,16 @@ var EventPublisher = function (_EventEmitter) {
       });
     };
 
+    _this._broadcastToCluster = function (event) {
+      if (_cluster2.default.isMaster) {
+        (0, _values2.default)(_cluster2.default.workers).forEach(function (worker) {
+          return worker.send((0, _extends3.default)({}, event, { processID: _this._getProcessID() }));
+        });
+      } else {
+        process.send((0, _extends3.default)({}, event, { processID: _this._getProcessID() }));
+      }
+    };
+
     _this._emitWithPrefix = function (eventName, event) {
       _this.eventNames().filter(function (eventNamePrefix) {
         return eventName.startsWith(eventNamePrefix);
@@ -170,23 +185,62 @@ var EventPublisher = function (_EventEmitter) {
           return;
         }
 
+        var castedEvent = event; // hack for flow
+
+        if (filterOptions.listenToBroadcastedEvents === false && castedEvent.processID && castedEvent.processID !== _this._getProcessID()) {
+          return;
+        }
+
+        var translatedEvent = castedEvent.processID ? _this._translateBroadcastEvent(castedEvent) : event;
+
         process.nextTick(function () {
-          return eventHandler(event);
+          return eventHandler(translatedEvent);
         });
       };
     };
 
-    if (useCluster) {
-      // the worker get event from master hub and publish it without
-      // broadcasting cause event.fromMaster === true
-      if (_cluster2.default.isWorker) {
-        process.on('message', function (event) {
-          _this.publish(event);
+    _this._getProcessID = function () {
+      return _cluster2.default.isMaster ? 'master' : _cluster2.default.worker.id.toString();
+    };
+
+    _this._publish = function (event) {
+      _this._emitWithPrefix(event.name, event);
+      _this.emit(ALL_EVENTS, event);
+    };
+
+    _this._translateBroadcastEvent = function (_ref) {
+      var processID = _ref.processID,
+          otherProps = (0, _objectWithoutProperties3.default)(_ref, ['processID']);
+      return (0, _extends3.default)({}, otherProps);
+    };
+
+    _this._useCluster = useCluster;
+
+    if (!useCluster) {
+      return (0, _possibleConstructorReturn3.default)(_this);
+    }
+
+    if (_cluster2.default.isMaster) {
+      _cluster2.default.on('message', function (eventOwnerWorker, event) {
+        (0, _values2.default)(_cluster2.default.workers).forEach(function (worker) {
+          if (eventOwnerWorker.id === worker.id) {
+            return;
+          }
+
+          worker.send(event);
+          _this._publish(event);
         });
-      }
+      });
+    } else {
+      process.on('message', function (event) {
+        _this._publish(event);
+      });
     }
     return _this;
   }
+
+  // eslint-disable-next-line no-unused-vars
+
 
   return EventPublisher;
 }(_events2.default);

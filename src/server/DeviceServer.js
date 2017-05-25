@@ -36,7 +36,6 @@ import nullthrows from 'nullthrows';
 import moment from 'moment';
 import Moniker from 'moniker';
 import Device from '../clients/Device';
-import cluster from 'cluster';
 
 import FirmwareManager from '../lib/FirmwareManager';
 import logger from '../lib/logger';
@@ -80,7 +79,6 @@ class DeviceServer {
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
     areSystemFirmwareAutoupdatesEnabled: boolean,
-    useCluster: boolean,
   ) {
     this._config = deviceServerConfig;
     this._deviceAttributeRepository = deviceAttributeRepository;
@@ -89,20 +87,6 @@ class DeviceServer {
     this._eventPublisher = eventPublisher;
     this._areSystemFirmwareAutoupdatesEnabled =
       areSystemFirmwareAutoupdatesEnabled;
-
-    // Master listens to events from workers and broadcast them
-    // to all other workers except the owner.
-    if (useCluster && cluster.isMaster) {
-      (cluster: any).on('message', (eventOwnerWorker: Object, event: Event) => {
-        Object.values(cluster.workers).forEach((worker: any) => {
-          if (eventOwnerWorker.id === worker.id) {
-            return;
-          }
-
-          worker.send({ ...event, fromMaster: true });
-        });
-      });
-    }
   }
 
   start() {

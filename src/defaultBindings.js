@@ -79,7 +79,6 @@ const defaultBindings = (
       'EventPublisher',
       'TCP_DEVICE_SERVER_CONFIG',
       'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES',
-      'USE_CLUSTER',
     ],
   );
 };

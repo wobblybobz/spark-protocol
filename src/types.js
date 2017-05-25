@@ -19,7 +19,6 @@ export type DeviceAttributes = {
 
 export type Event = EventData & {
   publishedAt: Date,
-  fromMaster?: boolean,
 };
 
 export type EventData = {
