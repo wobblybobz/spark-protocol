@@ -226,10 +226,9 @@ var EventPublisher = function (_EventEmitter) {
           if (eventOwnerWorker.id === worker.id) {
             return;
           }
-
           worker.send(event);
-          _this._publish(event);
         });
+        _this._publish(event);
       });
     } else {
       process.on('message', function (event) {

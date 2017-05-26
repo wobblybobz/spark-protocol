@@ -31,9 +31,9 @@ const ALL_EVENTS = '*all*';
 type FilterOptions = {
   connectionID?: ?string,
   deviceID?: string,
+  listenToBroadcastedEvents?: boolean,
   mydevices?: boolean,
   userID: string,
-  listenToBroadcastedEvents?: boolean,
 };
 
 type Subscription = {
@@ -65,10 +65,9 @@ class EventPublisher extends EventEmitter {
           if (eventOwnerWorker.id === worker.id) {
             return;
           }
-
           worker.send(event);
-          this._publish(event);
         });
+        this._publish(event);
       });
     } else {
       process.on('message', (event: BroadcastEvent) => {
