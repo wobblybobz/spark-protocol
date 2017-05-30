@@ -20,6 +20,7 @@
 
 import type { Event, EventData } from '../types';
 
+import cluster from 'cluster';
 import EventEmitter from 'events';
 import nullthrows from 'nullthrows';
 import uuid from 'uuid';
@@ -30,6 +31,7 @@ const ALL_EVENTS = '*all*';
 type FilterOptions = {
   connectionID?: ?string,
   deviceID?: string,
+  listenToBroadcastedEvents?: boolean,
   mydevices?: boolean,
   userID: string,
 };
@@ -41,12 +43,40 @@ type Subscription = {
   subscriberID?: string,
 };
 
+type BroadcastEvent = {
+  processID: string,
+} & Event;
+
 class EventPublisher extends EventEmitter {
+  _useCluster: boolean;
   _subscriptionsByID: Map<string, Subscription> = new Map();
 
-  publish = (
-    eventData: EventData,
-  ) => {
+  constructor(useCluster: boolean) {
+    super();
+    this._useCluster = useCluster;
+
+    if (!useCluster) {
+      return;
+    }
+
+    if (cluster.isMaster) {
+      (cluster: any).on('message', (eventOwnerWorker: Object, event: BroadcastEvent) => {
+        Object.values(cluster.workers).forEach((worker: any) => {
+          if (eventOwnerWorker.id === worker.id) {
+            return;
+          }
+          worker.send(event);
+        });
+        this._publish(event);
+      });
+    } else {
+      process.on('message', (event: BroadcastEvent) => {
+        this._publish(event);
+      });
+    }
+  }
+
+  publish = (eventData: EventData) => {
     const ttl = (eventData.ttl && eventData.ttl > 0)
       ? eventData.ttl
       : settings.DEFAULT_EVENT_TTL;
@@ -57,8 +87,10 @@ class EventPublisher extends EventEmitter {
       ttl,
     };
 
-    this._emitWithPrefix(eventData.name, event);
-    this.emit(ALL_EVENTS, event);
+    this._publish(event);
+    if (this._useCluster) {
+      this._broadcastToCluster(event);
+    }
   };
 
   subscribe = (
@@ -107,6 +139,16 @@ class EventPublisher extends EventEmitter {
       });
   };
 
+  _broadcastToCluster = (event: Event) => {
+    if (cluster.isMaster) {
+      Object.values(cluster.workers).forEach((worker: any): void =>
+        worker.send({ ...event, processID: this._getProcessID() }),
+      );
+    } else {
+      (process: any).send({ ...event, processID: this._getProcessID() });
+    }
+  };
+
   _emitWithPrefix = (eventName: string, event: Event) => {
     this.eventNames()
       .filter(
@@ -122,8 +164,8 @@ class EventPublisher extends EventEmitter {
   _filterEvents = (
     eventHandler: (event: Event) => void,
     filterOptions: FilterOptions,
-  ): (event: Event) => void =>
-    (event: Event) => {
+  ): (event: Event | BroadcastEvent) => void =>
+    (event: Event | BroadcastEvent) => {
       // filter private events from another devices
       if (!event.isPublic && filterOptions.userID !== event.userID) {
         return;
@@ -151,8 +193,33 @@ class EventPublisher extends EventEmitter {
         return;
       }
 
-      process.nextTick((): void => eventHandler(event));
+      const castedEvent: any = event; // hack for flow
+
+      if (
+        filterOptions.listenToBroadcastedEvents === false &&
+        castedEvent.processID &&
+        castedEvent.processID !== this._getProcessID()
+      ) {
+        return;
+      }
+
+      const translatedEvent = castedEvent.processID
+        ? this._translateBroadcastEvent(castedEvent)
+        : event;
+
+      process.nextTick((): void => eventHandler(translatedEvent));
     };
+
+  _getProcessID = (): string => cluster.isMaster ? 'master' : cluster.worker.id.toString();
+
+  _publish = (event: Event | BroadcastEvent) => {
+    this._emitWithPrefix(event.name, event);
+    this.emit(ALL_EVENTS, event);
+  };
+
+  // eslint-disable-next-line no-unused-vars
+  _translateBroadcastEvent = ({ processID, ...otherProps }: BroadcastEvent): Event =>
+    (({ ...otherProps }): any);
 }
 
 export default EventPublisher;

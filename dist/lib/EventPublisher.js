@@ -4,6 +4,14 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _objectWithoutProperties2 = require('babel-runtime/helpers/objectWithoutProperties');
+
+var _objectWithoutProperties3 = _interopRequireDefault(_objectWithoutProperties2);
+
+var _values = require('babel-runtime/core-js/object/values');
+
+var _values2 = _interopRequireDefault(_values);
+
 var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
@@ -28,6 +36,10 @@ var _inherits2 = require('babel-runtime/helpers/inherits');
 
 var _inherits3 = _interopRequireDefault(_inherits2);
 
+var _cluster = require('cluster');
+
+var _cluster2 = _interopRequireDefault(_cluster);
+
 var _events = require('events');
 
 var _events2 = _interopRequireDefault(_events);
@@ -46,41 +58,39 @@ var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var ALL_EVENTS = '*all*'; /*
-                          *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                          *
-                          *   This program is free software; you can redistribute it and/or
-                          *   modify it under the terms of the GNU Lesser General Public
-                          *   License as published by the Free Software Foundation, either
-                          *   version 3 of the License, or (at your option) any later version.
-                          *
-                          *   This program is distributed in the hope that it will be useful,
-                          *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                          *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                          *   Lesser General Public License for more details.
-                          *
-                          *   You should have received a copy of the GNU Lesser General Public
-                          *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                          *
-                          * 
-                          *
-                          */
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
+
+var ALL_EVENTS = '*all*';
 
 var EventPublisher = function (_EventEmitter) {
   (0, _inherits3.default)(EventPublisher, _EventEmitter);
 
-  function EventPublisher() {
-    var _ref;
-
-    var _temp, _this, _ret;
-
+  function EventPublisher(useCluster) {
     (0, _classCallCheck3.default)(this, EventPublisher);
 
-    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
+    var _this = (0, _possibleConstructorReturn3.default)(this, (EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call(this));
 
-    return _ret = (_temp = (_this = (0, _possibleConstructorReturn3.default)(this, (_ref = EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call.apply(_ref, [this].concat(args))), _this), _this._subscriptionsByID = new _map2.default(), _this.publish = function (eventData) {
+    _this._subscriptionsByID = new _map2.default();
+
+    _this.publish = function (eventData) {
       var ttl = eventData.ttl && eventData.ttl > 0 ? eventData.ttl : _settings2.default.DEFAULT_EVENT_TTL;
 
       var event = (0, _extends3.default)({}, eventData, {
@@ -88,9 +98,13 @@ var EventPublisher = function (_EventEmitter) {
         ttl: ttl
       });
 
-      _this._emitWithPrefix(eventData.name, event);
-      _this.emit(ALL_EVENTS, event);
-    }, _this.subscribe = function () {
+      _this._publish(event);
+      if (_this._useCluster) {
+        _this._broadcastToCluster(event);
+      }
+    };
+
+    _this.subscribe = function () {
       var eventNamePrefix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ALL_EVENTS;
       var eventHandler = arguments[1];
       var filterOptions = arguments[2];
@@ -112,26 +126,44 @@ var EventPublisher = function (_EventEmitter) {
 
       _this.on(eventNamePrefix, listener);
       return subscriptionID;
-    }, _this.unsubscribe = function (subscriptionID) {
+    };
+
+    _this.unsubscribe = function (subscriptionID) {
       var _nullthrows = (0, _nullthrows3.default)(_this._subscriptionsByID.get(subscriptionID)),
           eventNamePrefix = _nullthrows.eventNamePrefix,
           listener = _nullthrows.listener;
 
       _this.removeListener(eventNamePrefix, listener);
       _this._subscriptionsByID.delete(subscriptionID);
-    }, _this.unsubscribeBySubscriberID = function (subscriberID) {
+    };
+
+    _this.unsubscribeBySubscriberID = function (subscriberID) {
       _this._subscriptionsByID.forEach(function (subscription) {
         if (subscription.subscriberID === subscriberID) {
           _this.unsubscribe(subscription.id);
         }
       });
-    }, _this._emitWithPrefix = function (eventName, event) {
+    };
+
+    _this._broadcastToCluster = function (event) {
+      if (_cluster2.default.isMaster) {
+        (0, _values2.default)(_cluster2.default.workers).forEach(function (worker) {
+          return worker.send((0, _extends3.default)({}, event, { processID: _this._getProcessID() }));
+        });
+      } else {
+        process.send((0, _extends3.default)({}, event, { processID: _this._getProcessID() }));
+      }
+    };
+
+    _this._emitWithPrefix = function (eventName, event) {
       _this.eventNames().filter(function (eventNamePrefix) {
         return eventName.startsWith(eventNamePrefix);
       }).forEach(function (eventNamePrefix) {
         return _this.emit(eventNamePrefix, event);
       });
-    }, _this._filterEvents = function (eventHandler, filterOptions) {
+    };
+
+    _this._filterEvents = function (eventHandler, filterOptions) {
       return function (event) {
         // filter private events from another devices
         if (!event.isPublic && filterOptions.userID !== event.userID) {
@@ -153,12 +185,61 @@ var EventPublisher = function (_EventEmitter) {
           return;
         }
 
+        var castedEvent = event; // hack for flow
+
+        if (filterOptions.listenToBroadcastedEvents === false && castedEvent.processID && castedEvent.processID !== _this._getProcessID()) {
+          return;
+        }
+
+        var translatedEvent = castedEvent.processID ? _this._translateBroadcastEvent(castedEvent) : event;
+
         process.nextTick(function () {
-          return eventHandler(event);
+          return eventHandler(translatedEvent);
         });
       };
-    }, _temp), (0, _possibleConstructorReturn3.default)(_this, _ret);
+    };
+
+    _this._getProcessID = function () {
+      return _cluster2.default.isMaster ? 'master' : _cluster2.default.worker.id.toString();
+    };
+
+    _this._publish = function (event) {
+      _this._emitWithPrefix(event.name, event);
+      _this.emit(ALL_EVENTS, event);
+    };
+
+    _this._translateBroadcastEvent = function (_ref) {
+      var processID = _ref.processID,
+          otherProps = (0, _objectWithoutProperties3.default)(_ref, ['processID']);
+      return (0, _extends3.default)({}, otherProps);
+    };
+
+    _this._useCluster = useCluster;
+
+    if (!useCluster) {
+      return (0, _possibleConstructorReturn3.default)(_this);
+    }
+
+    if (_cluster2.default.isMaster) {
+      _cluster2.default.on('message', function (eventOwnerWorker, event) {
+        (0, _values2.default)(_cluster2.default.workers).forEach(function (worker) {
+          if (eventOwnerWorker.id === worker.id) {
+            return;
+          }
+          worker.send(event);
+        });
+        _this._publish(event);
+      });
+    } else {
+      process.on('message', function (event) {
+        _this._publish(event);
+      });
+    }
+    return _this;
   }
+
+  // eslint-disable-next-line no-unused-vars
+
 
   return EventPublisher;
 }(_events2.default);
