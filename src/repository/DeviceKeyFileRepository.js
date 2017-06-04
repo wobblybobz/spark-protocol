@@ -13,31 +13,20 @@ class DeviceKeyFileRepository {
     this._fileManager = new FileManager(path);
   }
 
-  @memoizeSet()
-  async create(id: string, data: string): Promise<string> {
-    this._fileManager.createFile(id + FILE_EXTENSION, data);
-    return data;
+  @memoizeSet(['deviceID'])
+  async deleteById(deviceID: string): Promise<void> {
+    this._fileManager.deleteFile(deviceID + FILE_EXTENSION);
+  }
+
+  @memoizeGet(['deviceID'])
+  async getById(deviceID: string): Promise<?string> {
+    return this._fileManager.getFile(deviceID + FILE_EXTENSION);
   }
 
   @memoizeSet()
-  async update(id: string, data: string): Promise<string> {
-    this._fileManager.writeFile(id + FILE_EXTENSION, data);
-    return data;
-  }
-
-  @memoizeSet(['id'])
-  async delete(id: string): Promise<void> {
-    this._fileManager.deleteFile(id + FILE_EXTENSION);
-  }
-
-  @memoizeGet()
-  async getAll(): Promise<Array<string>> {
-    return this._fileManager.getAllData();
-  }
-
-  @memoizeGet(['id'])
-  async getById(id: string): Promise<?string> {
-    return this._fileManager.getFile(id + FILE_EXTENSION);
+  async update(deviceID: string, key: string): Promise<string> {
+    this._fileManager.writeFile(deviceID + FILE_EXTENSION, key);
+    return key;
   }
 }
 
