@@ -24,7 +24,7 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
-var _dec, _dec2, _dec3, _dec4, _dec5, _desc, _value, _class;
+var _dec, _dec2, _dec3, _desc, _value, _class;
 
 var _FileManager = require('./FileManager');
 
@@ -71,7 +71,7 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
 
 var FILE_EXTENSION = '.pub.pem';
 
-var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(), _dec3 = (0, _memoizeSet2.default)(['id']), _dec4 = (0, _memoizeGet2.default)(), _dec5 = (0, _memoizeGet2.default)(['id']), (_class = function () {
+var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(['deviceID']), _dec2 = (0, _memoizeGet2.default)(['deviceID']), _dec3 = (0, _memoizeSet2.default)(), (_class = function () {
   function DeviceKeyFileRepository(path) {
     (0, _classCallCheck3.default)(this, DeviceKeyFileRepository);
 
@@ -79,17 +79,16 @@ var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _
   }
 
   (0, _createClass3.default)(DeviceKeyFileRepository, [{
-    key: 'create',
+    key: 'deleteById',
     value: function () {
-      var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(id, data) {
+      var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(deviceID) {
         return _regenerator2.default.wrap(function _callee$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                this._fileManager.createFile(id + FILE_EXTENSION, data);
-                return _context.abrupt('return', data);
+                this._fileManager.deleteFile(deviceID + FILE_EXTENSION);
 
-              case 2:
+              case 1:
               case 'end':
                 return _context.stop();
             }
@@ -97,24 +96,23 @@ var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _
         }, _callee, this);
       }));
 
-      function create(_x, _x2) {
+      function deleteById(_x) {
         return _ref.apply(this, arguments);
       }
 
-      return create;
+      return deleteById;
     }()
   }, {
-    key: 'update',
+    key: 'getById',
     value: function () {
-      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(id, data) {
+      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(deviceID) {
         return _regenerator2.default.wrap(function _callee2$(_context2) {
           while (1) {
             switch (_context2.prev = _context2.next) {
               case 0:
-                this._fileManager.writeFile(id + FILE_EXTENSION, data);
-                return _context2.abrupt('return', data);
+                return _context2.abrupt('return', this._fileManager.getFile(deviceID + FILE_EXTENSION));
 
-              case 2:
+              case 1:
               case 'end':
                 return _context2.stop();
             }
@@ -122,23 +120,24 @@ var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _
         }, _callee2, this);
       }));
 
-      function update(_x3, _x4) {
+      function getById(_x2) {
         return _ref2.apply(this, arguments);
       }
 
-      return update;
+      return getById;
     }()
   }, {
-    key: 'delete',
+    key: 'update',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(id) {
+      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(deviceID, key) {
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                this._fileManager.deleteFile(id + FILE_EXTENSION);
+                this._fileManager.writeFile(deviceID + FILE_EXTENSION, key);
+                return _context3.abrupt('return', key);
 
-              case 1:
+              case 2:
               case 'end':
                 return _context3.stop();
             }
@@ -146,61 +145,13 @@ var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _
         }, _callee3, this);
       }));
 
-      function _delete(_x5) {
+      function update(_x3, _x4) {
         return _ref3.apply(this, arguments);
       }
 
-      return _delete;
-    }()
-  }, {
-    key: 'getAll',
-    value: function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
-        return _regenerator2.default.wrap(function _callee4$(_context4) {
-          while (1) {
-            switch (_context4.prev = _context4.next) {
-              case 0:
-                return _context4.abrupt('return', this._fileManager.getAllData());
-
-              case 1:
-              case 'end':
-                return _context4.stop();
-            }
-          }
-        }, _callee4, this);
-      }));
-
-      function getAll() {
-        return _ref4.apply(this, arguments);
-      }
-
-      return getAll;
-    }()
-  }, {
-    key: 'getById',
-    value: function () {
-      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(id) {
-        return _regenerator2.default.wrap(function _callee5$(_context5) {
-          while (1) {
-            switch (_context5.prev = _context5.next) {
-              case 0:
-                return _context5.abrupt('return', this._fileManager.getFile(id + FILE_EXTENSION));
-
-              case 1:
-              case 'end':
-                return _context5.stop();
-            }
-          }
-        }, _callee5, this);
-      }));
-
-      function getById(_x6) {
-        return _ref5.apply(this, arguments);
-      }
-
-      return getById;
+      return update;
     }()
   }]);
   return DeviceKeyFileRepository;
-}(), (_applyDecoratedDescriptor(_class.prototype, 'create', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'create'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'update', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'delete', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'delete'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getAll'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getById', [_dec5], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getById'), _class.prototype)), _class));
+}(), (_applyDecoratedDescriptor(_class.prototype, 'deleteById', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteById'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getById', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getById'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'update', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype)), _class));
 exports.default = DeviceKeyFileRepository;
