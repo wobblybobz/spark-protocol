@@ -218,11 +218,11 @@ class Device extends EventEmitter {
 
   completeProtocolInitialization = () => {
     try {
-      this._sendHello();
       const decipherStream = this._decipherStream;
       if (!decipherStream) {
         throw new Error('decipherStream not set.');
       }
+      this._sendHello();
 
       decipherStream.on(
         'readable',
@@ -461,14 +461,15 @@ class Device extends EventEmitter {
     }
 
     if (!this._cipherStream) {
-      logger.error(
+      throw new Error(
         'Client - sendMessage before READY',
-        JSON.stringify({ deviceID: this._id, messageName }),
-      );
-      return -1;
+        { deviceID: this._id, messageName },
+      )
     }
 
-    process.nextTick((): bool => nullthrows(this._cipherStream).write(message));
+    process.nextTick(
+      (): bool => !!this._cipherStream && this._cipherStream.write(message),
+    );
 
     return token || 0;
   };
@@ -1085,7 +1086,7 @@ class Device extends EventEmitter {
          : undefined,
       };
 
-      logger.log(
+      logger.error(
         `${this._disconnectCounter} : Device disconnected: ${message || ''}`,
          logInfo,
       );

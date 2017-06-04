@@ -9,10 +9,6 @@ var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
 
-var _stringify = require('babel-runtime/core-js/json/stringify');
-
-var _stringify2 = _interopRequireDefault(_stringify);
-
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
@@ -288,11 +284,11 @@ var Device = function (_EventEmitter) {
 
     _this.completeProtocolInitialization = function () {
       try {
-        _this._sendHello();
         var decipherStream = _this._decipherStream;
         if (!decipherStream) {
           throw new Error('decipherStream not set.');
         }
+        _this._sendHello();
 
         decipherStream.on('readable', function () {
           var chunk = decipherStream.read();
@@ -477,12 +473,11 @@ var Device = function (_EventEmitter) {
       }
 
       if (!_this._cipherStream) {
-        _logger2.default.error('Client - sendMessage before READY', (0, _stringify2.default)({ deviceID: _this._id, messageName: messageName }));
-        return -1;
+        throw new Error('Client - sendMessage before READY', { deviceID: _this._id, messageName: messageName });
       }
 
       process.nextTick(function () {
-        return (0, _nullthrows2.default)(_this._cipherStream).write(message);
+        return !!_this._cipherStream && _this._cipherStream.write(message);
       });
 
       return token || 0;
@@ -1193,7 +1188,7 @@ var Device = function (_EventEmitter) {
           duration: _this._connectionStartTime ? (new Date() - _this._connectionStartTime) / 1000.0 : undefined
         };
 
-        _logger2.default.log(_this._disconnectCounter + ' : Device disconnected: ' + (message || ''), logInfo);
+        _logger2.default.error(_this._disconnectCounter + ' : Device disconnected: ' + (message || ''), logInfo);
       } catch (error) {
         _logger2.default.error('Disconnect log error ' + error);
       }

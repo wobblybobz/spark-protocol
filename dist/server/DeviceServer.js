@@ -209,20 +209,19 @@ var DeviceServer = function () {
                   (0, _nullthrows2.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
                 }
 
-                _this._devicesById.set(deviceID, device);
-
                 process.nextTick((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
                   var deviceAttributes, ownerID;
                   return _regenerator2.default.wrap(function _callee3$(_context3) {
                     while (1) {
                       switch (_context3.prev = _context3.next) {
                         case 0:
-                          _logger2.default.info('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Device ID: ' + deviceID), 'Connection ID: ' + counter);
+                          _this._devicesById.set(deviceID, device);
 
-                          _context3.next = 3;
+                          _context3.prev = 1;
+                          _context3.next = 4;
                           return _this._deviceAttributeRepository.getById(device.getID());
 
-                        case 3:
+                        case 4:
                           deviceAttributes = _context3.sent;
                           ownerID = deviceAttributes && deviceAttributes.ownerID;
 
@@ -265,36 +264,41 @@ var DeviceServer = function () {
                             return _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'failed', deviceID, ownerID);
                           });
 
-                          try {
-                            // Only say the device is ready if it completes initialization
-                            device.completeProtocolInitialization();
-                            device.ready();
-                          } catch (error) {
-                            device.disconnect('Error during connection: ' + error);
-                          }
+                          device.completeProtocolInitialization();
+                          device.ready();
 
-                        case 15:
+                          _logger2.default.info('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Device ID: ' + deviceID), 'Connection ID: ' + counter);
+                          _context3.next = 23;
+                          break;
+
+                        case 20:
+                          _context3.prev = 20;
+                          _context3.t0 = _context3['catch'](1);
+
+                          device.disconnect('Error during connection: ' + _context3.t0);
+
+                        case 23:
                         case 'end':
                           return _context3.stop();
                       }
                     }
-                  }, _callee3, _this);
+                  }, _callee3, _this, [[1, 20]]);
                 })));
-                _context4.next = 17;
+                _context4.next = 16;
                 break;
 
-              case 14:
-                _context4.prev = 14;
+              case 13:
+                _context4.prev = 13;
                 _context4.t0 = _context4['catch'](0);
 
                 _logger2.default.error('Device startup failed: ' + _context4.t0.message);
 
-              case 17:
+              case 16:
               case 'end':
                 return _context4.stop();
             }
           }
-        }, _callee4, _this, [[0, 14]]);
+        }, _callee4, _this, [[0, 13]]);
       }));
 
       return function (_x3) {
@@ -313,7 +317,7 @@ var DeviceServer = function () {
                 newDevice = _this._devicesById.get(deviceID);
                 connectionKey = device.getConnectionKey();
 
-                if (!(device !== newDevice)) {
+                if (!(!newDevice || newDevice.getConnectionKey() !== connectionKey)) {
                   _context5.next = 5;
                   break;
                 }
@@ -727,7 +731,9 @@ var DeviceServer = function () {
       });
 
       setInterval(function () {
-        return _logger2.default.info('Connected Devices ' + _chalk2.default.green(_this2._devicesById.size));
+        return server.getConnections(function (error, count) {
+          _logger2.default.info('Connected Devices ' + _chalk2.default.green(_this2._devicesById.size), ' - Sockets ' + _chalk2.default.green(count) + ' ');
+        });
       }, 10000);
 
       server.on('error', function (error) {

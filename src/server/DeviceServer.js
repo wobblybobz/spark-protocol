@@ -99,9 +99,12 @@ class DeviceServer {
     );
 
     setInterval(
-      (): void => logger.info(
-        `Connected Devices ${chalk.green(this._devicesById.size)}`,
-      ),
+      (): void => server.getConnections((error: Error, count: number) => {
+        logger.info(
+          `Connected Devices ${chalk.green(this._devicesById.size)}`,
+          ` - Sockets ${chalk.green(count)} `,
+        );
+      }),
       10000,
     );
 
@@ -173,96 +176,95 @@ class DeviceServer {
         );
       }
 
-      this._devicesById.set(deviceID, device);
-
 
       process.nextTick(async (): Promise<void> => {
-        logger.info(
-          `Connection from: ${device.getRemoteIPAddress()} - ` +
-            `Device ID: ${deviceID}`,
-            `Connection ID: ${counter}`,
-        );
-
-        const deviceAttributes =
-          await this._deviceAttributeRepository.getById(device.getID());
-        const ownerID = deviceAttributes && deviceAttributes.ownerID;
-
-        device.on(
-          DEVICE_EVENT_NAMES.READY,
-          (): Promise<void> => this._onDeviceReady(device),
-        );
-
-        device.on(
-          DEVICE_EVENT_NAMES.DISCONNECT,
-          (): Promise<void> => this._onDeviceDisconnect(device),
-        );
-
-        device.on(
-          DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
-          (message: Message): Promise<void> =>
-            this._onDeviceSubscribe(message, device),
-        );
-
-        device.on(
-          DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
-          (message: Message): Promise<void> =>
-            this._onDeviceSentMessage(
-              message,
-              /* isPublic */false,
-              device,
-            ),
-        );
-
-        device.on(
-          DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
-          (message: Message): Promise<void> =>
-            this._onDeviceSentMessage(
-              message,
-              /* isPublic */true,
-              device,
-            ),
-        );
-
-        device.on(
-          DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
-          (message: Message): void =>
-            this._onDeviceGetTime(message, device),
-        );
-
-        device.on(
-          DEVICE_EVENT_NAMES.FLASH_STARTED,
-          (): void => this.publishSpecialEvent(
-            SYSTEM_EVENT_NAMES.FLASH_STATUS,
-            'started',
-            deviceID,
-            ownerID,
-          ),
-        );
-
-        device.on(
-          DEVICE_EVENT_NAMES.FLASH_SUCCESS,
-          (): void => this.publishSpecialEvent(
-            SYSTEM_EVENT_NAMES.FLASH_STATUS,
-            'success',
-            deviceID,
-            ownerID,
-          ),
-        );
-
-        device.on(
-          DEVICE_EVENT_NAMES.FLASH_FAILED,
-          (): void => this.publishSpecialEvent(
-            SYSTEM_EVENT_NAMES.FLASH_STATUS,
-            'failed',
-            deviceID,
-            ownerID,
-          ),
-        );
+        this._devicesById.set(deviceID, device);
 
         try {
-          // Only say the device is ready if it completes initialization
+          const deviceAttributes =
+            await this._deviceAttributeRepository.getById(device.getID());
+          const ownerID = deviceAttributes && deviceAttributes.ownerID;
+
+          device.on(
+            DEVICE_EVENT_NAMES.READY,
+            (): Promise<void> => this._onDeviceReady(device),
+          );
+
+          device.on(
+            DEVICE_EVENT_NAMES.DISCONNECT,
+            (): Promise<void> => this._onDeviceDisconnect(device),
+          );
+
+          device.on(
+            DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
+            (message: Message): Promise<void> =>
+              this._onDeviceSubscribe(message, device),
+          );
+
+          device.on(
+            DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
+            (message: Message): Promise<void> =>
+              this._onDeviceSentMessage(
+                message,
+                /* isPublic */false,
+                device,
+              ),
+          );
+
+          device.on(
+            DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
+            (message: Message): Promise<void> =>
+              this._onDeviceSentMessage(
+                message,
+                /* isPublic */true,
+                device,
+              ),
+          );
+
+          device.on(
+            DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
+            (message: Message): void =>
+              this._onDeviceGetTime(message, device),
+          );
+
+          device.on(
+            DEVICE_EVENT_NAMES.FLASH_STARTED,
+            (): void => this.publishSpecialEvent(
+              SYSTEM_EVENT_NAMES.FLASH_STATUS,
+              'started',
+              deviceID,
+              ownerID,
+            ),
+          );
+
+          device.on(
+            DEVICE_EVENT_NAMES.FLASH_SUCCESS,
+            (): void => this.publishSpecialEvent(
+              SYSTEM_EVENT_NAMES.FLASH_STATUS,
+              'success',
+              deviceID,
+              ownerID,
+            ),
+          );
+
+          device.on(
+            DEVICE_EVENT_NAMES.FLASH_FAILED,
+            (): void => this.publishSpecialEvent(
+              SYSTEM_EVENT_NAMES.FLASH_STATUS,
+              'failed',
+              deviceID,
+              ownerID,
+            ),
+          );
+
           device.completeProtocolInitialization();
           device.ready();
+
+          logger.info(
+            `Connection from: ${device.getRemoteIPAddress()} - ` +
+              `Device ID: ${deviceID}`,
+              `Connection ID: ${counter}`,
+          );
         } catch (error) {
           device.disconnect(
             `Error during connection: ${error}`,
@@ -282,7 +284,8 @@ class DeviceServer {
     const newDevice = this._devicesById.get(deviceID);
     const connectionKey = device.getConnectionKey();
     if (
-      device !== newDevice
+      !newDevice ||
+      newDevice.getConnectionKey() !== connectionKey
     ) {
       return;
     }
