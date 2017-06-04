@@ -24,7 +24,7 @@ exports.default = {
   SERVER_KEY_PASSWORD: null,
   SERVER_KEYS_DIRECTORY: _path2.default.join(__dirname, '../data/users'),
 
-  CRYPTO_SALT: 'aes-128-cbc',
+  CRYPTO_ALGORITHM: 'aes-128-cbc',
   KEEP_ALIVE_TIMEOUT: 15000, // 15 seconds
   SOCKET_TIMEOUT: 31000, // 31 seconds
 

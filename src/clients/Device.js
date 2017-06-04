@@ -219,10 +219,15 @@ class Device extends EventEmitter {
   completeProtocolInitialization = () => {
     try {
       this._sendHello();
-      nullthrows(this._decipherStream).on(
+      const decipherStream = this._decipherStream;
+      if (!decipherStream) {
+        throw new Error('decipherStream not set.');
+      }
+
+      decipherStream.on(
         'readable',
         () => {
-          const chunk = ((nullthrows(this._decipherStream).read(): any): Buffer);
+          const chunk = ((decipherStream.read(): any): Buffer);
           this._clientHasWrittenToSocket();
           if (!chunk) {
             return;
@@ -231,7 +236,7 @@ class Device extends EventEmitter {
         },
       );
     } catch (error) {
-      logger.error(`completeProtocolInitialization: ${error}`);
+      throw new Error(`completeProtocolInitialization: ${error}`);
     }
   };
 
@@ -350,7 +355,6 @@ class Device extends EventEmitter {
       return;
     }
 
-
     this._incrementReceiveCounter();
     if (message.isEmpty() && message.isConfirmable()) {
       this._lastDevicePing = new Date();
@@ -459,7 +463,7 @@ class Device extends EventEmitter {
     if (!this._cipherStream) {
       logger.error(
         'Client - sendMessage before READY',
-        { deviceID: this._id, messageName },
+        JSON.stringify({ deviceID: this._id, messageName }),
       );
       return -1;
     }
@@ -660,12 +664,10 @@ class Device extends EventEmitter {
       throw new Error(`Unknown Function ${functionName}`);
     }
 
-    if (settings.SHOW_VERBOSE_DEVICE_LOGS) {
-      logger.log(
-        'sending function call to the device',
-        { deviceID: this._id, functionName },
-      );
-    }
+    logger.log(
+      'sending function call to the device',
+      { deviceID: this._id, functionName },
+    );
 
     const writeUrl = (message: Message): Message => {
       message.setUri(`f/${functionName}`);
@@ -888,13 +890,18 @@ class Device extends EventEmitter {
     return Messages.buildArguments(args, functionState.args);
   };
 
+  _introspectionPromise: ?Promise<void> = null;
   /**
    * Checks our cache to see if we have the function state, otherwise requests
    * it from the device, listens for it, and resolves our deferred on success
    */
   _ensureWeHaveIntrospectionData = async (): Promise<void> => {
     if (this._hasFunctionState()) {
-      return;
+      return Promise.resolve();
+    }
+
+    if (this._introspectionPromise) {
+      return this._introspectionPromise;
     }
     // We need to wait a little bit to make sure that the device's function
     // data is ready. This is super hacky but there wasn't another event to
@@ -908,14 +915,15 @@ class Device extends EventEmitter {
       // single message, we cannot use `listenFor` and instead have to write
       // some hacky code that duplicates a lot of the functionality
       this.sendMessage('Describe');
-      const result = await new Promise((
+
+      this._introspectionPromise = new Promise((
         resolve: (message: Message) => void,
         reject: (error?: Error) => void,
       ) => {
         const timeout = setTimeout(
           () => {
             cleanUpListeners();
-            reject(new Error('Request timed out', 'Describe'));
+            reject(new Error('Request timed out - Describe'));
           },
           KEEP_ALIVE_TIMEOUT,
         );
@@ -930,7 +938,7 @@ class Device extends EventEmitter {
 
           const data = JSON.parse(payload.toString());
 
-          if (!systemInformation) {
+          if (!systemInformation && data.m) {
             systemInformation = data;
           }
 
@@ -963,10 +971,15 @@ class Device extends EventEmitter {
         this.on('disconnect', disconnectHandler);
       });
 
-      this._systemInformation = result.systemInformation;
-      this._deviceFunctionState = result.functionState;
+      return this._introspectionPromise.then(
+        (result: Object) => {
+          this._systemInformation = result.systemInformation;
+          this._deviceFunctionState = result.functionState;
+          this._introspectionPromise = null;
+        },
+      );
     } catch (error) {
-      logger.error(`_ensureWeHaveIntrospectionData error: ${error}`);
+      this.disconnect(`_ensureWeHaveIntrospectionData error: ${error}`);
       throw error;
     }
   };

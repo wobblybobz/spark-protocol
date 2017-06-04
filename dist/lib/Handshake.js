@@ -121,7 +121,6 @@ var Handshake = function Handshake(cryptoManager) {
   var _this = this;
 
   (0, _classCallCheck3.default)(this, Handshake);
-  this._isSendingHello = false;
   this._useChunkingStream = true;
 
   this.start = function () {
@@ -140,7 +139,7 @@ var Handshake = function Handshake(cryptoManager) {
                   ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown'
                 };
 
-                _logger2.default.error('Handshake failed: ', error.message, logInfo);
+                _logger2.default.error('Handshake failed: ', error, logInfo);
 
                 throw error;
               }));
@@ -269,7 +268,9 @@ var Handshake = function Handshake(cryptoManager) {
           case 2:
             nonce = _context3.sent;
 
-            _this._socket.write(nonce);
+            process.nextTick(function () {
+              return _this._socket.write(nonce);
+            });
 
             return _context3.abrupt('return', nonce);
 
@@ -288,28 +289,24 @@ var Handshake = function Handshake(cryptoManager) {
         while (1) {
           switch (_context4.prev = _context4.next) {
             case 0:
-              _context4.next = 2;
-              return _this._cryptoManager.decrypt(data);
-
-            case 2:
-              decryptedHandshakeData = _context4.sent;
+              decryptedHandshakeData = _this._cryptoManager.decrypt(data);
 
               if (decryptedHandshakeData) {
-                _context4.next = 5;
+                _context4.next = 3;
                 break;
               }
 
               throw new Error('handshake data decryption failed');
 
-            case 5:
+            case 3:
               if (!(decryptedHandshakeData.length < NONCE_BYTES + ID_BYTES)) {
-                _context4.next = 7;
+                _context4.next = 5;
                 break;
               }
 
               throw new Error('handshake data was too small: ' + decryptedHandshakeData.length);
 
-            case 7:
+            case 5:
               nonceBuffer = new Buffer(NONCE_BYTES);
               deviceIDBuffer = new Buffer(ID_BYTES);
               deviceKeyBuffer = new Buffer(decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES));
@@ -320,18 +317,18 @@ var Handshake = function Handshake(cryptoManager) {
               decryptedHandshakeData.copy(deviceKeyBuffer, 0, NONCE_BYTES + ID_BYTES, decryptedHandshakeData.length);
 
               if (nonceBuffer.equals(nonce)) {
-                _context4.next = 15;
+                _context4.next = 13;
                 break;
               }
 
               throw new Error('nonces didn`t match');
 
-            case 15:
+            case 13:
               deviceProvidedPem = _this._convertDERtoPEM(deviceKeyBuffer);
               deviceID = deviceIDBuffer.toString('hex');
               return _context4.abrupt('return', { deviceID: deviceID, deviceProvidedPem: deviceProvidedPem });
 
-            case 18:
+            case 16:
             case 'end':
               return _context4.stop();
           }
@@ -392,9 +389,14 @@ var Handshake = function Handshake(cryptoManager) {
               throw new Error('no public key found for device: ' + deviceID);
 
             case 9:
+
+              if (!_this._cryptoManager.keysEqual(publicKey, deviceProvidedPem)) {
+                _logger2.default.error('\n        TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESN\'T MATCH SAVED\n        PUBLIC KEY');
+              }
+
               return _context5.abrupt('return', publicKey);
 
-            case 10:
+            case 11:
             case 'end':
               return _context5.stop();
           }
@@ -443,7 +445,10 @@ var Handshake = function Handshake(cryptoManager) {
               // Server sends ~384 bytes to Device: the ciphertext then the signature.
               message = Buffer.concat([ciphertext, signedhmac], ciphertext.length + signedhmac.length);
 
-              _this._socket.write(message);
+
+              process.nextTick(function () {
+                return _this._socket.write(message);
+              });
 
               decipherStream = _this._cryptoManager.createAESDecipherStream(sessionKey);
               cipherStream = _this._cryptoManager.createAESCipherStream(sessionKey);

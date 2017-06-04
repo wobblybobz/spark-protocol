@@ -42,7 +42,11 @@ class CryptoManager {
     sessionKey.copy(key, 0, 0, 16); // copy the key
     sessionKey.copy(iv, 0, 16, 32); // copy the iv
 
-    return new CryptoStream({ encrypt, iv, key });
+    return new CryptoStream({
+      iv,
+      key,
+      streamType: encrypt ? 'encrypt' : 'decrypt',
+    });
   };
 
   _createServerKeys = async (): Promise<Object> => {
@@ -93,7 +97,7 @@ class CryptoManager {
     return ursa.createPublicKey(publicKeyPem);
   };
 
-  decrypt = async (data: Buffer): Promise<Buffer> =>
+  decrypt = (data: Buffer): Buffer =>
     this._serverPrivateKey.decrypt(
       data,
       /* input buffer encoding */undefined,
@@ -117,6 +121,14 @@ class CryptoManager {
 
     return ursa.createPublicKey(publicKeyString);
   };
+
+  keysEqual = (existingKey: Object, publicKeyPem: ? string): bool => {
+    if (!publicKeyPem) {
+      return false;
+    }
+
+    return ursa.equalKeys(existingKey, ursa.createPublicKey(publicKeyPem));
+  }
 
   getRandomBytes = (size: number): Promise<Buffer> =>
     new Promise((

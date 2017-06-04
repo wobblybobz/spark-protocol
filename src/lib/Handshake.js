@@ -95,7 +95,6 @@ class Handshake {
   _device: Device;
   _cryptoManager: CryptoManager;
   _socket: Socket;
-  _isSendingHello: boolean = false;
   _deviceID: string;
   _useChunkingStream: boolean = true;
 
@@ -119,7 +118,7 @@ class Handshake {
           : 'unknown',
       };
 
-      logger.error('Handshake failed: ', error.message, logInfo);
+      logger.error('Handshake failed: ', error, logInfo);
 
       throw error;
     });
@@ -201,7 +200,7 @@ class Handshake {
 
   _sendNonce = async (): Promise<Buffer> => {
     const nonce = await this._cryptoManager.getRandomBytes(NONCE_BYTES);
-    this._socket.write(nonce);
+    process.nextTick((): boolean => this._socket.write(nonce));
 
     return nonce;
   };
@@ -213,17 +212,17 @@ class Handshake {
     deviceID: string,
     deviceProvidedPem: ?string,
   }> => {
-    const decryptedHandshakeData =
-      await this._cryptoManager.decrypt(data);
+    const decryptedHandshakeData = this._cryptoManager.decrypt(data);
 
     if (!decryptedHandshakeData) {
       throw new Error('handshake data decryption failed');
     }
 
     if (decryptedHandshakeData.length < (NONCE_BYTES + ID_BYTES)) {
-      throw new Error(`handshake data was too small: ${decryptedHandshakeData.length}`);
+      throw new Error(
+        `handshake data was too small: ${decryptedHandshakeData.length}`,
+      );
     }
-
 
     const nonceBuffer = new Buffer(NONCE_BYTES);
     const deviceIDBuffer = new Buffer(ID_BYTES);
@@ -309,6 +308,13 @@ class Handshake {
       throw new Error(`no public key found for device: ${deviceID}`);
     }
 
+    if (!this._cryptoManager.keysEqual(publicKey, deviceProvidedPem)) {
+      logger.error(`
+        TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESN'T MATCH SAVED
+        PUBLIC KEY`,
+      );
+    }
+
     return publicKey;
   };
 
@@ -340,7 +346,8 @@ class Handshake {
       [ciphertext, signedhmac],
       ciphertext.length + signedhmac.length,
     );
-    this._socket.write(message);
+
+    process.nextTick((): boolean => this._socket.write(message));
 
     const decipherStream =
       this._cryptoManager.createAESDecipherStream(sessionKey);

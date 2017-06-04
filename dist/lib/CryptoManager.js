@@ -54,7 +54,11 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
     sessionKey.copy(key, 0, 0, 16); // copy the key
     sessionKey.copy(iv, 0, 16, 32); // copy the iv
 
-    return new _CryptoStream2.default({ encrypt: encrypt, iv: iv, key: key });
+    return new _CryptoStream2.default({
+      iv: iv,
+      key: key,
+      streamType: encrypt ? 'encrypt' : 'decrypt'
+    });
   };
 
   this._createServerKeys = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
@@ -150,17 +154,42 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
     };
   }();
 
-  this.decrypt = function () {
-    var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(data) {
+  this.decrypt = function (data) {
+    return _this._serverPrivateKey.decrypt(data,
+    /* input buffer encoding */undefined,
+    /* output buffer encoding*/undefined, _ursa2.default.RSA_PKCS1_PADDING);
+  };
+
+  this.encrypt = function (publicKey, data) {
+    return publicKey.encrypt(data,
+    /* input buffer encoding */undefined,
+    /* output buffer encoding*/undefined, _ursa2.default.RSA_PKCS1_PADDING);
+  };
+
+  this.getDevicePublicKey = function () {
+    var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(deviceID) {
+      var publicKeyString;
       return _regenerator2.default.wrap(function _callee4$(_context4) {
         while (1) {
           switch (_context4.prev = _context4.next) {
             case 0:
-              return _context4.abrupt('return', _this._serverPrivateKey.decrypt(data,
-              /* input buffer encoding */undefined,
-              /* output buffer encoding*/undefined, _ursa2.default.RSA_PKCS1_PADDING));
+              _context4.next = 2;
+              return _this._deviceKeyRepository.getById(deviceID);
 
-            case 1:
+            case 2:
+              publicKeyString = _context4.sent;
+
+              if (publicKeyString) {
+                _context4.next = 5;
+                break;
+              }
+
+              return _context4.abrupt('return', null);
+
+            case 5:
+              return _context4.abrupt('return', _ursa2.default.createPublicKey(publicKeyString));
+
+            case 6:
             case 'end':
               return _context4.stop();
           }
@@ -173,47 +202,13 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
     };
   }();
 
-  this.encrypt = function (publicKey, data) {
-    return publicKey.encrypt(data,
-    /* input buffer encoding */undefined,
-    /* output buffer encoding*/undefined, _ursa2.default.RSA_PKCS1_PADDING);
+  this.keysEqual = function (existingKey, publicKeyPem) {
+    if (!publicKeyPem) {
+      return false;
+    }
+
+    return _ursa2.default.equalKeys(existingKey, _ursa2.default.createPublicKey(publicKeyPem));
   };
-
-  this.getDevicePublicKey = function () {
-    var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(deviceID) {
-      var publicKeyString;
-      return _regenerator2.default.wrap(function _callee5$(_context5) {
-        while (1) {
-          switch (_context5.prev = _context5.next) {
-            case 0:
-              _context5.next = 2;
-              return _this._deviceKeyRepository.getById(deviceID);
-
-            case 2:
-              publicKeyString = _context5.sent;
-
-              if (publicKeyString) {
-                _context5.next = 5;
-                break;
-              }
-
-              return _context5.abrupt('return', null);
-
-            case 5:
-              return _context5.abrupt('return', _ursa2.default.createPublicKey(publicKeyString));
-
-            case 6:
-            case 'end':
-              return _context5.stop();
-          }
-        }
-      }, _callee5, _this);
-    }));
-
-    return function (_x4) {
-      return _ref5.apply(this, arguments);
-    };
-  }();
 
   this.getRandomBytes = function (size) {
     return new _promise2.default(function (resolve, reject) {
@@ -229,23 +224,23 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
   };
 
   this.sign = function () {
-    var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(hash) {
-      return _regenerator2.default.wrap(function _callee6$(_context6) {
+    var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(hash) {
+      return _regenerator2.default.wrap(function _callee5$(_context5) {
         while (1) {
-          switch (_context6.prev = _context6.next) {
+          switch (_context5.prev = _context5.next) {
             case 0:
-              return _context6.abrupt('return', _this._serverPrivateKey.privateEncrypt(hash));
+              return _context5.abrupt('return', _this._serverPrivateKey.privateEncrypt(hash));
 
             case 1:
             case 'end':
-              return _context6.stop();
+              return _context5.stop();
           }
         }
-      }, _callee6, _this);
+      }, _callee5, _this);
     }));
 
-    return function (_x5) {
-      return _ref6.apply(this, arguments);
+    return function (_x4) {
+      return _ref5.apply(this, arguments);
     };
   }();
 
@@ -253,23 +248,23 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
   this._serverKeyRepository = serverKeyRepository;
   this._serverKeyPassword = serverKeyPassword;
 
-  (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {
-    return _regenerator2.default.wrap(function _callee7$(_context7) {
+  (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6() {
+    return _regenerator2.default.wrap(function _callee6$(_context6) {
       while (1) {
-        switch (_context7.prev = _context7.next) {
+        switch (_context6.prev = _context6.next) {
           case 0:
-            _context7.next = 2;
+            _context6.next = 2;
             return _this._getServerPrivateKey();
 
           case 2:
-            _this._serverPrivateKey = _context7.sent;
+            _this._serverPrivateKey = _context6.sent;
 
           case 3:
           case 'end':
-            return _context7.stop();
+            return _context6.stop();
         }
       }
-    }, _callee7, _this);
+    }, _callee6, _this);
   }))();
 }, _class.getRandomUINT16 = function () {
   // ** - the same as Math.pow()

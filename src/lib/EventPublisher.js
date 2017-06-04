@@ -57,6 +57,7 @@ class EventPublisher extends EventEmitter {
       ttl,
     };
 
+    // TODO - this needs to be put on next tick.
     this._emitWithPrefix(eventData.name, event);
     this.emit(ALL_EVENTS, event);
   };

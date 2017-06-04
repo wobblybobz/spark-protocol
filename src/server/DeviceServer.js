@@ -30,6 +30,7 @@ import type EventPublisher from '../lib/EventPublisher';
 
 import Handshake from '../lib/Handshake';
 
+import chalk from 'chalk';
 import net from 'net';
 import crypto from 'crypto';
 import nullthrows from 'nullthrows';
@@ -97,6 +98,13 @@ class DeviceServer {
         ),
     );
 
+    setInterval(
+      logger.info(
+        `Connected Devices ${chalk.green(this._devicesById.size)}`,
+      ),
+      10000,
+    );
+
     server.on('error', (error: Error): void =>
       logger.error(`something blew up ${error.message}`),
     );
@@ -145,6 +153,7 @@ class DeviceServer {
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
     try {
       connectionIdCounter += 1;
+      const counter = connectionIdCounter;
       const connectionKey = `_${connectionIdCounter}`;
       const handshake = new Handshake(this._cryptoManager);
       const device = new Device(
@@ -164,10 +173,14 @@ class DeviceServer {
         );
       }
 
+      this._devicesById.set(deviceID, device);
+
+
       process.nextTick(async (): Promise<void> => {
-        logger.log(
+        logger.info(
           `Connection from: ${device.getRemoteIPAddress()} - ` +
-            `Connection ID: ${connectionIdCounter}`,
+            `Device ID: ${deviceID}`,
+            `Connection ID: ${counter}`,
         );
 
         const deviceAttributes =
@@ -246,8 +259,15 @@ class DeviceServer {
           ),
         );
 
-        device.completeProtocolInitialization();
-        device.ready();
+        try {
+          // Only say the device is ready if it completes initialization
+          device.completeProtocolInitialization();
+          device.ready();
+        } catch (error) {
+          device.disconnect(
+            `Error during connection: ${error}`,
+          );
+        }
       });
     } catch (error) {
       logger.error(`Device startup failed: ${error.message}`);
@@ -260,14 +280,16 @@ class DeviceServer {
     const deviceID = device.getID();
 
     const newDevice = this._devicesById.get(deviceID);
-    if (device !== newDevice) {
+    const connectionKey = device.getConnectionKey();
+    if (
+      device !== newDevice
+    ) {
       return;
     }
 
     this._devicesById.delete(deviceID);
     this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
-    const connectionKey = device.getConnectionKey();
     const deviceAttributes =
       await this._deviceAttributeRepository.getById(deviceID);
 
@@ -284,7 +306,7 @@ class DeviceServer {
       deviceID,
       ownerID,
     );
-    logger.log(
+    logger.warn(
       `Session ended for device with ID: ${deviceID} with connectionKey: ` +
       `${connectionKey || 'no connection key'}`,
     );
@@ -306,8 +328,6 @@ class DeviceServer {
     try {
       logger.log('Device online!');
       const deviceID = device.getID();
-
-      this._devicesById.set(deviceID, device);
 
       const existingAttributes =
         await this._deviceAttributeRepository.getById(deviceID);
@@ -533,7 +553,7 @@ class DeviceServer {
     const deviceID = device.getID();
     const deviceAttributes =
       await this._deviceAttributeRepository.getById(deviceID);
-    const ownerID = deviceAttributes && deviceAttributes.ownerID;
+    let ownerID = deviceAttributes && deviceAttributes.ownerID;
     const query = message.getUriQuery();
     const isFromMyDevices = query && !!query.match('u');
 
@@ -552,12 +572,11 @@ class DeviceServer {
     );
 
     if (!ownerID) {
-      device.sendReply('SubscribeAck', message.getId());
       logger.log(
-        `device with ID ${deviceID} wasn't subscribed to` +
+        `device with ID ${deviceID} wasn't subscribed to ` +
           `${messageName} event: the device is unclaimed.`,
       );
-      return;
+      ownerID = '--unclaimed--';
     }
 
     const isSystemEvent = messageName.startsWith('spark');

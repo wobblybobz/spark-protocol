@@ -88,6 +88,7 @@ var EventPublisher = function (_EventEmitter) {
         ttl: ttl
       });
 
+      // TODO - this needs to be put on next tick.
       _this._emitWithPrefix(eventData.name, event);
       _this.emit(ALL_EVENTS, event);
     }, _this.subscribe = function () {

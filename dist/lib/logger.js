@@ -1,16 +1,24 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _classCallCheck2 = require("babel-runtime/helpers/classCallCheck");
+var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _createClass2 = require("babel-runtime/helpers/createClass");
+var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
+
+var _chalk = require('chalk');
+
+var _chalk2 = _interopRequireDefault(_chalk);
+
+var _logger = require('../lib/logger');
+
+var _logger2 = _interopRequireDefault(_logger);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -43,20 +51,28 @@ var Logger = function () {
   }
 
   (0, _createClass3.default)(Logger, null, [{
-    key: "log",
+    key: 'log',
     value: function log() {
-      var _console;
+      if (_logger2.default.SHOW_VERBOSE_DEVICE_LOGS) {
+        var _console;
 
-      // eslint-disable-next-line prefer-rest-params
-      (_console = console).log.apply(_console, arguments);
+        (_console = console).log.apply(_console, arguments);
+      }
     }
   }, {
-    key: "error",
+    key: 'info',
+    value: function info() {
+      console.log(_chalk2.default.cyan.apply(_chalk2.default, arguments));
+    }
+  }, {
+    key: 'warn',
+    value: function warn() {
+      console.warn(_chalk2.default.yellow.apply(_chalk2.default, arguments));
+    }
+  }, {
+    key: 'error',
     value: function error() {
-      var _console2;
-
-      // eslint-disable-next-line prefer-rest-params
-      (_console2 = console).error.apply(_console2, arguments);
+      console.error(_chalk2.default.red.apply(_chalk2.default, arguments));
     }
   }]);
   return Logger;

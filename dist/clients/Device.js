@@ -9,6 +9,10 @@ var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
 
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
@@ -285,8 +289,13 @@ var Device = function (_EventEmitter) {
     _this.completeProtocolInitialization = function () {
       try {
         _this._sendHello();
-        (0, _nullthrows2.default)(_this._decipherStream).on('readable', function () {
-          var chunk = (0, _nullthrows2.default)(_this._decipherStream).read();
+        var decipherStream = _this._decipherStream;
+        if (!decipherStream) {
+          throw new Error('decipherStream not set.');
+        }
+
+        decipherStream.on('readable', function () {
+          var chunk = decipherStream.read();
           _this._clientHasWrittenToSocket();
           if (!chunk) {
             return;
@@ -294,7 +303,7 @@ var Device = function (_EventEmitter) {
           _this.routeMessage(chunk);
         });
       } catch (error) {
-        _logger2.default.error('completeProtocolInitialization: ' + error);
+        throw new Error('completeProtocolInitialization: ' + error);
       }
     };
 
@@ -468,7 +477,7 @@ var Device = function (_EventEmitter) {
       }
 
       if (!_this._cipherStream) {
-        _logger2.default.error('Client - sendMessage before READY', { deviceID: _this._id, messageName: messageName });
+        _logger2.default.error('Client - sendMessage before READY', (0, _stringify2.default)({ deviceID: _this._id, messageName: messageName }));
         return -1;
       }
 
@@ -711,9 +720,7 @@ var Device = function (_EventEmitter) {
 
               case 8:
 
-                if (_settings2.default.SHOW_VERBOSE_DEVICE_LOGS) {
-                  _logger2.default.log('sending function call to the device', { deviceID: _this._id, functionName: functionName });
-                }
+                _logger2.default.log('sending function call to the device', { deviceID: _this._id, functionName: functionName });
 
                 writeUrl = function writeUrl(message) {
                   message.setUri('f/' + functionName);
@@ -976,8 +983,8 @@ var Device = function (_EventEmitter) {
       };
     }();
 
+    _this._introspectionPromise = null;
     _this._ensureWeHaveIntrospectionData = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10() {
-      var result;
       return _regenerator2.default.wrap(function _callee10$(_context10) {
         while (1) {
           switch (_context10.prev = _context10.next) {
@@ -987,28 +994,36 @@ var Device = function (_EventEmitter) {
                 break;
               }
 
-              return _context10.abrupt('return');
+              return _context10.abrupt('return', _promise2.default.resolve());
 
             case 2:
-              _context10.next = 4;
+              if (!_this._introspectionPromise) {
+                _context10.next = 4;
+                break;
+              }
+
+              return _context10.abrupt('return', _this._introspectionPromise);
+
+            case 4:
+              _context10.next = 6;
               return new _promise2.default(function (resolve) {
                 return setTimeout(function () {
                   return resolve();
                 }, 10);
               });
 
-            case 4:
-              _context10.prev = 4;
+            case 6:
+              _context10.prev = 6;
 
               // Because some firmware versions do not send the app + system state in a
               // single message, we cannot use `listenFor` and instead have to write
               // some hacky code that duplicates a lot of the functionality
               _this.sendMessage('Describe');
-              _context10.next = 8;
-              return new _promise2.default(function (resolve, reject) {
+
+              _this._introspectionPromise = new _promise2.default(function (resolve, reject) {
                 var timeout = setTimeout(function () {
                   cleanUpListeners();
-                  reject(new Error('Request timed out', 'Describe'));
+                  reject(new Error('Request timed out - Describe'));
                 }, KEEP_ALIVE_TIMEOUT);
 
                 var systemInformation = null;
@@ -1021,7 +1036,7 @@ var Device = function (_EventEmitter) {
 
                   var data = JSON.parse(payload.toString());
 
-                  if (!systemInformation) {
+                  if (!systemInformation && data.m) {
                     systemInformation = data;
                   }
 
@@ -1054,28 +1069,25 @@ var Device = function (_EventEmitter) {
                 _this.on('disconnect', disconnectHandler);
               });
 
-            case 8:
-              result = _context10.sent;
+              return _context10.abrupt('return', _this._introspectionPromise.then(function (result) {
+                _this._systemInformation = result.systemInformation;
+                _this._deviceFunctionState = result.functionState;
+                _this._introspectionPromise = null;
+              }));
 
+            case 12:
+              _context10.prev = 12;
+              _context10.t0 = _context10['catch'](6);
 
-              _this._systemInformation = result.systemInformation;
-              _this._deviceFunctionState = result.functionState;
-              _context10.next = 17;
-              break;
-
-            case 13:
-              _context10.prev = 13;
-              _context10.t0 = _context10['catch'](4);
-
-              _logger2.default.error('_ensureWeHaveIntrospectionData error: ' + _context10.t0);
+              _this.disconnect('_ensureWeHaveIntrospectionData error: ' + _context10.t0);
               throw _context10.t0;
 
-            case 17:
+            case 16:
             case 'end':
               return _context10.stop();
           }
         }
-      }, _callee10, _this2, [[4, 13]]);
+      }, _callee10, _this2, [[6, 12]]);
     }));
     _this.getSystemInformation = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee11() {
       return _regenerator2.default.wrap(function _callee11$(_context11) {
@@ -1280,7 +1292,6 @@ var Device = function (_EventEmitter) {
 
 
   // transforms our object into a nice coap query string
-
 
   /**
    * Checks our cache to see if we have the function state, otherwise requests

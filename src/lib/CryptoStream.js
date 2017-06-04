@@ -18,117 +18,70 @@
 *
 */
 
-import type { Duplex } from 'stream';
-
 import { Transform } from 'stream';
 import crypto from 'crypto';
 import logger from '../lib/logger';
 import settings from '../settings';
 
-type CrytpoStreamOptions = {
-  encrypt?: boolean,
+export type CryptoStreamType = 'decrypt' | 'encrypt';
+
+type CryptoStreamOptions = {
   iv: Buffer,
   key: Buffer,
-}
+  streamType: CryptoStreamType,
+};
 
 class CryptoStream extends Transform {
   _key: Buffer;
   _iv: Buffer;
-  _encrypt: boolean;
+  _streamType: CryptoStreamType;
 
-  constructor(options: CrytpoStreamOptions) {
+  constructor(options: CryptoStreamOptions) {
     super(options);
 
     this._key = options.key;
     this._iv = options.iv;
-    this._encrypt = !!options.encrypt;
+    this._streamType = options.streamType;
   }
-
-  _getCipher = (callback: Function): Duplex => {
-    let cipher = null;
-    if (this._encrypt) {
-      cipher = crypto.createCipheriv(settings.CRYPTO_SALT, this._key, this._iv);
-    } else {
-      cipher = crypto.createDecipheriv(
-        settings.CRYPTO_SALT,
-        this._key,
-        this._iv,
-      );
-    }
-
-    let cipherText = null;
-
-    cipher.on('readable', () => {
-      const chunk: ?Buffer = (((cipher && cipher.read()): any): Buffer);
-
-      /*
-       The crypto stream error was coming from the additional null packet
-       before the end of the stream
-
-       IE
-       <Buffer a0 4a 2e 8e 2d ce de 12 15 03 7a 42 44 ca 84 88 72 64 77 61 72
-        65 2f 6f 74 61 5f 63 68 75 6e 6b>
-       <Buffer 5f 73 69 7a 65 ff 35 31 32>
-       null
-       CryptoStream transform error TypeError: Cannot read property 'length' of
-        null
-       Coap Error: Error: Invalid CoAP version. Expected 1, got: 3
-
-       The if statement solves (I believe) all of the node version dependency
-       issues
-
-       */
-      if (chunk) {
-        if (!cipherText) {
-          cipherText = chunk;
-        } else {
-          cipherText = Buffer.concat(
-            [cipherText, chunk],
-            cipherText.length + chunk.length,
-          );
-        }
-      }
-    });
-
-    cipher.on('end', () => {
-      this.push(cipherText);
-
-      if (this._encrypt && cipherText) {
-        // get new iv for next time.
-        this._iv = new Buffer(16);
-        cipherText.copy(this._iv, 0, 0, 16);
-      }
-      cipherText = null;
-
-      process.nextTick((): void => callback());
-    });
-
-    return cipher;
-  };
 
   _transform = (
     chunk: Buffer | string,
     encoding: string,
     callback: Function,
   ) => {
-    try {
-      // assuming it comes in full size pieces
-      let cipher = this._getCipher(callback);
-      cipher.write(chunk);
-      cipher.end();
-      cipher = null;
+    if (!chunk.length) {
+      logger.error(
+        'CryptoStream transform error: Chunk didn\'t have any length',
+      );
+      callback();
+      return;
+    }
 
-      // ASSERT: we just DECRYPTED an incoming message
-      // THEN:
-      // update the initialization vector to the first 16 bytes of the
-      // encrypted message we just got
-      if (!this._encrypt && Buffer.isBuffer(chunk)) {
-        this._iv = new Buffer(16);
-        ((chunk: any): Buffer).copy(this._iv, 0, 0, 16);
-      }
+    try {
+      const data = ((chunk: any): Buffer);
+      const cipherParams = [settings.CRYPTO_ALGORITHM, this._key, this._iv];
+      const cipher = this._streamType === 'encrypt'
+        ? crypto.createCipheriv(...cipherParams)
+        : crypto.createDecipheriv(...cipherParams);
+
+      const transformedData = cipher.update(data);
+      const extraData = cipher.final();
+      const output = Buffer.concat(
+        [transformedData, extraData],
+        transformedData.length + extraData.length,
+      );
+
+      const ivContainer = this._streamType === 'encrypt'
+        ? output
+        : chunk;
+      this._iv = new Buffer(16);
+      ivContainer.copy(this._iv, 0, 0, 16);
+
+      this.push(output);
     } catch (error) {
       logger.error(`CryptoStream transform error: ${error}`);
     }
+    callback();
   }
 }
 
