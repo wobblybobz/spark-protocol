@@ -464,7 +464,7 @@ class Device extends EventEmitter {
       throw new Error(
         'Client - sendMessage before READY',
         { deviceID: this._id, messageName },
-      )
+      );
     }
 
     process.nextTick(
