@@ -726,7 +726,9 @@ var DeviceServer = function () {
         });
       });
 
-      setInterval(_logger2.default.info('Connected Devices ' + _chalk2.default.green(this._devicesById.size)), 10000);
+      setInterval(function () {
+        return _logger2.default.info('Connected Devices ' + _chalk2.default.green(_this2._devicesById.size));
+      }, 10000);
 
       server.on('error', function (error) {
         return _logger2.default.error('something blew up ' + error.message);

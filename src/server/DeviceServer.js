@@ -99,7 +99,7 @@ class DeviceServer {
     );
 
     setInterval(
-      logger.info(
+      (): void => logger.info(
         `Connected Devices ${chalk.green(this._devicesById.size)}`,
       ),
       10000,
