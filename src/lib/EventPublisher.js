@@ -62,12 +62,50 @@ class EventPublisher extends EventEmitter {
     this.emit(ALL_EVENTS, event);
   };
 
+  publishAndListenForResponse = async (eventData: EventData) => {
+    const eventID = uuid();
+    const requestEventName = `${eventData.name}/request`;
+    const responseEventName = `${eventData.name}/response/${eventID}`;
+
+    return new Promise((resolve, reject) => {
+      const responseListener = (event) => {
+        resolve(event);
+      };
+
+      this.subscribe(
+        responseEventName,
+        responseListener,
+        {} /* filterOptions */,
+        null /* subscriberID */,
+        {
+          once: true,
+          subscriptionTimeout: 5000,
+          timeoutHandler: () => reject(new Error('Timeout')),
+        },
+      );
+
+      this.publish({
+        ...eventData,
+        data: {
+          ...(eventData.data || {}),
+          responseEventName,
+        },
+        name: requestEventName,
+      });
+    });
+  }
+
   subscribe = (
     eventNamePrefix: string = ALL_EVENTS,
     eventHandler: (event: Event) => void,
     filterOptions: FilterOptions,
-    subscriberID?: string,
-  ): void => {
+    subscriberID?: ?string,
+    options ? = {
+      once: false,
+      subscriptionTimeout: 0,
+      timeoutHandler: null,
+    },
+  ): string => {
     let subscriptionID = uuid();
     while (this._subscriptionsByID.has(subscriptionID)) {
       subscriptionID = uuid();
@@ -85,7 +123,28 @@ class EventPublisher extends EventEmitter {
       },
     );
 
-    this.on(eventNamePrefix, listener);
+    const { once, subscriptionTimeout, timeoutHandler } = options;
+
+    if (subscriptionTimeout) {
+      const timeout = setTimeout(
+        () => {
+          this.unsubscribe(subscriptionID);
+          if (timeoutHandler) {
+            timeoutHandler();
+          }
+        },
+        subscriptionTimeout,
+      );
+
+      this.once(eventNamePrefix, () => clearTimeout(timeout));
+    }
+
+    if (once) {
+      this.once(eventNamePrefix, listener);
+    } else {
+      this.on(eventNamePrefix, listener);
+    }
+
     return subscriptionID;
   };
 

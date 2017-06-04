@@ -88,6 +88,13 @@ class DeviceServer {
   }
 
   start() {
+    this._eventPublisher.subscribe(
+      'spark-server/ping_device/request',
+      this._onSparkServerPingDeviceRequest,
+      {},
+    );
+
+
     const server = net.createServer(
       (socket: Socket): void =>
         process.nextTick((): Promise<void> =>
@@ -592,6 +599,17 @@ class DeviceServer {
       );
     });
   };
+
+  _onSparkServerPingDeviceRequest = async (event) => {
+    const deviceID = event.data.deviceID;
+    const device = this.getDevice(deviceID);
+    // todo.. do the stuff
+
+    this._eventPublisher.publish({
+      data: { deviceID, connected: false },
+      name: event.data.responseEventName,
+    });
+  }
 
   getDevice = (deviceID: string): ?Device =>
     this._devicesById.get(deviceID);
