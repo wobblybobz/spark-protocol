@@ -17,6 +17,11 @@ export type DeviceAttributes = {
   timestamp: Date,
 };
 
+export type DeviceKeyObject = {
+  deviceID: string,
+  key: string,
+};
+
 export type Event = EventData & {
   publishedAt: Date,
 };
@@ -46,3 +51,13 @@ export type ServerKeyRepository = {
   }>,
   getPrivateKey: () => Promise<?string>,
 };
+
+export interface IBaseRepository<TModel> {
+  create(model: TModel | $Shape<TModel>): Promise<TModel>;
+  deleteById(id: string): Promise<void>;
+  getAll(): Promise<Array<TModel>>;
+  getById(id: string): Promise<?TModel>;
+  update(model: TModel): Promise<TModel>;
+}
+
+export interface IDeviceKeyRepository extends IBaseRepository<DeviceKeyObject> {}

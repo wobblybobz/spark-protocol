@@ -136,7 +136,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
           switch (_context3.prev = _context3.next) {
             case 0:
               _context3.next = 2;
-              return _this._deviceKeyRepository.update(deviceID, publicKeyPem);
+              return _this._deviceKeyRepository.update({ deviceID: deviceID, key: publicKeyPem });
 
             case 2:
               return _context3.abrupt('return', _ursa2.default.createPublicKey(publicKeyPem));
@@ -168,7 +168,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
 
   this.getDevicePublicKey = function () {
     var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(deviceID) {
-      var publicKeyString;
+      var publicKeyObject;
       return _regenerator2.default.wrap(function _callee4$(_context4) {
         while (1) {
           switch (_context4.prev = _context4.next) {
@@ -177,19 +177,10 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
               return _this._deviceKeyRepository.getById(deviceID);
 
             case 2:
-              publicKeyString = _context4.sent;
+              publicKeyObject = _context4.sent;
+              return _context4.abrupt('return', publicKeyObject ? _ursa2.default.createPublicKey(publicKeyObject.key) : null);
 
-              if (publicKeyString) {
-                _context4.next = 5;
-                break;
-              }
-
-              return _context4.abrupt('return', null);
-
-            case 5:
-              return _context4.abrupt('return', _ursa2.default.createPublicKey(publicKeyString));
-
-            case 6:
+            case 4:
             case 'end':
               return _context4.stop();
           }

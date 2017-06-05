@@ -1,6 +1,6 @@
 // @flow
 
-import type { Repository, ServerKeyRepository } from '../types';
+import type { IDeviceKeyRepository, ServerKeyRepository } from '../types';
 
 import crypto from 'crypto';
 import CryptoStream from './CryptoStream';
@@ -9,13 +9,13 @@ import ursa from 'ursa';
 const HASH_TYPE = 'sha1';
 
 class CryptoManager {
-  _deviceKeyRepository: Repository<string>;
+  _deviceKeyRepository: IDeviceKeyRepository;
   _serverKeyRepository: ServerKeyRepository;
   _serverPrivateKey: Object;
   _serverKeyPassword: ?string;
 
   constructor(
-    deviceKeyRepository: Repository<string>,
+    deviceKeyRepository: IDeviceKeyRepository,
     serverKeyRepository: ServerKeyRepository,
     serverKeyPassword: ?string,
   ) {
@@ -93,7 +93,7 @@ class CryptoManager {
     deviceID: string,
     publicKeyPem: string,
   ): Promise<Object> => {
-    await this._deviceKeyRepository.update(deviceID, publicKeyPem);
+    await this._deviceKeyRepository.update({ deviceID, key: publicKeyPem });
     return ursa.createPublicKey(publicKeyPem);
   };
 
@@ -114,12 +114,8 @@ class CryptoManager {
     );
 
   getDevicePublicKey = async (deviceID: string): Promise<?Object> => {
-    const publicKeyString = await this._deviceKeyRepository.getById(deviceID);
-    if (!publicKeyString) {
-      return null;
-    }
-
-    return ursa.createPublicKey(publicKeyString);
+    const publicKeyObject = await this._deviceKeyRepository.getById(deviceID);
+    return publicKeyObject ? ursa.createPublicKey(publicKeyObject.key) : null;
   };
 
   keysEqual = (existingKey: Object, publicKeyPem: ? string): bool => {
