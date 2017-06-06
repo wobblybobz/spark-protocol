@@ -174,7 +174,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
           switch (_context4.prev = _context4.next) {
             case 0:
               _context4.next = 2;
-              return _this._deviceKeyRepository.getById(deviceID);
+              return _this._deviceKeyRepository.getByID(deviceID);
 
             case 2:
               publicKeyObject = _context4.sent;

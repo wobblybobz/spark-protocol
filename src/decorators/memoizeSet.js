@@ -15,7 +15,7 @@ export default <TType: Object, TItem: Object>(
       fetchItemFunction = (item: TItem): TItem => item;
     } else if (parameterKeys[0] === 'id') {
       fetchItemFunction = function (id: string): Promise<TItem> {
-        return this.getById(id);
+        return this.getByID(id);
       };
     } else {
       fetchItemFunction = (keys: Array<string>): Function =>

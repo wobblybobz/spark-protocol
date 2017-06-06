@@ -38,7 +38,7 @@ exports.default = function () {
       };
     } else if (parameterKeys[0] === 'id') {
       fetchItemFunction = function fetchItemFunction(id) {
-        return this.getById(id);
+        return this.getByID(id);
       };
     } else {
       fetchItemFunction = function fetchItemFunction(keys) {
