@@ -22,7 +22,7 @@ class DeviceKeyFileRepository implements IDeviceKeyRepository {
   }
 
   @memoizeSet(['deviceID'])
-  async deleteById(deviceID: string): Promise<void> {
+  async deleteByID(deviceID: string): Promise<void> {
     this._fileManager.deleteFile(deviceID + FILE_EXTENSION);
   }
 

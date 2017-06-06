@@ -50,7 +50,7 @@ class DeviceAttributeFileRepository {
       );
     }
     return allData;
-  }
+  };
 
   getById = async (
     id: string,
