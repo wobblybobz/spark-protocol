@@ -71,6 +71,7 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
 
 var FILE_EXTENSION = '.pub.pem';
 
+// getByID, deleteByID and update uses model.deviceID as ID for querying
 var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(['deviceID']), _dec3 = (0, _memoizeGet2.default)(['deviceID']), _dec4 = (0, _memoizeSet2.default)(), (_class = function () {
   function DeviceKeyFileRepository(path) {
     (0, _classCallCheck3.default)(this, DeviceKeyFileRepository);

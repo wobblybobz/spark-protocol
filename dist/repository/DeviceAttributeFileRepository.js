@@ -73,7 +73,8 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
   return desc;
 }
 
-var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(['deviceID']), _dec3 = (0, _memoizeGet2.default)(['id']), _dec4 = (0, _memoizeGet2.default)(), (_class = function () {
+// getByID, deleteByID and update uses model.deviceID as ID for querying
+var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(['deviceID']), _dec3 = (0, _memoizeGet2.default)(['deviceID']), _dec4 = (0, _memoizeGet2.default)(), (_class = function () {
   function DeviceAttributeFileRepository(path) {
     var _this = this;
 
@@ -177,14 +178,14 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
       return update;
     }()
   }, {
-    key: 'deleteById',
+    key: 'deleteByID',
     value: function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(id) {
+      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(deviceID) {
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
               case 0:
-                this._fileManager.deleteFile(id + '.json');
+                this._fileManager.deleteFile(deviceID + '.json');
 
               case 1:
               case 'end':
@@ -194,21 +195,21 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
         }, _callee4, this);
       }));
 
-      function deleteById(_x4) {
+      function deleteByID(_x4) {
         return _ref4.apply(this, arguments);
       }
 
-      return deleteById;
+      return deleteByID;
     }()
   }, {
     key: 'getByID',
     value: function () {
-      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(id) {
+      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(deviceID) {
         return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
             switch (_context5.prev = _context5.next) {
               case 0:
-                return _context5.abrupt('return', this._fileManager.getFile(id + '.json'));
+                return _context5.abrupt('return', this._fileManager.getFile(deviceID + '.json'));
 
               case 1:
               case 'end':
@@ -250,5 +251,5 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
     }()
   }]);
   return DeviceAttributeFileRepository;
-}(), (_applyDecoratedDescriptor(_class.prototype, 'update', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteById', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteById'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getByID', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getAll'), _class.prototype)), _class));
+}(), (_applyDecoratedDescriptor(_class.prototype, 'update', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteByID', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getByID', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getAll'), _class.prototype)), _class));
 exports.default = DeviceAttributeFileRepository;

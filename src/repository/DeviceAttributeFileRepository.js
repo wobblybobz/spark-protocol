@@ -6,6 +6,7 @@ import JSONFileManager from './JSONFileManager';
 import memoizeGet from '../decorators/memoizeGet';
 import memoizeSet from '../decorators/memoizeSet';
 
+// getByID, deleteByID and update uses model.deviceID as ID for querying
 class DeviceAttributeFileRepository {
   _fileManager: JSONFileManager;
 
@@ -30,8 +31,8 @@ class DeviceAttributeFileRepository {
   }
 
   @memoizeSet(['deviceID'])
-  async deleteById(id: string): Promise<void> {
-    this._fileManager.deleteFile(`${id}.json`);
+  async deleteByID(deviceID: string): Promise<void> {
+    this._fileManager.deleteFile(`${deviceID}.json`);
   }
 
   getAll = async (userID: ?string = null): Promise<Array<DeviceAttributes>> => {
@@ -46,11 +47,11 @@ class DeviceAttributeFileRepository {
     return allData;
   };
 
-  @memoizeGet(['id'])
+  @memoizeGet(['deviceID'])
   async getByID(
-    id: string,
+    deviceID: string,
   ): Promise<?DeviceAttributes> {
-    return this._fileManager.getFile(`${id}.json`);
+    return this._fileManager.getFile(`${deviceID}.json`);
   }
 
   @memoizeGet()

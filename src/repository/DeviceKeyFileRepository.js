@@ -8,6 +8,7 @@ import memoizeSet from '../decorators/memoizeSet';
 
 const FILE_EXTENSION = '.pub.pem';
 
+// getByID, deleteByID and update uses model.deviceID as ID for querying
 class DeviceKeyFileRepository implements IDeviceKeyRepository {
   _fileManager: FileManager;
 
