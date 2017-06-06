@@ -36,14 +36,6 @@ export type EventData = {
   userID: string,
 };
 
-export type Repository<TModel> = {
-  create: (model: TModel) => Promise<TModel>,
-  deleteById: (id: string) => Promise<void>,
-  getAll: () => Promise<Array<TModel>>,
-  getById: (id: string) => Promise<?TModel>,
-  update: (model: TModel) => Promise<TModel>,
-};
-
 export type ServerKeyRepository = {
   createKeys: (privateKeyPem: Buffer, publicKeyPem: Buffer)=> Promise<{
     privateKeyPem: Buffer,
@@ -56,8 +48,10 @@ export interface IBaseRepository<TModel> {
   create(model: TModel | $Shape<TModel>): Promise<TModel>;
   deleteByID(id: string): Promise<void>;
   getAll(): Promise<Array<TModel>>;
-  getById(id: string): Promise<?TModel>;
+  getByID(id: string): Promise<?TModel>;
   update(model: TModel): Promise<TModel>;
 }
+
+export interface IDeviceAttributeRepository extends IBaseRepository<DeviceAttributes> {}
 
 export interface IDeviceKeyRepository extends IBaseRepository<DeviceKeyObject> {}

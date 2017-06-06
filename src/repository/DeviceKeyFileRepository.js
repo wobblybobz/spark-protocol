@@ -32,7 +32,7 @@ class DeviceKeyFileRepository implements IDeviceKeyRepository {
   }
 
   @memoizeGet(['deviceID'])
-  async getById(deviceID: string): Promise<?DeviceKeyObject> {
+  async getByID(deviceID: string): Promise<?DeviceKeyObject> {
     const key = this._fileManager.getFile(deviceID + FILE_EXTENSION);
     return key ? { deviceID, key } : null;
   }

@@ -34,12 +34,6 @@ class DeviceAttributeFileRepository {
     this._fileManager.deleteFile(`${id}.json`);
   }
 
-  doesUserHaveAccess = async (
-    id: string,
-    userID: string,
-  ): Promise<boolean> =>
-    !!(await this.getById(id, userID));
-
   getAll = async (userID: ?string = null): Promise<Array<DeviceAttributes>> => {
     const allData = await this._getAll();
 
@@ -52,27 +46,8 @@ class DeviceAttributeFileRepository {
     return allData;
   };
 
-  getById = async (
-    id: string,
-    userID: ?string = null,
-  ): Promise<?DeviceAttributes> => {
-    const attributes = await this._getByID(id);
-    if (!attributes) {
-      return null;
-    }
-
-    if (userID) {
-      const ownerID = attributes.ownerID;
-      if (!ownerID || ownerID !== userID) {
-        return null;
-      }
-    }
-
-    return attributes;
-  };
-
-  @memoizeGet(['deviceID'])
-  async _getByID(
+  @memoizeGet(['id'])
+  async getByID(
     id: string,
   ): Promise<?DeviceAttributes> {
     return this._fileManager.getFile(`${id}.json`);

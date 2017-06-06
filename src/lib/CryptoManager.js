@@ -114,7 +114,7 @@ class CryptoManager {
     );
 
   getDevicePublicKey = async (deviceID: string): Promise<?Object> => {
-    const publicKeyObject = await this._deviceKeyRepository.getById(deviceID);
+    const publicKeyObject = await this._deviceKeyRepository.getByID(deviceID);
     return publicKeyObject ? ursa.createPublicKey(publicKeyObject.key) : null;
   };
 
