@@ -184,7 +184,7 @@ var DeviceServer = function () {
 
     this._onNewSocketConnection = function () {
       var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(socket) {
-        var counter, connectionKey, handshake, device, deviceID, existingConnection;
+        var counter, connectionKey, handshake, device, deviceID;
         return _regenerator2.default.wrap(function _callee4$(_context4) {
           while (1) {
             switch (_context4.prev = _context4.next) {
@@ -203,25 +203,17 @@ var DeviceServer = function () {
                 deviceID = device.getID();
 
 
-                if (_this._devicesById.has(deviceID)) {
-                  existingConnection = _this._devicesById.get(deviceID);
-
-                  (0, _nullthrows2.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
-                }
-
                 process.nextTick((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
-                  var deviceAttributes, ownerID;
+                  var deviceAttributes, ownerID, existingConnection;
                   return _regenerator2.default.wrap(function _callee3$(_context3) {
                     while (1) {
                       switch (_context3.prev = _context3.next) {
                         case 0:
-                          _this._devicesById.set(deviceID, device);
-
-                          _context3.prev = 1;
-                          _context3.next = 4;
+                          _context3.prev = 0;
+                          _context3.next = 3;
                           return _this._deviceAttributeRepository.getById(device.getID());
 
-                        case 4:
+                        case 3:
                           deviceAttributes = _context3.sent;
                           ownerID = deviceAttributes && deviceAttributes.ownerID;
 
@@ -264,41 +256,49 @@ var DeviceServer = function () {
                             return _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'failed', deviceID, ownerID);
                           });
 
+                          if (_this._devicesById.has(deviceID)) {
+                            existingConnection = _this._devicesById.get(deviceID);
+
+                            (0, _nullthrows2.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
+                          }
+
+                          _this._devicesById.set(deviceID, device);
+
                           device.completeProtocolInitialization();
                           device.ready();
 
                           _logger2.default.info('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Device ID: ' + deviceID), 'Connection ID: ' + counter);
-                          _context3.next = 23;
+                          _context3.next = 24;
                           break;
 
-                        case 20:
-                          _context3.prev = 20;
-                          _context3.t0 = _context3['catch'](1);
+                        case 21:
+                          _context3.prev = 21;
+                          _context3.t0 = _context3['catch'](0);
 
                           device.disconnect('Error during connection: ' + _context3.t0);
 
-                        case 23:
+                        case 24:
                         case 'end':
                           return _context3.stop();
                       }
                     }
-                  }, _callee3, _this, [[1, 20]]);
+                  }, _callee3, _this, [[0, 21]]);
                 })));
-                _context4.next = 16;
+                _context4.next = 15;
                 break;
 
-              case 13:
-                _context4.prev = 13;
+              case 12:
+                _context4.prev = 12;
                 _context4.t0 = _context4['catch'](0);
 
                 _logger2.default.error('Device startup failed: ' + _context4.t0.message);
 
-              case 16:
+              case 15:
               case 'end':
                 return _context4.stop();
             }
           }
-        }, _callee4, _this, [[0, 13]]);
+        }, _callee4, _this, [[0, 12]]);
       }));
 
       return function (_x3) {

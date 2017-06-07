@@ -169,17 +169,7 @@ class DeviceServer {
 
       const deviceID = device.getID();
 
-      if (this._devicesById.has(deviceID)) {
-        const existingConnection = this._devicesById.get(deviceID);
-        nullthrows(existingConnection).disconnect(
-          'Device was already connected. Reconnecting.\r\n',
-        );
-      }
-
-
       process.nextTick(async (): Promise<void> => {
-        this._devicesById.set(deviceID, device);
-
         try {
           const deviceAttributes =
             await this._deviceAttributeRepository.getById(device.getID());
@@ -256,6 +246,15 @@ class DeviceServer {
               ownerID,
             ),
           );
+
+          if (this._devicesById.has(deviceID)) {
+            const existingConnection = this._devicesById.get(deviceID);
+            nullthrows(existingConnection).disconnect(
+              'Device was already connected. Reconnecting.\r\n',
+            );
+          }
+
+          this._devicesById.set(deviceID, device);
 
           device.completeProtocolInitialization();
           device.ready();
