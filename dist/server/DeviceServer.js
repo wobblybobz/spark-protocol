@@ -211,7 +211,7 @@ var DeviceServer = function () {
                         case 0:
                           _context3.prev = 0;
                           _context3.next = 3;
-                          return _this._deviceAttributeRepository.getById(device.getID());
+                          return _this._deviceAttributeRepository.getByID(device.getID());
 
                         case 3:
                           deviceAttributes = _context3.sent;
@@ -330,7 +330,7 @@ var DeviceServer = function () {
                 _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
                 _context5.next = 9;
-                return _this._deviceAttributeRepository.getById(deviceID);
+                return _this._deviceAttributeRepository.getByID(deviceID);
 
               case 9:
                 deviceAttributes = _context5.sent;
@@ -379,7 +379,7 @@ var DeviceServer = function () {
                 _logger2.default.log('Device online!');
                 deviceID = device.getID();
                 _context6.next = 5;
-                return _this._deviceAttributeRepository.getById(deviceID);
+                return _this._deviceAttributeRepository.getByID(deviceID);
 
               case 5:
                 existingAttributes = _context6.sent;
@@ -444,7 +444,7 @@ var DeviceServer = function () {
                 _context7.prev = 0;
                 deviceID = device.getID();
                 _context7.next = 4;
-                return _this._deviceAttributeRepository.getById(deviceID);
+                return _this._deviceAttributeRepository.getByID(deviceID);
 
               case 4:
                 deviceAttributes = _context7.sent;
@@ -580,7 +580,7 @@ var DeviceServer = function () {
                 claimCode = message.getPayload().toString();
                 deviceID = device.getID();
                 _context8.next = 4;
-                return _this._deviceAttributeRepository.getById(deviceID);
+                return _this._deviceAttributeRepository.getByID(deviceID);
 
               case 4:
                 deviceAttributes = _context8.sent;
@@ -641,7 +641,7 @@ var DeviceServer = function () {
                 messageName = message.getUriPath().substr(3);
                 deviceID = device.getID();
                 _context9.next = 4;
-                return _this._deviceAttributeRepository.getById(deviceID);
+                return _this._deviceAttributeRepository.getByID(deviceID);
 
               case 4:
                 deviceAttributes = _context9.sent;

@@ -20,10 +20,7 @@
 
 import type { Socket } from 'net';
 import type { Message } from 'h5.coap';
-import type {
-  DeviceAttributes,
-  Repository,
-} from '../types';
+import type { IDeviceAttributeRepository } from '../types';
 import type ClaimCodeManager from '../lib/ClaimCodeManager';
 import type CryptoManager from '../lib/CryptoManager';
 import type EventPublisher from '../lib/EventPublisher';
@@ -68,13 +65,13 @@ class DeviceServer {
   _claimCodeManager: ClaimCodeManager;
   _config: DeviceServerConfig;
   _cryptoManager: CryptoManager;
-  _deviceAttributeRepository: Repository<DeviceAttributes>;
+  _deviceAttributeRepository: IDeviceAttributeRepository;
   _devicesById: Map<string, Device> = new Map();
   _areSystemFirmwareAutoupdatesEnabled: boolean;
   _eventPublisher: EventPublisher;
 
   constructor(
-    deviceAttributeRepository: Repository<DeviceAttributes>,
+    deviceAttributeRepository: IDeviceAttributeRepository,
     claimCodeManager: ClaimCodeManager,
     cryptoManager: CryptoManager,
     eventPublisher: EventPublisher,
@@ -172,7 +169,7 @@ class DeviceServer {
       process.nextTick(async (): Promise<void> => {
         try {
           const deviceAttributes =
-            await this._deviceAttributeRepository.getById(device.getID());
+            await this._deviceAttributeRepository.getByID(device.getID());
           const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
           device.on(
@@ -293,7 +290,7 @@ class DeviceServer {
     this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
     const deviceAttributes =
-      await this._deviceAttributeRepository.getById(deviceID);
+      await this._deviceAttributeRepository.getByID(deviceID);
 
     await this._deviceAttributeRepository.update({
       ...deviceAttributes,
@@ -332,7 +329,7 @@ class DeviceServer {
       const deviceID = device.getID();
 
       const existingAttributes =
-        await this._deviceAttributeRepository.getById(deviceID);
+        await this._deviceAttributeRepository.getByID(deviceID);
       const ownerID = existingAttributes && existingAttributes.ownerID;
 
       this.publishSpecialEvent(
@@ -384,7 +381,7 @@ class DeviceServer {
     try {
       const deviceID = device.getID();
       const deviceAttributes =
-        await this._deviceAttributeRepository.getById(deviceID);
+        await this._deviceAttributeRepository.getByID(deviceID);
       const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
       const eventData = {
@@ -517,7 +514,7 @@ class DeviceServer {
     const claimCode = message.getPayload().toString();
     const deviceID = device.getID();
     const deviceAttributes =
-      await this._deviceAttributeRepository.getById(deviceID);
+      await this._deviceAttributeRepository.getByID(deviceID);
 
     if (
       !deviceAttributes ||
@@ -554,7 +551,7 @@ class DeviceServer {
     const messageName = message.getUriPath().substr(3);
     const deviceID = device.getID();
     const deviceAttributes =
-      await this._deviceAttributeRepository.getById(deviceID);
+      await this._deviceAttributeRepository.getByID(deviceID);
     let ownerID = deviceAttributes && deviceAttributes.ownerID;
     const query = message.getUriQuery();
     const isFromMyDevices = query && !!query.match('u');
