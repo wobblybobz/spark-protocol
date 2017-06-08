@@ -470,7 +470,7 @@ class Device extends EventEmitter {
     }
 
     if (!this._cipherStream) {
-      throw new Error(
+      logger.error(
         'Client - sendMessage before READY',
         { deviceID: this._id, messageName },
       );

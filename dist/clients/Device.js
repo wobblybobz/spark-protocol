@@ -492,7 +492,7 @@ var Device = function (_EventEmitter) {
       }
 
       if (!_this._cipherStream) {
-        throw new Error('Client - sendMessage before READY', { deviceID: _this._id, messageName: messageName });
+        _logger2.default.error('Client - sendMessage before READY', { deviceID: _this._id, messageName: messageName });
       }
 
       process.nextTick(function () {
