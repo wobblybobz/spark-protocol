@@ -191,6 +191,12 @@ class Device extends EventEmitter {
       (): void => this.disconnect('socket timeout'),
     );
 
+    const oldEmit = this.emit;
+
+    this.emit = (event: string, ...args: Array<any>) => {
+      process.nextTick((): booelan => oldEmit.call(this, event, ...args));
+    };
+
     await this.startHandshake();
   };
 
@@ -227,12 +233,16 @@ class Device extends EventEmitter {
       decipherStream.on(
         'readable',
         () => {
-          const chunk = ((decipherStream.read(): any): Buffer);
-          this._clientHasWrittenToSocket();
-          if (!chunk) {
-            return;
+          const read = (): Buffer =>
+            ((decipherStream.read(): any): Buffer);
+
+          let chunk = read();
+          while (chunk !== null) {
+            this._clientHasWrittenToSocket();
+            this.routeMessage(chunk);
+            chunk = read();
           }
-          this.routeMessage(chunk);
+          this._clientHasWrittenToSocket();
         },
       );
     } catch (error) {
@@ -405,7 +415,6 @@ class Device extends EventEmitter {
       this._incrementSendCounter();
       id = this._sendCounter; // eslint-disable-line no-param-reassign
     }
-
 
     const message = Messages.wrap(messageName, id, null, data, token, null);
     if (!message) {
@@ -878,7 +887,7 @@ class Device extends EventEmitter {
         // current/simplified function format (one string arg, int return type)
         functionState = {
           args: [
-            [null, 'string'],
+            ['', 'string'],
           ],
           returns: 'int',
         };
@@ -912,11 +921,6 @@ class Device extends EventEmitter {
     );
 
     try {
-      // Because some firmware versions do not send the app + system state in a
-      // single message, we cannot use `listenFor` and instead have to write
-      // some hacky code that duplicates a lot of the functionality
-      this.sendMessage('Describe');
-
       this._introspectionPromise = new Promise((
         resolve: (message: Message) => void,
         reject: (error?: Error) => void,
@@ -970,9 +974,14 @@ class Device extends EventEmitter {
 
         this.on('DescribeReturn', handler);
         this.on('disconnect', disconnectHandler);
+
+        // Because some firmware versions do not send the app + system state
+        // in a single message, we cannot use `listenFor` and instead have to
+        // write some hacky code that duplicates a lot of the functionality
+        this.sendMessage('Describe');
       });
 
-      return this._introspectionPromise.then(
+      return nullthrows(this._introspectionPromise).then(
         (result: Object) => {
           this._systemInformation = result.systemInformation;
           this._deviceFunctionState = result.functionState;
@@ -983,11 +992,6 @@ class Device extends EventEmitter {
       this.disconnect(`_ensureWeHaveIntrospectionData error: ${error}`);
       throw error;
     }
-  };
-
-  getSystemInformation = async (): ?Object => {
-    await this._ensureWeHaveIntrospectionData();
-    return this._systemInformation;
   };
 
   //-------------

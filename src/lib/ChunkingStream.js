@@ -55,7 +55,7 @@ class ChunkingStream extends Transform {
   _outgoing: boolean;
 
   constructor(options: ChunkingStreamOptions) {
-    super(options);
+    super();
 
     this._outgoing = !!options.outgoing;
   }

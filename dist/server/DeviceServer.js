@@ -317,7 +317,7 @@ var DeviceServer = function () {
                 newDevice = _this._devicesById.get(deviceID);
                 connectionKey = device.getConnectionKey();
 
-                if (!(!newDevice || newDevice.getConnectionKey() !== connectionKey)) {
+                if (!(device !== newDevice)) {
                   _context5.next = 5;
                   break;
                 }
@@ -628,7 +628,7 @@ var DeviceServer = function () {
 
     this._onDeviceSubscribe = function () {
       var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(message, device) {
-        var messageName, deviceID, deviceAttributes, ownerID, query, isFromMyDevices, isSystemEvent;
+        var messageName, deviceID, deviceAttributes, ownerID, query, isFromMyDevices;
         return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
             switch (_context9.prev = _context9.next) {
@@ -665,23 +665,24 @@ var DeviceServer = function () {
                   messageName: messageName
                 });
 
-                if (!ownerID) {
-                  _logger2.default.log('device with ID ' + deviceID + ' wasn\'t subscribed to ' + (messageName + ' event: the device is unclaimed.'));
-                  ownerID = '--unclaimed--';
-                }
-
-                isSystemEvent = messageName.startsWith('spark');
-
-
-                _this._eventPublisher.subscribe(messageName, device.onDeviceEvent, {
-                  connectionID: isSystemEvent ? device.getConnectionKey() : null,
-                  mydevices: isFromMyDevices,
-                  userID: ownerID
-                }, deviceID);
-
                 device.sendReply('SubscribeAck', message.getId());
 
-              case 16:
+                process.nextTick(function () {
+                  if (!ownerID) {
+                    _logger2.default.log('device with ID ' + deviceID + ' wasn\'t subscribed to ' + (messageName + ' event: the device is unclaimed.'));
+                    ownerID = '--unclaimed--';
+                  }
+
+                  var isSystemEvent = messageName.startsWith('spark');
+
+                  _this._eventPublisher.subscribe(messageName, device.onDeviceEvent, {
+                    connectionID: isSystemEvent ? device.getConnectionKey() : null,
+                    mydevices: isFromMyDevices,
+                    userID: ownerID
+                  }, deviceID);
+                });
+
+              case 14:
               case 'end':
                 return _context9.stop();
             }
@@ -702,12 +703,14 @@ var DeviceServer = function () {
       if (!userID) {
         return;
       }
-      _this._eventPublisher.publish({
-        data: data,
-        deviceID: deviceID,
-        isPublic: false,
-        name: eventName,
-        userID: userID
+      process.nextTick(function () {
+        _this._eventPublisher.publish({
+          data: data,
+          deviceID: deviceID,
+          isPublic: false,
+          name: eventName,
+          userID: userID
+        });
       });
     };
 

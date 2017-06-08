@@ -279,10 +279,7 @@ class DeviceServer {
 
     const newDevice = this._devicesById.get(deviceID);
     const connectionKey = device.getConnectionKey();
-    if (
-      !newDevice ||
-      newDevice.getConnectionKey() !== connectionKey
-    ) {
+    if (device !== newDevice) {
       return;
     }
 
@@ -570,28 +567,30 @@ class DeviceServer {
       },
     );
 
-    if (!ownerID) {
-      logger.log(
-        `device with ID ${deviceID} wasn't subscribed to ` +
-          `${messageName} event: the device is unclaimed.`,
-      );
-      ownerID = '--unclaimed--';
-    }
-
-    const isSystemEvent = messageName.startsWith('spark');
-
-    this._eventPublisher.subscribe(
-      messageName,
-      device.onDeviceEvent,
-      {
-        connectionID: isSystemEvent ? device.getConnectionKey() : null,
-        mydevices: isFromMyDevices,
-        userID: ownerID,
-      },
-      deviceID,
-    );
-
     device.sendReply('SubscribeAck', message.getId());
+
+    process.nextTick(() => {
+      if (!ownerID) {
+        logger.log(
+          `device with ID ${deviceID} wasn't subscribed to ` +
+            `${messageName} event: the device is unclaimed.`,
+        );
+        ownerID = '--unclaimed--';
+      }
+
+      const isSystemEvent = messageName.startsWith('spark');
+
+      this._eventPublisher.subscribe(
+        messageName,
+        device.onDeviceEvent,
+        {
+          connectionID: isSystemEvent ? device.getConnectionKey() : null,
+          mydevices: isFromMyDevices,
+          userID: ownerID,
+        },
+        deviceID,
+      );
+    });
   };
 
   getDevice = (deviceID: string): ?Device =>
@@ -606,12 +605,14 @@ class DeviceServer {
     if (!userID) {
       return;
     }
-    this._eventPublisher.publish({
-      data,
-      deviceID,
-      isPublic: false,
-      name: eventName,
-      userID,
+    process.nextTick(() => {
+      this._eventPublisher.publish({
+        data,
+        deviceID,
+        isPublic: false,
+        name: eventName,
+        userID,
+      });
     });
   }
 }

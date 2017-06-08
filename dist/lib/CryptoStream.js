@@ -62,7 +62,7 @@ var CryptoStream = function (_Transform) {
   function CryptoStream(options) {
     (0, _classCallCheck3.default)(this, CryptoStream);
 
-    var _this = (0, _possibleConstructorReturn3.default)(this, (CryptoStream.__proto__ || (0, _getPrototypeOf2.default)(CryptoStream)).call(this, options));
+    var _this = (0, _possibleConstructorReturn3.default)(this, (CryptoStream.__proto__ || (0, _getPrototypeOf2.default)(CryptoStream)).call(this));
 
     _this._transform = function (chunk, encoding, callback) {
       if (!chunk.length) {
@@ -80,7 +80,7 @@ var CryptoStream = function (_Transform) {
         var extraData = cipher.final();
         var output = Buffer.concat([transformedData, extraData], transformedData.length + extraData.length);
 
-        var ivContainer = _this._streamType === 'encrypt' ? output : chunk;
+        var ivContainer = _this._streamType === 'encrypt' ? output : data;
         _this._iv = new Buffer(16);
         ivContainer.copy(_this._iv, 0, 0, 16);
 

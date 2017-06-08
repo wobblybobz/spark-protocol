@@ -77,7 +77,7 @@ var ChunkingStream = function (_Transform) {
   function ChunkingStream(options) {
     (0, _classCallCheck3.default)(this, ChunkingStream);
 
-    var _this = (0, _possibleConstructorReturn3.default)(this, (ChunkingStream.__proto__ || (0, _getPrototypeOf2.default)(ChunkingStream)).call(this, options));
+    var _this = (0, _possibleConstructorReturn3.default)(this, (ChunkingStream.__proto__ || (0, _getPrototypeOf2.default)(ChunkingStream)).call(this));
 
     _this._incomingBuffer = null;
     _this._incomingIndex = -1;

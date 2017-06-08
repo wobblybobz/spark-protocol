@@ -37,7 +37,7 @@ class CryptoStream extends Transform {
   _streamType: CryptoStreamType;
 
   constructor(options: CryptoStreamOptions) {
-    super(options);
+    super();
 
     this._key = options.key;
     this._iv = options.iv;
@@ -73,7 +73,7 @@ class CryptoStream extends Transform {
 
       const ivContainer = this._streamType === 'encrypt'
         ? output
-        : chunk;
+        : data;
       this._iv = new Buffer(16);
       ivContainer.copy(this._iv, 0, 0, 16);
 

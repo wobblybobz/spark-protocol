@@ -212,6 +212,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this.startProtocolInitialization = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
+      var oldEmit;
       return _regenerator2.default.wrap(function _callee$(_context) {
         while (1) {
           switch (_context.prev = _context.next) {
@@ -230,10 +231,23 @@ var Device = function (_EventEmitter) {
                 return _this.disconnect('socket timeout');
               });
 
-              _context.next = 8;
+              oldEmit = _this.emit;
+
+
+              _this.emit = function (event) {
+                for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+                  args[_key - 1] = arguments[_key];
+                }
+
+                process.nextTick(function () {
+                  return oldEmit.call.apply(oldEmit, [_this, event].concat(args));
+                });
+              };
+
+              _context.next = 10;
               return _this.startHandshake();
 
-            case 8:
+            case 10:
             case 'end':
               return _context.stop();
           }
@@ -291,12 +305,17 @@ var Device = function (_EventEmitter) {
         _this._sendHello();
 
         decipherStream.on('readable', function () {
-          var chunk = decipherStream.read();
-          _this._clientHasWrittenToSocket();
-          if (!chunk) {
-            return;
+          var read = function read() {
+            return decipherStream.read();
+          };
+
+          var chunk = read();
+          while (chunk !== null) {
+            _this._clientHasWrittenToSocket();
+            _this.routeMessage(chunk);
+            chunk = read();
           }
-          _this.routeMessage(chunk);
+          _this._clientHasWrittenToSocket();
         });
       } catch (error) {
         throw new Error('completeProtocolInitialization: ' + error);
@@ -949,7 +968,7 @@ var Device = function (_EventEmitter) {
                   })) {
                     // current/simplified function format (one string arg, int return type)
                     functionState = {
-                      args: [[null, 'string']],
+                      args: [['', 'string']],
                       returns: 'int'
                     };
                   }
@@ -1010,11 +1029,6 @@ var Device = function (_EventEmitter) {
             case 6:
               _context10.prev = 6;
 
-              // Because some firmware versions do not send the app + system state in a
-              // single message, we cannot use `listenFor` and instead have to write
-              // some hacky code that duplicates a lot of the functionality
-              _this.sendMessage('Describe');
-
               _this._introspectionPromise = new _promise2.default(function (resolve, reject) {
                 var timeout = setTimeout(function () {
                   cleanUpListeners();
@@ -1062,45 +1076,32 @@ var Device = function (_EventEmitter) {
 
                 _this.on('DescribeReturn', handler);
                 _this.on('disconnect', disconnectHandler);
+
+                // Because some firmware versions do not send the app + system state
+                // in a single message, we cannot use `listenFor` and instead have to
+                // write some hacky code that duplicates a lot of the functionality
+                _this.sendMessage('Describe');
               });
 
-              return _context10.abrupt('return', _this._introspectionPromise.then(function (result) {
+              return _context10.abrupt('return', (0, _nullthrows2.default)(_this._introspectionPromise).then(function (result) {
                 _this._systemInformation = result.systemInformation;
                 _this._deviceFunctionState = result.functionState;
                 _this._introspectionPromise = null;
               }));
 
-            case 12:
-              _context10.prev = 12;
+            case 11:
+              _context10.prev = 11;
               _context10.t0 = _context10['catch'](6);
 
               _this.disconnect('_ensureWeHaveIntrospectionData error: ' + _context10.t0);
               throw _context10.t0;
 
-            case 16:
+            case 15:
             case 'end':
               return _context10.stop();
           }
         }
-      }, _callee10, _this2, [[6, 12]]);
-    }));
-    _this.getSystemInformation = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee11() {
-      return _regenerator2.default.wrap(function _callee11$(_context11) {
-        while (1) {
-          switch (_context11.prev = _context11.next) {
-            case 0:
-              _context11.next = 2;
-              return _this._ensureWeHaveIntrospectionData();
-
-            case 2:
-              return _context11.abrupt('return', _this._systemInformation);
-
-            case 3:
-            case 'end':
-              return _context11.stop();
-          }
-        }
-      }, _callee11, _this2);
+      }, _callee10, _this2, [[6, 11]]);
     }));
 
     _this.onDeviceEvent = function (event) {
