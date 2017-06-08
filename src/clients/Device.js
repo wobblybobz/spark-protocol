@@ -729,7 +729,7 @@ class Device extends EventEmitter {
     binary: ?Buffer,
     fileTransferStore: FileTransferStoreType = FileTransferStore.FIRMWARE,
     address: string = '0x0',
-  ): Promise<string> => {
+  ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
@@ -753,7 +753,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
-      return 'Update finished';
+      return { status: 'Update finished' };
     } catch (error) {
       logger.log(
         'flash device failed! - sending api event',

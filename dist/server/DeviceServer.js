@@ -48,9 +48,9 @@ var _crypto = require('crypto');
 
 var _crypto2 = _interopRequireDefault(_crypto);
 
-var _nullthrows = require('nullthrows');
+var _nullthrows7 = require('nullthrows');
 
-var _nullthrows2 = _interopRequireDefault(_nullthrows);
+var _nullthrows8 = _interopRequireDefault(_nullthrows7);
 
 var _moment = require('moment');
 
@@ -75,6 +75,12 @@ var _logger2 = _interopRequireDefault(_logger);
 var _Messages = require('../lib/Messages');
 
 var _Messages2 = _interopRequireDefault(_Messages);
+
+var _EventPublisher = require('../lib/EventPublisher');
+
+var _SparkServerEvents = require('../lib/SparkServerEvents');
+
+var _SparkServerEvents2 = _interopRequireDefault(_SparkServerEvents);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -259,7 +265,7 @@ var DeviceServer = function () {
                           if (_this._devicesById.has(deviceID)) {
                             existingConnection = _this._devicesById.get(deviceID);
 
-                            (0, _nullthrows2.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
+                            (0, _nullthrows8.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
                           }
 
                           _this._devicesById.set(deviceID, device);
@@ -518,11 +524,11 @@ var DeviceServer = function () {
                 }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.MAX_BINARY)) {
-                  device.setMaxBinarySize((0, _parseInt2.default)((0, _nullthrows2.default)(eventData.data), 10));
+                  device.setMaxBinarySize((0, _parseInt2.default)((0, _nullthrows8.default)(eventData.data), 10));
                 }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.OTA_CHUNK_SIZE)) {
-                  device.setOtaChunkSize((0, _parseInt2.default)((0, _nullthrows2.default)(eventData.data), 10));
+                  device.setOtaChunkSize((0, _parseInt2.default)((0, _nullthrows8.default)(eventData.data), 10));
                 }
 
                 if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
@@ -676,10 +682,13 @@ var DeviceServer = function () {
                   var isSystemEvent = messageName.startsWith('spark');
 
                   _this._eventPublisher.subscribe(messageName, device.onDeviceEvent, {
-                    connectionID: isSystemEvent ? device.getConnectionKey() : null,
-                    mydevices: isFromMyDevices,
-                    userID: ownerID
-                  }, deviceID);
+                    filterOptions: {
+                      connectionID: isSystemEvent ? device.getConnectionKey() : null,
+                      mydevices: isFromMyDevices,
+                      userID: ownerID
+                    },
+                    subscriberID: deviceID
+                  });
                 });
 
               case 14:
@@ -692,6 +701,349 @@ var DeviceServer = function () {
 
       return function (_x11, _x12) {
         return _ref9.apply(this, arguments);
+      };
+    }();
+
+    this._onSparkServerCallDeviceFunctionRequest = function () {
+      var _ref10 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10(event) {
+        var _nullthrows, deviceID, functionArguments, functionName, responseEventName, device;
+
+        return _regenerator2.default.wrap(function _callee10$(_context10) {
+          while (1) {
+            switch (_context10.prev = _context10.next) {
+              case 0:
+                _nullthrows = (0, _nullthrows8.default)(event.context), deviceID = _nullthrows.deviceID, functionArguments = _nullthrows.functionArguments, functionName = _nullthrows.functionName, responseEventName = _nullthrows.responseEventName;
+                _context10.prev = 1;
+                device = _this.getDevice(deviceID);
+
+                if (device) {
+                  _context10.next = 5;
+                  break;
+                }
+
+                throw new Error('Could not get device for ID');
+
+              case 5:
+                _context10.t0 = _this._eventPublisher;
+                _context10.next = 8;
+                return device.callFunction(functionName, functionArguments);
+
+              case 8:
+                _context10.t1 = _context10.sent;
+                _context10.t2 = responseEventName;
+                _context10.t3 = {
+                  context: _context10.t1,
+                  isPublic: false,
+                  name: _context10.t2
+                };
+
+                _context10.t0.publish.call(_context10.t0, _context10.t3);
+
+                _context10.next = 17;
+                break;
+
+              case 14:
+                _context10.prev = 14;
+                _context10.t4 = _context10['catch'](1);
+
+                _this._eventPublisher.publish({
+                  context: { error: _context10.t4 },
+                  isPublic: false,
+                  name: responseEventName
+                });
+
+              case 17:
+              case 'end':
+                return _context10.stop();
+            }
+          }
+        }, _callee10, _this, [[1, 14]]);
+      }));
+
+      return function (_x13) {
+        return _ref10.apply(this, arguments);
+      };
+    }();
+
+    this._onSparkServerFlashDeviceRequest = function () {
+      var _ref11 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee11(event) {
+        var _nullthrows2, deviceID, fileBuffer, responseEventName, device;
+
+        return _regenerator2.default.wrap(function _callee11$(_context11) {
+          while (1) {
+            switch (_context11.prev = _context11.next) {
+              case 0:
+                _nullthrows2 = (0, _nullthrows8.default)(event.context), deviceID = _nullthrows2.deviceID, fileBuffer = _nullthrows2.fileBuffer, responseEventName = _nullthrows2.responseEventName;
+                _context11.prev = 1;
+                device = _this.getDevice(deviceID);
+
+                if (device) {
+                  _context11.next = 5;
+                  break;
+                }
+
+                throw new Error('Could not get device for ID');
+
+              case 5:
+                _context11.t0 = _this._eventPublisher;
+                _context11.next = 8;
+                return device.flash(fileBuffer);
+
+              case 8:
+                _context11.t1 = _context11.sent;
+                _context11.t2 = responseEventName;
+                _context11.t3 = {
+                  context: _context11.t1,
+                  isPublic: false,
+                  name: _context11.t2
+                };
+
+                _context11.t0.publish.call(_context11.t0, _context11.t3);
+
+                _context11.next = 17;
+                break;
+
+              case 14:
+                _context11.prev = 14;
+                _context11.t4 = _context11['catch'](1);
+
+                _this._eventPublisher.publish({
+                  context: { error: _context11.t4 },
+                  isPublic: false,
+                  name: responseEventName
+                });
+
+              case 17:
+              case 'end':
+                return _context11.stop();
+            }
+          }
+        }, _callee11, _this, [[1, 14]]);
+      }));
+
+      return function (_x14) {
+        return _ref11.apply(this, arguments);
+      };
+    }();
+
+    this._onSparkServerGetDeviceDescriptionRequest = function () {
+      var _ref12 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee12(event) {
+        var _nullthrows3, deviceID, responseEventName, device;
+
+        return _regenerator2.default.wrap(function _callee12$(_context12) {
+          while (1) {
+            switch (_context12.prev = _context12.next) {
+              case 0:
+                _nullthrows3 = (0, _nullthrows8.default)(event.context), deviceID = _nullthrows3.deviceID, responseEventName = _nullthrows3.responseEventName;
+                _context12.prev = 1;
+                device = _this.getDevice(deviceID);
+
+                if (device) {
+                  _context12.next = 5;
+                  break;
+                }
+
+                throw new Error('Could not get device for ID');
+
+              case 5:
+                _context12.t0 = _this._eventPublisher;
+                _context12.next = 8;
+                return device.getDescription();
+
+              case 8:
+                _context12.t1 = _context12.sent;
+                _context12.t2 = responseEventName;
+                _context12.t3 = {
+                  context: _context12.t1,
+                  isPublic: false,
+                  name: _context12.t2
+                };
+
+                _context12.t0.publish.call(_context12.t0, _context12.t3);
+
+                _context12.next = 17;
+                break;
+
+              case 14:
+                _context12.prev = 14;
+                _context12.t4 = _context12['catch'](1);
+
+                _this._eventPublisher.publish({
+                  context: { error: _context12.t4 },
+                  isPublic: false,
+                  name: responseEventName
+                });
+
+              case 17:
+              case 'end':
+                return _context12.stop();
+            }
+          }
+        }, _callee12, _this, [[1, 14]]);
+      }));
+
+      return function (_x15) {
+        return _ref12.apply(this, arguments);
+      };
+    }();
+
+    this._onSparkServerGetDeviceVariableValueRequest = function () {
+      var _ref13 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee13(event) {
+        var _nullthrows4, deviceID, responseEventName, variableName, device;
+
+        return _regenerator2.default.wrap(function _callee13$(_context13) {
+          while (1) {
+            switch (_context13.prev = _context13.next) {
+              case 0:
+                _nullthrows4 = (0, _nullthrows8.default)(event.context), deviceID = _nullthrows4.deviceID, responseEventName = _nullthrows4.responseEventName, variableName = _nullthrows4.variableName;
+                _context13.prev = 1;
+                device = _this.getDevice(deviceID);
+
+                if (device) {
+                  _context13.next = 5;
+                  break;
+                }
+
+                throw new Error('Could not get device for ID');
+
+              case 5:
+                _context13.t0 = _this._eventPublisher;
+                _context13.next = 8;
+                return device.getVariableValue(variableName);
+
+              case 8:
+                _context13.t1 = _context13.sent;
+                _context13.t2 = {
+                  result: _context13.t1
+                };
+                _context13.t3 = responseEventName;
+                _context13.t4 = {
+                  context: _context13.t2,
+                  isPublic: false,
+                  name: _context13.t3
+                };
+
+                _context13.t0.publish.call(_context13.t0, _context13.t4);
+
+                _context13.next = 18;
+                break;
+
+              case 15:
+                _context13.prev = 15;
+                _context13.t5 = _context13['catch'](1);
+
+                _this._eventPublisher.publish({
+                  context: { error: _context13.t5 },
+                  isPublic: false,
+                  name: responseEventName
+                });
+
+              case 18:
+              case 'end':
+                return _context13.stop();
+            }
+          }
+        }, _callee13, _this, [[1, 15]]);
+      }));
+
+      return function (_x16) {
+        return _ref13.apply(this, arguments);
+      };
+    }();
+
+    this._onSparkServerPingDeviceRequest = function () {
+      var _ref14 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee14(event) {
+        var _nullthrows5, deviceID, responseEventName, device, pingObject;
+
+        return _regenerator2.default.wrap(function _callee14$(_context14) {
+          while (1) {
+            switch (_context14.prev = _context14.next) {
+              case 0:
+                _nullthrows5 = (0, _nullthrows8.default)(event.context), deviceID = _nullthrows5.deviceID, responseEventName = _nullthrows5.responseEventName;
+                device = _this.getDevice(deviceID);
+                pingObject = device ? device.ping() : {
+                  connected: false,
+                  lastPing: null
+                };
+
+
+                _this._eventPublisher.publish({
+                  context: pingObject,
+                  isPublic: false,
+                  name: responseEventName
+                });
+
+              case 4:
+              case 'end':
+                return _context14.stop();
+            }
+          }
+        }, _callee14, _this);
+      }));
+
+      return function (_x17) {
+        return _ref14.apply(this, arguments);
+      };
+    }();
+
+    this._onSparkServerRaiseYourHandRequest = function () {
+      var _ref15 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee15(event) {
+        var _nullthrows6, deviceID, responseEventName, shouldShowSignal, device;
+
+        return _regenerator2.default.wrap(function _callee15$(_context15) {
+          while (1) {
+            switch (_context15.prev = _context15.next) {
+              case 0:
+                _nullthrows6 = (0, _nullthrows8.default)(event.context), deviceID = _nullthrows6.deviceID, responseEventName = _nullthrows6.responseEventName, shouldShowSignal = _nullthrows6.shouldShowSignal;
+                _context15.prev = 1;
+                device = _this.getDevice(deviceID);
+
+                if (device) {
+                  _context15.next = 5;
+                  break;
+                }
+
+                throw new Error('Could not get device for ID');
+
+              case 5:
+                _context15.t0 = _this._eventPublisher;
+                _context15.next = 8;
+                return device.raiseYourHand(shouldShowSignal);
+
+              case 8:
+                _context15.t1 = _context15.sent;
+                _context15.t2 = responseEventName;
+                _context15.t3 = {
+                  context: _context15.t1,
+                  isPublic: false,
+                  name: _context15.t2
+                };
+
+                _context15.t0.publish.call(_context15.t0, _context15.t3);
+
+                _context15.next = 17;
+                break;
+
+              case 14:
+                _context15.prev = 14;
+                _context15.t4 = _context15['catch'](1);
+
+                _this._eventPublisher.publish({
+                  context: { error: _context15.t4 },
+                  isPublic: false,
+                  name: responseEventName
+                });
+
+              case 17:
+              case 'end':
+                return _context15.stop();
+            }
+          }
+        }, _callee15, _this, [[1, 14]]);
+      }));
+
+      return function (_x18) {
+        return _ref15.apply(this, arguments);
       };
     }();
 
@@ -726,6 +1078,18 @@ var DeviceServer = function () {
     key: 'start',
     value: function start() {
       var _this2 = this;
+
+      this._eventPublisher.subscribe((0, _EventPublisher.getRequestEventName)(_SparkServerEvents2.default.CALL_DEVICE_FUNCTION), this._onSparkServerCallDeviceFunctionRequest);
+
+      this._eventPublisher.subscribe((0, _EventPublisher.getRequestEventName)(_SparkServerEvents2.default.FLASH_DEVICE), this._onSparkServerFlashDeviceRequest);
+
+      this._eventPublisher.subscribe((0, _EventPublisher.getRequestEventName)(_SparkServerEvents2.default.GET_DEVICE_DESCRIPTION), this._onSparkServerGetDeviceDescriptionRequest);
+
+      this._eventPublisher.subscribe((0, _EventPublisher.getRequestEventName)(_SparkServerEvents2.default.GET_DEVICE_VARIABLE_VALUE), this._onSparkServerGetDeviceVariableValueRequest);
+
+      this._eventPublisher.subscribe((0, _EventPublisher.getRequestEventName)(_SparkServerEvents2.default.PING_DEVICE), this._onSparkServerPingDeviceRequest);
+
+      this._eventPublisher.subscribe((0, _EventPublisher.getRequestEventName)(_SparkServerEvents2.default.RAISE_YOUR_HAND), this._onSparkServerRaiseYourHandRequest);
 
       var server = _net2.default.createServer(function (socket) {
         return process.nextTick(function () {

@@ -842,7 +842,7 @@ var Device = function (_EventEmitter) {
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
-                return _context8.abrupt('return', 'Update finished');
+                return _context8.abrupt('return', { status: 'Update finished' });
 
               case 14:
                 _context8.prev = 14;
