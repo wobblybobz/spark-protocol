@@ -24,7 +24,7 @@ export type DeviceKeyObject = {
 
 export type Event = EventData & {
   publishedAt: Date,
-}
+};
 
 export type EventData = {
   connectionID?: ?string,
