@@ -5,6 +5,7 @@ import sinon from 'sinon';
 import TestData from './setup/TestData';
 
 import EventPublisher from '../src/lib/EventPublisher';
+import { getRequestEventName } from '../src/lib/EventPublisher';
 
 const TEST_EVENT_NAME = 'testEvent';
 
@@ -22,7 +23,7 @@ test(
     eventPublisher.subscribe(
       eventData.name,
       handler,
-      { userID: eventData.userID },
+      { filterOptions: { userID: eventData.userID } },
     );
 
     eventPublisher.publish(eventData);
@@ -48,7 +49,7 @@ test(
     eventPublisher.subscribe(
       eventData.name,
       handler,
-      { userID: TestData.getID() },
+      { filterOptions: { userID: TestData.getID() } },
     );
 
     eventPublisher.publish(eventData);
@@ -72,7 +73,7 @@ test(
     eventPublisher.subscribe(
       eventData.name,
       handler,
-      { userID: TestData.getID() },
+      { filterOptions: { userID: TestData.getID() } },
     );
 
     eventPublisher.publish(eventData);
@@ -99,7 +100,7 @@ test(
     eventPublisher.subscribe(
       eventData.name,
       handler,
-      { connectionID },
+      { filterOptions: { connectionID } },
     );
 
     eventPublisher.publish(eventData);
@@ -134,8 +135,10 @@ test(
       deviceEvent.name,
       handler,
       {
-        deviceID: TestData.getID(),
-        userID: deviceEvent.userID,
+        filterOptions: {
+          deviceID: TestData.getID(),
+          userID: deviceEvent.userID,
+        },
       },
     );
 
@@ -180,9 +183,11 @@ test(
       TEST_EVENT_NAME,
       handler,
       {
-        mydevices: true,
-        userID: ownerID,
-      },
+        filterOptions: {
+          mydevices: true,
+          userID: ownerID,
+        },
+      }
     );
 
     eventPublisher.publish(myDevicePublicEvent);
@@ -199,5 +204,75 @@ test(
     process.nextTick(() => {
       t.is(handler.callCount, 2);
     })
+  }
+);
+
+test(
+  'should unsubscribe all subscriptions by subsriberID',
+  t => {
+    const eventPublisher = new EventPublisher();
+    const handler = sinon.spy();
+    const subscriberID = TestData.getID();
+
+    const event = {
+      name: TEST_EVENT_NAME,
+      isPublic: true,
+    };
+
+    eventPublisher.subscribe(
+      event,
+      handler,
+      { subscriberID },
+    );
+
+    eventPublisher.subscribe(
+      event,
+      handler,
+      { subscriberID },
+    );
+
+    eventPublisher.publish(event);
+    process.nextTick(() => {
+      t.is(handler.callCount, 2);
+    });
+
+    eventPublisher.unsubscribeBySubscriberID(subscriberID);
+
+    eventPublisher.publish(event);
+    process.nextTick(() => {
+      t.is(handler.callCount, 2);
+    });
+  }
+);
+
+test(
+  'should publish and listen for response',
+  async t => {
+    const eventPublisher = new EventPublisher();
+    const handler = sinon.spy();
+    const subscriberID = TestData.getID();
+    const testContextData = '123';
+
+    const responseHandler = (event: Event) => {
+      const { data, responseEventName } = event.context;
+
+      eventPublisher.publish({
+        name: responseEventName,
+        context: data,
+      })
+    };
+
+    eventPublisher.subscribe(
+      getRequestEventName(TEST_EVENT_NAME),
+      responseHandler,
+      { subscriberID },
+    );
+
+    const response = await eventPublisher.publishAndListenForResponse({
+      name: TEST_EVENT_NAME,
+      context: { data: testContextData }
+    });
+
+    t.is(response, testContextData);
   }
 );

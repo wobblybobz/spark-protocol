@@ -20,7 +20,7 @@
 
 import type { Socket } from 'net';
 import type { Message } from 'h5.coap';
-import type { IDeviceAttributeRepository } from '../types';
+import type { Event, IDeviceAttributeRepository } from '../types';
 import type ClaimCodeManager from '../lib/ClaimCodeManager';
 import type CryptoManager from '../lib/CryptoManager';
 import type EventPublisher from '../lib/EventPublisher';
@@ -38,6 +38,8 @@ import Device from '../clients/Device';
 import FirmwareManager from '../lib/FirmwareManager';
 import logger from '../lib/logger';
 import Messages from '../lib/Messages';
+import { getRequestEventName } from '../lib/EventPublisher';
+import SPARK_SERVER_EVENTS from '../lib/SparkServerEvents';
 import {
   DEVICE_EVENT_NAMES,
   DEVICE_MESSAGE_EVENTS_NAMES,
@@ -88,6 +90,36 @@ class DeviceServer {
   }
 
   start() {
+    this._eventPublisher.subscribe(
+      getRequestEventName(SPARK_SERVER_EVENTS.CALL_DEVICE_FUNCTION),
+      this._onSparkServerCallDeviceFunctionRequest,
+    );
+
+    this._eventPublisher.subscribe(
+      getRequestEventName(SPARK_SERVER_EVENTS.FLASH_DEVICE),
+      this._onSparkServerFlashDeviceRequest,
+    );
+
+    this._eventPublisher.subscribe(
+      getRequestEventName(SPARK_SERVER_EVENTS.GET_DEVICE_DESCRIPTION),
+      this._onSparkServerGetDeviceDescriptionRequest,
+    );
+
+    this._eventPublisher.subscribe(
+      getRequestEventName(SPARK_SERVER_EVENTS.GET_DEVICE_VARIABLE_VALUE),
+      this._onSparkServerGetDeviceVariableValueRequest,
+    );
+
+    this._eventPublisher.subscribe(
+      getRequestEventName(SPARK_SERVER_EVENTS.PING_DEVICE),
+      this._onSparkServerPingDeviceRequest,
+    );
+
+    this._eventPublisher.subscribe(
+      getRequestEventName(SPARK_SERVER_EVENTS.RAISE_YOUR_HAND),
+      this._onSparkServerRaiseYourHandRequest,
+    );
+
     const server = net.createServer(
       (socket: Socket): void =>
         process.nextTick((): Promise<void> =>
@@ -584,13 +616,165 @@ class DeviceServer {
         messageName,
         device.onDeviceEvent,
         {
-          connectionID: isSystemEvent ? device.getConnectionKey() : null,
-          mydevices: isFromMyDevices,
-          userID: ownerID,
+          filterOptions: {
+            connectionID: isSystemEvent ? device.getConnectionKey() : null,
+            mydevices: isFromMyDevices,
+            userID: ownerID,
+          },
+          subscriberID: deviceID,
         },
-        deviceID,
       );
     });
+  };
+
+  _onSparkServerCallDeviceFunctionRequest = async (event: Event): Promise<void> => {
+    const {
+      deviceID,
+      functionArguments,
+      functionName,
+      responseEventName,
+    } = nullthrows(event.context);
+    try {
+      const device = this.getDevice(deviceID);
+      if (!device) {
+        throw new Error('Could not get device for ID');
+      }
+
+      this._eventPublisher.publish({
+        context: await device.callFunction(functionName, functionArguments),
+        isPublic: false,
+        name: responseEventName,
+      });
+    } catch (error) {
+      this._eventPublisher.publish({
+        context: { error },
+        isPublic: false,
+        name: responseEventName,
+      });
+    }
+  };
+
+  _onSparkServerFlashDeviceRequest = async (event: Event): Promise<void> => {
+    const {
+      deviceID,
+      fileBuffer,
+      responseEventName,
+    } = nullthrows(event.context);
+    try {
+      const device = this.getDevice(deviceID);
+      if (!device) {
+        throw new Error('Could not get device for ID');
+      }
+
+      this._eventPublisher.publish({
+        context: await device.flash(fileBuffer),
+        isPublic: false,
+        name: responseEventName,
+      });
+    } catch (error) {
+      this._eventPublisher.publish({
+        context: { error },
+        isPublic: false,
+        name: responseEventName,
+      });
+    }
+  };
+
+  _onSparkServerGetDeviceDescriptionRequest = async (event: Event): Promise<void> => {
+    const {
+      deviceID,
+      responseEventName,
+    } = nullthrows(event.context);
+    try {
+      const device = this.getDevice(deviceID);
+      if (!device) {
+        throw new Error('Could not get device for ID');
+      }
+
+      this._eventPublisher.publish({
+        context: await device.getDescription(),
+        isPublic: false,
+        name: responseEventName,
+      });
+    } catch (error) {
+      this._eventPublisher.publish({
+        context: { error },
+        isPublic: false,
+        name: responseEventName,
+      });
+    }
+  };
+
+  _onSparkServerGetDeviceVariableValueRequest = async (event: Event): Promise<void> => {
+    const {
+      deviceID,
+      responseEventName,
+      variableName,
+    } = nullthrows(event.context);
+
+    try {
+      const device = this.getDevice(deviceID);
+      if (!device) {
+        throw new Error('Could not get device for ID');
+      }
+
+      this._eventPublisher.publish({
+        context: { result: await device.getVariableValue(variableName) },
+        isPublic: false,
+        name: responseEventName,
+      });
+    } catch (error) {
+      this._eventPublisher.publish({
+        context: { error },
+        isPublic: false,
+        name: responseEventName,
+      });
+    }
+  };
+
+  _onSparkServerPingDeviceRequest = async (event: Event): Promise<void> => {
+    const { deviceID, responseEventName } = nullthrows(event.context);
+
+    const device = this.getDevice(deviceID);
+    const pingObject = device
+      ? device.ping()
+      : {
+        connected: false,
+        lastPing: null,
+      };
+
+    this._eventPublisher.publish({
+      context: pingObject,
+      isPublic: false,
+      name: responseEventName,
+    });
+  };
+
+  _onSparkServerRaiseYourHandRequest = async (event: Event): Promise<void> => {
+    const {
+      deviceID,
+      responseEventName,
+      shouldShowSignal,
+    } = nullthrows(event.context);
+
+    try {
+      const device = this.getDevice(deviceID);
+      if (!device) {
+        throw new Error('Could not get device for ID');
+      }
+
+      this._eventPublisher.publish({
+        context: await device.raiseYourHand(shouldShowSignal),
+        isPublic: false,
+        name: responseEventName,
+      });
+    } catch (error) {
+      this._eventPublisher.publish({
+        context: { error },
+        isPublic: false,
+        name: responseEventName,
+      });
+    }
   };
 
   getDevice = (deviceID: string): ?Device =>
