@@ -194,20 +194,13 @@ class DeviceServer {
         handshake,
       );
 
-      await device.startProtocolInitialization();
-
-      const deviceID = device.getID();
+      const deviceID = await device.startProtocolInitialization();
 
       process.nextTick(async (): Promise<void> => {
         try {
           const deviceAttributes =
             await this._deviceAttributeRepository.getByID(device.getID());
           const ownerID = deviceAttributes && deviceAttributes.ownerID;
-
-          device.on(
-            DEVICE_EVENT_NAMES.READY,
-            (): Promise<void> => this._onDeviceReady(device),
-          );
 
           device.on(
             DEVICE_EVENT_NAMES.DISCONNECT,
@@ -286,7 +279,7 @@ class DeviceServer {
           this._devicesById.set(deviceID, device);
 
           device.completeProtocolInitialization();
-          device.ready();
+          this._onDeviceReady(device);
 
           logger.info(
             `Connection from: ${device.getRemoteIPAddress()} - ` +

@@ -206,7 +206,7 @@ var DeviceServer = function () {
                 return device.startProtocolInitialization();
 
               case 8:
-                deviceID = device.getID();
+                deviceID = _context4.sent;
 
 
                 process.nextTick((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3() {
@@ -223,10 +223,6 @@ var DeviceServer = function () {
                           deviceAttributes = _context3.sent;
                           ownerID = deviceAttributes && deviceAttributes.ownerID;
 
-
-                          device.on(_Device.DEVICE_EVENT_NAMES.READY, function () {
-                            return _this._onDeviceReady(device);
-                          });
 
                           device.on(_Device.DEVICE_EVENT_NAMES.DISCONNECT, function () {
                             return _this._onDeviceDisconnect(device);
@@ -271,24 +267,24 @@ var DeviceServer = function () {
                           _this._devicesById.set(deviceID, device);
 
                           device.completeProtocolInitialization();
-                          device.ready();
+                          _this._onDeviceReady(device);
 
                           _logger2.default.info('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Device ID: ' + deviceID), 'Connection ID: ' + counter);
-                          _context3.next = 24;
+                          _context3.next = 23;
                           break;
 
-                        case 21:
-                          _context3.prev = 21;
+                        case 20:
+                          _context3.prev = 20;
                           _context3.t0 = _context3['catch'](0);
 
                           device.disconnect('Error during connection: ' + _context3.t0);
 
-                        case 24:
+                        case 23:
                         case 'end':
                           return _context3.stop();
                       }
                     }
-                  }, _callee3, _this, [[0, 21]]);
+                  }, _callee3, _this, [[0, 20]]);
                 })));
                 _context4.next = 15;
                 break;
