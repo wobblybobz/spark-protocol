@@ -1051,14 +1051,15 @@ var DeviceServer = function () {
       if (!userID) {
         return;
       }
+      var eventData = {
+        data: data,
+        deviceID: deviceID,
+        isPublic: false,
+        name: eventName,
+        userID: userID
+      };
       process.nextTick(function () {
-        _this._eventPublisher.publish({
-          data: data,
-          deviceID: deviceID,
-          isPublic: false,
-          name: eventName,
-          userID: userID
-        });
+        _this._eventPublisher.publish(eventData);
       });
     };
 

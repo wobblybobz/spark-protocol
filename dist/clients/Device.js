@@ -212,7 +212,6 @@ var Device = function (_EventEmitter) {
     };
 
     _this.startProtocolInitialization = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
-      var oldEmit;
       return _regenerator2.default.wrap(function _callee$(_context) {
         while (1) {
           switch (_context.prev = _context.next) {
@@ -231,26 +230,13 @@ var Device = function (_EventEmitter) {
                 return _this.disconnect('socket timeout');
               });
 
-              oldEmit = _this.emit;
-
-
-              _this.emit = function (event) {
-                for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-                  args[_key - 1] = arguments[_key];
-                }
-
-                process.nextTick(function () {
-                  return oldEmit.call.apply(oldEmit, [_this, event].concat(args));
-                });
-              };
-
-              _context.next = 10;
+              _context.next = 8;
               return _this.startHandshake();
 
-            case 10:
+            case 8:
               return _context.abrupt('return', _context.sent);
 
-            case 11:
+            case 9:
             case 'end':
               return _context.stop();
           }

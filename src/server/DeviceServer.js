@@ -782,14 +782,15 @@ class DeviceServer {
     if (!userID) {
       return;
     }
+    const eventData = {
+      data,
+      deviceID,
+      isPublic: false,
+      name: eventName,
+      userID,
+    };
     process.nextTick(() => {
-      this._eventPublisher.publish({
-        data,
-        deviceID,
-        isPublic: false,
-        name: eventName,
-        userID,
-      });
+      this._eventPublisher.publish(eventData);
     });
   }
 }

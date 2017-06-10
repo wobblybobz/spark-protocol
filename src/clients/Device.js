@@ -191,12 +191,6 @@ class Device extends EventEmitter {
       (): void => this.disconnect('socket timeout'),
     );
 
-    const oldEmit = this.emit;
-
-    this.emit = (event: string, ...args: Array<any>) => {
-      process.nextTick((): booelan => oldEmit.call(this, event, ...args));
-    };
-
     return await this.startHandshake();
   };
 
@@ -204,12 +198,18 @@ class Device extends EventEmitter {
     // when the handshake is done, we can expect two stream properties,
     // '_decipherStream' and '_cipherStream'
     try {
+      const result = await this._handshake.start(this);
+
+      if (!result) {
+        throw new Error('Handshake result undefined');
+      }
+
       const {
         cipherStream,
         decipherStream,
         deviceID,
         handshakeBuffer,
-      } = await this._handshake.start(this);
+      } = result;
 
       this._id = deviceID;
       this._cipherStream = cipherStream;

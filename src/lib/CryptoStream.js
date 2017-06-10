@@ -47,7 +47,7 @@ class CryptoStream extends Transform {
   _transform = (
     chunk: Buffer | string,
     encoding: string,
-    callback: Function,
+    callback: () => void,
   ) => {
     if (!chunk.length) {
       logger.error(

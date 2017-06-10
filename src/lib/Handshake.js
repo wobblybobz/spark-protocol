@@ -91,6 +91,13 @@ const SESSION_BYTES = 40;
 const GLOBAL_TIMEOUT = 10;
 const DECIPHER_STREAM_TIMEOUT = 30;
 
+type HandshakeResult = {
+  cipherStream: CryptoStream,
+  decipherStream: CryptoStream,
+  deviceID: string,
+  handshakeBuffer: Buffer,
+};
+
 class Handshake {
   _device: Device;
   _cryptoManager: CryptoManager;
@@ -102,7 +109,7 @@ class Handshake {
     this._cryptoManager = cryptoManager;
   }
 
-  start = async (device: Device): Promise<*> => {
+  start = async (device: Device): Promise<HandshakeResult> => {
     this._device = device;
     this._socket = device._socket;
 
@@ -124,7 +131,7 @@ class Handshake {
     });
   };
 
-  _runHandshake = async (): Promise<*> => {
+  _runHandshake = async (): Promise<HandshakeResult> => {
     const nonce = await this._sendNonce();
     const data = await this._onSocketDataAvailable();
 
@@ -159,7 +166,7 @@ class Handshake {
 
   _startGlobalTimeout = (): Promise<*> =>
     new Promise((
-      resolve: () => void,
+      resolve: (result: *) => void,
       reject: (error: Error) => void,
     ) => {
       setTimeout(
