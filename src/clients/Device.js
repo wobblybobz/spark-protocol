@@ -173,7 +173,7 @@ class Device extends EventEmitter {
   /**
    * configure our socket and start the handshake
    */
-  startProtocolInitialization = async (): Promise<void> => {
+  startProtocolInitialization = async (): Promise<string> => {
     this._socket.setNoDelay(true);
     this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); // every 15 second(s)
     this._socket.setTimeout(SOCKET_TIMEOUT);
@@ -197,10 +197,10 @@ class Device extends EventEmitter {
       process.nextTick((): booelan => oldEmit.call(this, event, ...args));
     };
 
-    await this.startHandshake();
+    return await this.startHandshake();
   };
 
-  startHandshake = async (): Promise<*> => {
+  startHandshake = async (): Promise<string> => {
     // when the handshake is done, we can expect two stream properties,
     // '_decipherStream' and '_cipherStream'
     try {
@@ -216,6 +216,8 @@ class Device extends EventEmitter {
       this._decipherStream = decipherStream;
 
       this._getHello(handshakeBuffer);
+
+      return deviceID;
     } catch (error) {
       this.disconnect(error);
       throw error;
@@ -243,6 +245,20 @@ class Device extends EventEmitter {
             chunk = read();
           }
           this._clientHasWrittenToSocket();
+        },
+      );
+
+      this._connectionStartTime = new Date();
+
+      logger.log(
+        'On Device Ready:\r\n',
+        {
+          cache_key: this._connectionKey,
+          deviceID: this._id,
+          firmwareVersion: this._productFirmwareVersion,
+          ip: this.getRemoteIPAddress(),
+          platformID: this._platformId,
+          productID: this._particleProductId,
         },
       );
     } catch (error) {
@@ -292,24 +308,6 @@ class Device extends EventEmitter {
     // client will set the counter property on the message
     this._sendCounter = CryptoManager.getRandomUINT16();
     this.sendMessage('Hello', {}, null);
-  };
-
-  ready = () => {
-    this._connectionStartTime = new Date();
-
-    logger.log(
-      'On Device Ready:\r\n',
-      {
-        cache_key: this._connectionKey,
-        deviceID: this._id,
-        firmwareVersion: this._productFirmwareVersion,
-        ip: this.getRemoteIPAddress(),
-        platformID: this._platformId,
-        productID: this._particleProductId,
-      },
-    );
-
-    this.emit(DEVICE_EVENT_NAMES.READY);
   };
 
   ping = (): {
@@ -729,7 +727,7 @@ class Device extends EventEmitter {
     binary: ?Buffer,
     fileTransferStore: FileTransferStoreType = FileTransferStore.FIRMWARE,
     address: string = '0x0',
-  ): Promise<string> => {
+  ): Promise<*> => {
     const isBusy = !this._isSocketAvailable(null);
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
@@ -753,7 +751,7 @@ class Device extends EventEmitter {
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
-      return 'Update finished';
+      return { status: 'Update finished' };
     } catch (error) {
       logger.log(
         'flash device failed! - sending api event',

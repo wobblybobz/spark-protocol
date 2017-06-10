@@ -25,7 +25,11 @@ import nullthrows from 'nullthrows';
 import uuid from 'uuid';
 import settings from '../settings';
 
+export const getRequestEventName = (eventName: string): string =>
+ `${eventName}/request`;
+
 const ALL_EVENTS = '*all*';
+const LISTEN_FOR_RESPONSE_TIMEOUT = 15000;
 
 type FilterOptions = {
   connectionID?: ?string,
@@ -34,11 +38,19 @@ type FilterOptions = {
   userID: string,
 };
 
+type SubscriptionOptions = {
+  filterOptions?: FilterOptions,
+  once?: boolean,
+  subscriberID?: string,
+  subscriptionTimeout?: number,
+  timeoutHandler?: () => void,
+}
+
 type Subscription = {
   eventNamePrefix: string,
   id: string,
-  listener: (event: Event) => void,
-  subscriberID?: string,
+  listener: (event: Event) => void | Promise<void>,
+  options: SubscriptionOptions,
 };
 
 class EventPublisher extends EventEmitter {
@@ -62,18 +74,66 @@ class EventPublisher extends EventEmitter {
     this.emit(ALL_EVENTS, event);
   };
 
+  publishAndListenForResponse = async (
+    eventData: EventData,
+  ): Promise<Object> => {
+    const eventID = uuid();
+    const requestEventName = `${getRequestEventName(eventData.name)}/${eventID}`;
+    const responseEventName = `${eventData.name}/response/${eventID}`;
+
+    return new Promise(
+      (
+        resolve: (event: Event) => void,
+        reject: (error: Error) => void,
+      ) => {
+        const responseListener = (event: Event): void =>
+          resolve(nullthrows(event.context));
+
+        this.subscribe(
+          responseEventName,
+          responseListener,
+          {
+            once: true,
+            subscriptionTimeout: LISTEN_FOR_RESPONSE_TIMEOUT,
+            timeoutHandler: (): void => reject(
+              new Error(`Response timeout for event: ${eventData.name}`),
+            ),
+          },
+        );
+
+        this.publish({
+          ...eventData,
+          context: {
+            ...eventData.context,
+            responseEventName,
+          },
+          isPublic: false,
+          name: requestEventName,
+        });
+      },
+    );
+  };
+
   subscribe = (
     eventNamePrefix: string = ALL_EVENTS,
-    eventHandler: (event: Event) => void,
-    filterOptions: FilterOptions,
-    subscriberID?: string,
-  ): void => {
+    eventHandler: (event: Event) => void | Promise<void>,
+    options?: SubscriptionOptions = {},
+  ): string => {
+    const {
+      filterOptions,
+      once,
+      subscriptionTimeout,
+      timeoutHandler,
+    } = options;
+
     let subscriptionID = uuid();
     while (this._subscriptionsByID.has(subscriptionID)) {
       subscriptionID = uuid();
     }
 
-    const listener = this._filterEvents(eventHandler, filterOptions);
+    const listener = filterOptions
+      ? this._filterEvents(eventHandler, filterOptions)
+      : eventHandler;
 
     this._subscriptionsByID.set(
       subscriptionID,
@@ -81,11 +141,30 @@ class EventPublisher extends EventEmitter {
         eventNamePrefix,
         id: subscriptionID,
         listener,
-        subscriberID,
+        options,
       },
     );
 
-    this.on(eventNamePrefix, listener);
+    if (subscriptionTimeout) {
+      const timeout = setTimeout(
+        () => {
+          this.unsubscribe(subscriptionID);
+          if (timeoutHandler) {
+            timeoutHandler();
+          }
+        },
+        subscriptionTimeout,
+      );
+
+      this.once(eventNamePrefix, (): void => clearTimeout(timeout));
+    }
+
+    if (once) {
+      this.once(eventNamePrefix, listener);
+    } else {
+      this.on(eventNamePrefix, listener);
+    }
+
     return subscriptionID;
   };
 
@@ -102,7 +181,7 @@ class EventPublisher extends EventEmitter {
   unsubscribeBySubscriberID = (subscriberID: string) => {
     this._subscriptionsByID
       .forEach((subscription: Subscription) => {
-        if (subscription.subscriberID === subscriberID) {
+        if (subscription.options.subscriberID === subscriberID) {
           this.unsubscribe(subscription.id);
         }
       });
@@ -121,7 +200,7 @@ class EventPublisher extends EventEmitter {
   };
 
   _filterEvents = (
-    eventHandler: (event: Event) => void,
+    eventHandler: (event: Event) => void | Promise<void>,
     filterOptions: FilterOptions,
   ): (event: Event) => void =>
     (event: Event) => {
@@ -152,7 +231,7 @@ class EventPublisher extends EventEmitter {
         return;
       }
 
-      process.nextTick((): void => eventHandler(event));
+      process.nextTick((): void | Promise<void> => eventHandler(event));
     };
 }
 

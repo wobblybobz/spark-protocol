@@ -28,12 +28,13 @@ export type Event = EventData & {
 
 export type EventData = {
   connectionID?: ?string,
+  context?: ?Object,
   data?: string,
   deviceID?: ?string,
   isPublic: boolean,
   name: string,
   ttl?: number,
-  userID: string,
+  userID?: string,
 };
 
 export type ServerKeyRepository = {

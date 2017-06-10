@@ -3,6 +3,19 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.getRequestEventName = undefined;
+
+var _regenerator = require('babel-runtime/regenerator');
+
+var _regenerator2 = _interopRequireDefault(_regenerator);
+
+var _promise = require('babel-runtime/core-js/promise');
+
+var _promise2 = _interopRequireDefault(_promise);
+
+var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
+
+var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
 var _extends2 = require('babel-runtime/helpers/extends');
 
@@ -46,31 +59,37 @@ var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var ALL_EVENTS = '*all*'; /*
-                          *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                          *
-                          *   This program is free software; you can redistribute it and/or
-                          *   modify it under the terms of the GNU Lesser General Public
-                          *   License as published by the Free Software Foundation, either
-                          *   version 3 of the License, or (at your option) any later version.
-                          *
-                          *   This program is distributed in the hope that it will be useful,
-                          *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                          *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                          *   Lesser General Public License for more details.
-                          *
-                          *   You should have received a copy of the GNU Lesser General Public
-                          *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                          *
-                          * 
-                          *
-                          */
+var getRequestEventName = exports.getRequestEventName = function getRequestEventName(eventName) {
+  return eventName + '/request';
+}; /*
+   *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+   *
+   *   This program is free software; you can redistribute it and/or
+   *   modify it under the terms of the GNU Lesser General Public
+   *   License as published by the Free Software Foundation, either
+   *   version 3 of the License, or (at your option) any later version.
+   *
+   *   This program is distributed in the hope that it will be useful,
+   *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   *   Lesser General Public License for more details.
+   *
+   *   You should have received a copy of the GNU Lesser General Public
+   *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+   *
+   * 
+   *
+   */
+
+var ALL_EVENTS = '*all*';
+var LISTEN_FOR_RESPONSE_TIMEOUT = 15000;
 
 var EventPublisher = function (_EventEmitter) {
   (0, _inherits3.default)(EventPublisher, _EventEmitter);
 
   function EventPublisher() {
-    var _ref;
+    var _ref,
+        _this2 = this;
 
     var _temp, _this, _ret;
 
@@ -91,27 +110,92 @@ var EventPublisher = function (_EventEmitter) {
       // TODO - this needs to be put on next tick.
       _this._emitWithPrefix(eventData.name, event);
       _this.emit(ALL_EVENTS, event);
-    }, _this.subscribe = function () {
+    }, _this.publishAndListenForResponse = function () {
+      var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(eventData) {
+        var eventID, requestEventName, responseEventName;
+        return _regenerator2.default.wrap(function _callee$(_context) {
+          while (1) {
+            switch (_context.prev = _context.next) {
+              case 0:
+                eventID = (0, _uuid2.default)();
+                requestEventName = getRequestEventName(eventData.name) + '/' + eventID;
+                responseEventName = eventData.name + '/response/' + eventID;
+                return _context.abrupt('return', new _promise2.default(function (resolve, reject) {
+                  var responseListener = function responseListener(event) {
+                    return resolve((0, _nullthrows3.default)(event.context));
+                  };
+
+                  _this.subscribe(responseEventName, responseListener, {
+                    once: true,
+                    subscriptionTimeout: LISTEN_FOR_RESPONSE_TIMEOUT,
+                    timeoutHandler: function timeoutHandler() {
+                      return reject(new Error('Response timeout for event: ' + eventData.name));
+                    }
+                  });
+
+                  _this.publish((0, _extends3.default)({}, eventData, {
+                    context: (0, _extends3.default)({}, eventData.context, {
+                      responseEventName: responseEventName
+                    }),
+                    isPublic: false,
+                    name: requestEventName
+                  }));
+                }));
+
+              case 4:
+              case 'end':
+                return _context.stop();
+            }
+          }
+        }, _callee, _this2);
+      }));
+
+      return function (_x) {
+        return _ref2.apply(this, arguments);
+      };
+    }(), _this.subscribe = function () {
       var eventNamePrefix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ALL_EVENTS;
       var eventHandler = arguments[1];
-      var filterOptions = arguments[2];
-      var subscriberID = arguments[3];
+      var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      var filterOptions = options.filterOptions,
+          once = options.once,
+          subscriptionTimeout = options.subscriptionTimeout,
+          timeoutHandler = options.timeoutHandler;
+
 
       var subscriptionID = (0, _uuid2.default)();
       while (_this._subscriptionsByID.has(subscriptionID)) {
         subscriptionID = (0, _uuid2.default)();
       }
 
-      var listener = _this._filterEvents(eventHandler, filterOptions);
+      var listener = filterOptions ? _this._filterEvents(eventHandler, filterOptions) : eventHandler;
 
       _this._subscriptionsByID.set(subscriptionID, {
         eventNamePrefix: eventNamePrefix,
         id: subscriptionID,
         listener: listener,
-        subscriberID: subscriberID
+        options: options
       });
 
-      _this.on(eventNamePrefix, listener);
+      if (subscriptionTimeout) {
+        var timeout = setTimeout(function () {
+          _this.unsubscribe(subscriptionID);
+          if (timeoutHandler) {
+            timeoutHandler();
+          }
+        }, subscriptionTimeout);
+
+        _this.once(eventNamePrefix, function () {
+          return clearTimeout(timeout);
+        });
+      }
+
+      if (once) {
+        _this.once(eventNamePrefix, listener);
+      } else {
+        _this.on(eventNamePrefix, listener);
+      }
+
       return subscriptionID;
     }, _this.unsubscribe = function (subscriptionID) {
       var _nullthrows = (0, _nullthrows3.default)(_this._subscriptionsByID.get(subscriptionID)),
@@ -122,7 +206,7 @@ var EventPublisher = function (_EventEmitter) {
       _this._subscriptionsByID.delete(subscriptionID);
     }, _this.unsubscribeBySubscriberID = function (subscriberID) {
       _this._subscriptionsByID.forEach(function (subscription) {
-        if (subscription.subscriberID === subscriberID) {
+        if (subscription.options.subscriberID === subscriberID) {
           _this.unsubscribe(subscription.id);
         }
       });

@@ -32,20 +32,22 @@ import { knownPlatforms } from '../third-party/settings.json';
 import defaultBindings from './defaultBindings';
 import memoizeGet from './decorators/memoizeGet';
 import memoizeSet from './decorators/memoizeSet';
+import SPARK_SERVER_EVENTS from './lib/SparkServerEvents';
 
 export {
   ClaimCodeManager,
+  defaultBindings,
+  Device,
   DeviceAttributeFileRepository,
   DeviceKeyFileRepository,
   DeviceServer,
   EventPublisher,
   FileManager,
   JSONFileManager,
-  ServerKeyFileRepository,
-  Device,
-  defaultBindings,
+  knownPlatforms,
   memoizeGet,
   memoizeSet,
-  knownPlatforms,
+  ServerKeyFileRepository,
   settings,
+  SPARK_SERVER_EVENTS,
 };

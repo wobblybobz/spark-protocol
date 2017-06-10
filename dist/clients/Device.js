@@ -248,6 +248,9 @@ var Device = function (_EventEmitter) {
               return _this.startHandshake();
 
             case 10:
+              return _context.abrupt('return', _context.sent);
+
+            case 11:
             case 'end':
               return _context.stop();
           }
@@ -278,22 +281,22 @@ var Device = function (_EventEmitter) {
               _this._decipherStream = decipherStream;
 
               _this._getHello(handshakeBuffer);
-              _context2.next = 18;
-              break;
 
-            case 14:
-              _context2.prev = 14;
+              return _context2.abrupt('return', deviceID);
+
+            case 15:
+              _context2.prev = 15;
               _context2.t0 = _context2['catch'](0);
 
               _this.disconnect(_context2.t0);
               throw _context2.t0;
 
-            case 18:
+            case 19:
             case 'end':
               return _context2.stop();
           }
         }
-      }, _callee2, _this2, [[0, 14]]);
+      }, _callee2, _this2, [[0, 15]]);
     }));
 
     _this.completeProtocolInitialization = function () {
@@ -316,6 +319,17 @@ var Device = function (_EventEmitter) {
             chunk = read();
           }
           _this._clientHasWrittenToSocket();
+        });
+
+        _this._connectionStartTime = new Date();
+
+        _logger2.default.log('On Device Ready:\r\n', {
+          cache_key: _this._connectionKey,
+          deviceID: _this._id,
+          firmwareVersion: _this._productFirmwareVersion,
+          ip: _this.getRemoteIPAddress(),
+          platformID: _this._platformId,
+          productID: _this._particleProductId
         });
       } catch (error) {
         throw new Error('completeProtocolInitialization: ' + error);
@@ -359,21 +373,6 @@ var Device = function (_EventEmitter) {
       // client will set the counter property on the message
       _this._sendCounter = _CryptoManager2.default.getRandomUINT16();
       _this.sendMessage('Hello', {}, null);
-    };
-
-    _this.ready = function () {
-      _this._connectionStartTime = new Date();
-
-      _logger2.default.log('On Device Ready:\r\n', {
-        cache_key: _this._connectionKey,
-        deviceID: _this._id,
-        firmwareVersion: _this._productFirmwareVersion,
-        ip: _this.getRemoteIPAddress(),
-        platformID: _this._platformId,
-        productID: _this._particleProductId
-      });
-
-      _this.emit(DEVICE_EVENT_NAMES.READY);
     };
 
     _this.ping = function () {
@@ -842,7 +841,7 @@ var Device = function (_EventEmitter) {
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
-                return _context8.abrupt('return', 'Update finished');
+                return _context8.abrupt('return', { status: 'Update finished' });
 
               case 14:
                 _context8.prev = 14;
