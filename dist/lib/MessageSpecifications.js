@@ -12,7 +12,9 @@ var _slicedToArray2 = require('babel-runtime/helpers/slicedToArray');
 
 var _slicedToArray3 = _interopRequireDefault(_slicedToArray2);
 
-var _h = require('h5.coap');
+var _CoapMessage = require('./CoapMessage');
+
+var _CoapMessage2 = _interopRequireDefault(_CoapMessage);
 
 var _hogan = require('hogan.js');
 
@@ -20,176 +22,153 @@ var _hogan2 = _interopRequireDefault(_hogan);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
- *   Copyright (C) 2013-2014 Spark Labs, Inc. All rights reserved. -  https://www.spark.io/
- *
- *   This file is part of the Spark-protocol module
- *
- *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License version 3
- *   as published by the Free Software Foundation.
- *
- *   Spark-protocol is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
- *
- *   You should have received a copy of the GNU General Public License
- *   along with Spark-protocol.  If not, see <http://www.gnu.org/licenses/>.
- *
- *   You can download the source here: https://github.com/spark/spark-protocol
- *
- * 
- *
- */
-
 var MessageSpecifications = [['Hello', {
-  code: _h.Message.Code.POST,
-  Response: 'Hello',
-  type: _h.Message.Type.NON,
+  code: _CoapMessage2.default.Code.POST,
+  response: 'Hello',
+  type: _CoapMessage2.default.Type.NON,
   uri: 'h'
 }], ['KeyChange', {
-  code: _h.Message.Code.PUT,
-  Response: 'KeyChanged',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.PUT,
+  response: 'KeyChanged',
+  type: _CoapMessage2.default.Type.CON,
   uri: 'k'
 }], ['UpdateBegin', {
-  code: _h.Message.Code.POST,
-  Response: 'UpdateReady',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.POST,
+  response: 'UpdateReady',
+  type: _CoapMessage2.default.Type.CON,
   uri: 'u'
 }], ['UpdateAbort', {
-  code: _h.Message.Code.BAD_REQUEST,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.BAD_REQUEST,
+  type: _CoapMessage2.default.Type.NON
 }], ['Chunk', {
-  code: _h.Message.Code.POST,
-  Response: 'ChunkReceived',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.POST,
+  response: 'ChunkReceived',
+  type: _CoapMessage2.default.Type.CON,
   uri: 'c?{{{crc}}}'
 }], ['ChunkMissed', {
-  code: _h.Message.Code.GET,
-  Response: 'ChunkMissedAck',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.GET,
+  response: 'ChunkMissedAck',
+  type: _CoapMessage2.default.Type.CON,
   uri: 'c'
 }], ['UpdateDone', {
-  code: _h.Message.Code.PUT,
-  Response: null,
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.PUT,
+  response: null,
+  type: _CoapMessage2.default.Type.CON,
   uri: 'u'
 }], ['FunctionCall', {
-  code: _h.Message.Code.POST,
-  Response: 'FunctionReturn',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.POST,
+  response: 'FunctionReturn',
+  type: _CoapMessage2.default.Type.CON,
   uri: 'f/{{name}}?{{{args}}}'
 }], ['VariableRequest', {
-  code: _h.Message.Code.GET,
-  Response: 'VariableValue',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.GET,
+  response: 'VariableValue',
+  type: _CoapMessage2.default.Type.CON,
   uri: 'v/{{name}}'
 }], ['PrivateEvent', {
-  code: _h.Message.Code.POST,
-  Response: null,
-  type: _h.Message.Type.NON,
+  code: _CoapMessage2.default.Code.POST,
+  response: null,
+  type: _CoapMessage2.default.Type.NON,
   uri: 'E/{{event_name}}'
 }], ['PublicEvent', {
-  code: _h.Message.Code.POST,
-  Response: null,
-  type: _h.Message.Type.NON,
+  code: _CoapMessage2.default.Code.POST,
+  response: null,
+  type: _CoapMessage2.default.Type.NON,
   uri: 'e/{{event_name}}'
 }], ['Subscribe', {
-  code: _h.Message.Code.GET,
-  Response: null,
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.GET,
+  response: null,
+  type: _CoapMessage2.default.Type.CON,
   uri: 'e/{{event_name}}'
 }], ['Describe', {
-  code: _h.Message.Code.GET,
-  Response: 'DescribeReturn',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.GET,
+  response: 'DescribeReturn',
+  type: _CoapMessage2.default.Type.CON,
   uri: 'd'
 }], ['GetTime', {
-  code: _h.Message.Code.GET,
-  Response: 'GetTimeReturn',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.GET,
+  response: 'GetTimeReturn',
+  type: _CoapMessage2.default.Type.CON,
   uri: 't'
 }], ['SignalStart', {
-  code: _h.Message.Code.PUT,
-  Response: 'SignalStartReturn',
-  type: _h.Message.Type.CON,
+  code: _CoapMessage2.default.Code.PUT,
+  response: 'SignalStartReturn',
+  type: _CoapMessage2.default.Type.CON,
   uri: 's'
 }],
 // 'PrivateSubscribe': {
-//   code: Message.Code.GET,
+//   code: CoapMessage.Code.GET,
 //   uri: 'E/{{event_name}}',
-//   type: Message.Type.NON,
-//   Response: null
+//   type: CoapMessage.Type.NON,
+//   response: null
 // },
 ['EventAck', {
-  code: _h.Message.Code.EMPTY,
-  Response: null,
-  type: _h.Message.Type.ACK,
+  code: _CoapMessage2.default.Code.EMPTY,
+  response: null,
+  type: _CoapMessage2.default.Type.ACK,
   uri: null
 }], ['EventSlowdown', {
-  code: _h.Message.Code.BAD_REQUEST,
-  Response: null,
-  type: _h.Message.Type.ACK,
+  code: _CoapMessage2.default.Code.BAD_REQUEST,
+  response: null,
+  type: _CoapMessage2.default.Type.ACK,
   uri: null
 }], ['SubscribeAck', {
-  code: _h.Message.Code.EMPTY,
-  Response: null,
-  type: _h.Message.Type.ACK,
+  code: _CoapMessage2.default.Code.EMPTY,
+  response: null,
+  type: _CoapMessage2.default.Type.ACK,
   uri: null
 }], ['SubscribeFail', {
-  code: _h.Message.Code.BAD_REQUEST,
-  Response: null,
-  type: _h.Message.Type.ACK,
+  code: _CoapMessage2.default.Code.BAD_REQUEST,
+  response: null,
+  type: _CoapMessage2.default.Type.ACK,
   uri: null
 }], ['GetTimeReturn', {
-  code: _h.Message.Code.CONTENT,
-  type: _h.Message.Type.ACK
+  code: _CoapMessage2.default.Code.CONTENT,
+  type: _CoapMessage2.default.Type.ACK
 }], ['SignalStartReturn', {
-  code: _h.Message.Code.CHANGED,
-  type: _h.Message.Type.ACK
+  code: _CoapMessage2.default.Code.CHANGED,
+  type: _CoapMessage2.default.Type.ACK
 }], ['ChunkMissedAck', {
-  code: _h.Message.Code.EMPTY,
-  type: _h.Message.Type.ACK
+  code: _CoapMessage2.default.Code.EMPTY,
+  type: _CoapMessage2.default.Type.ACK
 }], ['DescribeReturn', {
-  code: _h.Message.Code.CHANGED,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.CHANGED,
+  type: _CoapMessage2.default.Type.NON
 }], ['KeyChanged', {
-  code: _h.Message.Code.CHANGED,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.CHANGED,
+  type: _CoapMessage2.default.Type.NON
 }], ['UpdateReady', {
-  code: _h.Message.Code.CHANGED,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.CHANGED,
+  type: _CoapMessage2.default.Type.NON
 }], ['ChunkReceived', {
-  code: _h.Message.Code.CHANGED,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.CHANGED,
+  type: _CoapMessage2.default.Type.NON
 }], ['ChunkReceivedError', {
-  code: _h.Message.Code.BAD_REQUEST,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.BAD_REQUEST,
+  type: _CoapMessage2.default.Type.NON
 }], ['FunctionReturn', {
-  code: _h.Message.Code.CHANGED,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.CHANGED,
+  type: _CoapMessage2.default.Type.NON
 }], ['FunctionReturnError', {
-  code: _h.Message.Code.BAD_REQUEST,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.BAD_REQUEST,
+  type: _CoapMessage2.default.Type.NON
 }], ['VariableValue', {
-  code: _h.Message.Code.CONTENT,
-  type: _h.Message.Type.ACK
+  code: _CoapMessage2.default.Code.CONTENT,
+  type: _CoapMessage2.default.Type.ACK
 }], ['VariableValueError', {
-  code: _h.Message.Code.BAD_REQUEST,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.BAD_REQUEST,
+  type: _CoapMessage2.default.Type.NON
 }], ['Ping', {
-  code: _h.Message.Code.EMPTY,
-  type: _h.Message.Type.CON
+  code: _CoapMessage2.default.Code.EMPTY,
+  type: _CoapMessage2.default.Type.CON
 }], ['PingAck', {
-  code: _h.Message.Code.EMPTY,
-  Response: null,
-  type: _h.Message.Type.ACK,
+  code: _CoapMessage2.default.Code.EMPTY,
+  response: null,
+  type: _CoapMessage2.default.Type.ACK,
   uri: null
 }], ['SocketPing', {
-  code: _h.Message.Code.EMPTY,
-  type: _h.Message.Type.NON
+  code: _CoapMessage2.default.Code.EMPTY,
+  type: _CoapMessage2.default.Type.NON
 }]].map(function (_ref) {
   var _ref2 = (0, _slicedToArray3.default)(_ref, 2),
       name = _ref2[0],
@@ -201,6 +180,27 @@ var MessageSpecifications = [['Hello', {
   }
 
   return [name, (0, _extends3.default)({}, value, { template: template })];
-});
+}); /*
+     *   Copyright (C) 2013-2014 Spark Labs, Inc. All rights reserved. -  https://www.spark.io/
+     *
+     *   This file is part of the Spark-protocol module
+     *
+     *   This program is free software: you can redistribute it and/or modify
+     *   it under the terms of the GNU General Public License version 3
+     *   as published by the Free Software Foundation.
+     *
+     *   Spark-protocol is distributed in the hope that it will be useful,
+     *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+     *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     *   GNU General Public License for more details.
+     *
+     *   You should have received a copy of the GNU General Public License
+     *   along with Spark-protocol.  If not, see <http://www.gnu.org/licenses/>.
+     *
+     *   You can download the source here: https://github.com/spark/spark-protocol
+     *
+     * 
+     *
+     */
 
 exports.default = MessageSpecifications;

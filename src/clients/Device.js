@@ -25,21 +25,16 @@ import type Handshake from '../lib/Handshake';
 import type { MessageType } from '../lib/MessageSpecifications';
 import type { FileTransferStoreType } from '../lib/FileTransferStore';
 
-import EventEmitter from 'events';
-import moment from 'moment';
-
-import { Message } from 'h5.coap';
-
-import settings from '../settings';
+import CoapMessage from '../lib/CoapMessage';
+import CoapPacket from 'coap-packet';
 import CryptoManager from '../lib/CryptoManager';
-import Messages from '../lib/Messages';
 import FileTransferStore from '../lib/FileTransferStore';
-
+import CoapMessages from '../lib/CoapMessages';
 import Flasher from '../lib/Flasher';
+import EventEmitter from 'events';
 import logger from '../lib/logger';
-import { BufferReader } from 'h5.buffers';
 import nullthrows from 'nullthrows';
-
+import settings from '../settings';
 
 type DeviceDescription = {|
   firmwareVersion: number,
@@ -281,24 +276,23 @@ class Device extends EventEmitter {
   };
 
   _getHello = (chunk: Buffer) => {
-    const message = Messages.unwrap(chunk);
+    const message = CoapMessages.unwrap(chunk);
     if (!message) {
       throw new Error('failed to parse hello');
     }
 
-    this._recieveCounter = message.getId();
+    this._recieveCounter = message.messageId;
 
     try {
-      const payload = message.getPayload();
+      const payload = message.payload;
       if (payload.length <= 0) {
         return;
       }
 
-      const payloadBuffer = new BufferReader(payload);
-      this._particleProductId = payloadBuffer.shiftUInt16();
-      this._productFirmwareVersion = payloadBuffer.shiftUInt16();
-      this._reservedFlags = payloadBuffer.shiftUInt16();
-      this._platformId = payloadBuffer.shiftUInt16();
+      this._particleProductId = payload.readUInt16BE(0);
+      this._productFirmwareVersion = payload.readUInt16BE(2);
+      this._reservedFlags = payload.readUInt16BE(4);
+      this._platformId = payload.readUInt16BE(6);
     } catch (error) {
       logger.log('error while parsing hello payload ', error);
     }
@@ -329,8 +323,9 @@ class Device extends EventEmitter {
    * @param data
    */
   routeMessage = (data: Buffer) => {
-    const message = Messages.unwrap(data);
-    if (!message) {
+    const packet = CoapMessages.unwrap(data);
+
+    if (!packet) {
       logger.error(
         'routeMessage got a NULL coap message ',
         { deviceID: this._id },
@@ -338,42 +333,48 @@ class Device extends EventEmitter {
       return;
     }
 
-    // should be adequate
-    const messageCode = message.getCode();
+    // make sure the packet always has a number for code...
+    packet.code = parseFloat(packet.code);
+
+    // Get the message code (the decimal portion of the code) to determine
+    // how we should handle the message
+    const messageCode = packet.code;
     let requestType = '';
     if (
-      messageCode > Message.Code.EMPTY &&
-      messageCode <= Message.Code.DELETE
+      messageCode > CoapMessage.Code.EMPTY &&
+      messageCode <= CoapMessage.Code.DELETE
     ) {
       // probably a request
-      requestType = Messages.getRequestType(message);
+      requestType = CoapMessages.getRequestType(packet);
     }
 
     if (!requestType) {
-      requestType = this._getResponseType(message.getTokenString());
+      requestType = this._getResponseType(packet.token);
     }
 
-    if (message.isAcknowledgement()) {
+    // This is just a dumb ack packet. We don't really need to do anything
+    // with it.
+    if (packet.ack) {
       if (!requestType) {
         // no type, can't route it.
         requestType = 'PingAck';
       }
 
-      this.emit(requestType, message);
+      this.emit(requestType, packet);
       return;
     }
 
     this._incrementReceiveCounter();
-    if (message.isEmpty() && message.isConfirmable()) {
+    if (packet.code === 0 && packet.confirmable) {
       this._lastDevicePing = new Date();
-      this.sendReply('PingAck', message.getId());
+      this.sendReply('PingAck', packet.messageId);
       return;
     }
 
-    if (!message || message.getId() !== this._recieveCounter) {
+    if (!packet || packet.messageId !== this._recieveCounter) {
       logger.log(
         'got counter ',
-        message.getId(),
+        packet.messageId,
         ' expecting ',
         this._recieveCounter,
         { deviceID: this._id },
@@ -390,7 +391,7 @@ class Device extends EventEmitter {
       return;
     }
 
-    this.emit(requestType || '', message);
+    this.emit(requestType || '', packet);
   };
 
   sendReply = (
@@ -414,7 +415,14 @@ class Device extends EventEmitter {
       id = this._sendCounter; // eslint-disable-line no-param-reassign
     }
 
-    const message = Messages.wrap(messageName, id, null, data, token, null);
+    const message = CoapMessages.wrap(
+      messageName,
+      id,
+      null,
+      null,
+      data,
+      token,
+    );
     if (!message) {
       logger.error(
         'Device - could not unwrap message',
@@ -436,6 +444,7 @@ class Device extends EventEmitter {
   sendMessage = (
     messageName: MessageType,
     params: ?Object,
+    options: ?Array<CoapOption>,
     data: ?Buffer,
     requester?: Object,
   ): number => {
@@ -448,16 +457,17 @@ class Device extends EventEmitter {
     this._incrementSendCounter();
 
     let token = null;
-    if (!Messages.isNonTypeMessage(messageName)) {
+    if (!CoapMessages.isNonTypeMessage(messageName)) {
       this._incrementSendToken();
       this._useToken(messageName, this._sendToken);
       token = this._sendToken;
     }
 
-    const message = Messages.wrap(
+    const message = CoapMessages.wrap(
       messageName,
       this._sendCounter,
       params,
+      options,
       data,
       token,
     );
@@ -491,7 +501,7 @@ class Device extends EventEmitter {
     const beVerbose = settings.SHOW_VERBOSE_DEVICE_LOGS;
 
     return new Promise((
-      resolve: (message: Message) => void,
+      resolve: (packet: CoapPacket) => void,
       reject: (error?: Error) => void,
     ) => {
       const timeout = setTimeout(
@@ -503,26 +513,28 @@ class Device extends EventEmitter {
       );
 
       // adds a one time event
-      const handler = (message: Message) => {
+      const handler = (packet: CoapPacket) => {
         clearTimeout(timeout);
-        if (uri && message.getUriPath().indexOf(uri) !== 0) {
+        const packetUri = CoapMessages.getUriPath(packet);
+        if (uri && packetUri.indexOf(uri) !== 0) {
           if (beVerbose) {
             logger.log(
               'URI filter did not match',
               uri,
-              message.getUriPath(),
+              packetUri,
               { deviceID: this._id },
             );
           }
           return;
         }
 
-        if (tokenHex && tokenHex !== message.getTokenString()) {
+        const packetTokenHex = packet.token.toString('hex');
+        if (tokenHex && tokenHex !== packetTokenHex) {
           if (beVerbose) {
             logger.log(
               'Tokens did not match ',
                tokenHex,
-               message.getTokenString(),
+               packetTokenHex,
                { deviceID: this._id },
              );
           }
@@ -530,7 +542,7 @@ class Device extends EventEmitter {
         }
 
         cleanUpListeners();
-        resolve(message);
+        resolve(packet);
       };
 
       const disconnectHandler = () => {
@@ -593,13 +605,14 @@ class Device extends EventEmitter {
     }
   };
 
-  _getResponseType = (tokenString: string): ?string => {
+  _getResponseType = (token: Buffer): ?string => {
+    const tokenString = token.toString('hex');
     const request = this._tokens[tokenString];
     if (!request) {
       return '';
     }
 
-    return Messages.getResponseType(request);
+    return CoapMessages.getResponseType(request);
   };
 
   getDescription = async (): Promise<DeviceDescription> => {
@@ -677,22 +690,16 @@ class Device extends EventEmitter {
       { deviceID: this._id, functionName },
     );
 
-    const writeUrl = (message: Message): Message => {
-      message.setUri(`f/${functionName}`);
-      if (buffer) {
-        message.setUriQuery(buffer.toString());
-      }
-
-      return message;
-    };
-
     const token = this.sendMessage(
       'FunctionCall',
       {
-        _writeCoapUri: writeUrl,
         args: buffer,
         name: functionName,
       },
+      [{
+        name: CoapMessage.Option.URI_PATH,
+        value: new Buffer(`f/${functionName}`),
+      }],
       null,
     );
 
@@ -711,11 +718,25 @@ class Device extends EventEmitter {
       throw new Error('This device is locked during the flashing process.');
     }
 
+    /**
+     * does the special URL writing needed directly to the COAP message object,
+     * since the URI requires non-text values
+     */
+    const buffer = new Buffer(1);
+    buffer.writeUInt8(shouldShowSignal ? 1 : 0, 0);
+
     const token = this.sendMessage(
       'SignalStart',
-      { _writeCoapUri: Messages.raiseYourHandUrlGenerator(shouldShowSignal) },
       null,
+      [{
+        name: CoapMessage.Option.URI_PATH,
+        value: new Buffer('s'),
+      }, {
+        name: CoapMessage.Option.URI_QUERY,
+        value: buffer,
+      }],
     );
+
     return await this.listenFor(
       'SignalStartReturn',
       null,
@@ -809,7 +830,7 @@ class Device extends EventEmitter {
 
   _transformVariableResult = (
     name: string,
-    message: Message,
+    packet: CoapPacket,
   ): ?Buffer => {
     // grab the variable type, if the device doesn't say, assume it's a 'string'
     const variableFunctionState = this._deviceFunctionState
@@ -819,14 +840,12 @@ class Device extends EventEmitter {
       ? variableFunctionState[name]
       : 'string';
 
-    let result = null;
-    let data = null;
+    let result: ?Buffer = null;
     try {
-      if (message && message.getPayload) {
+      if (packet.payload.length) {
         // leaving raw payload in response message for now, so we don't shock
         // our users.
-        data = message.getPayload();
-        result = Messages.fromBinary(data, variableType);
+        result = (CoapMessages.fromBinary(packet.payload, variableType): any);
       }
     } catch (error) {
       logger.error(
@@ -840,14 +859,15 @@ class Device extends EventEmitter {
   // Transforms the result from a device function to the correct type.
   _transformFunctionResult = (
     name: string,
-    message: Message,
+    packet: CoapPacket,
   ): ?Buffer => {
     const variableType = 'int32';
 
-    let result = null;
+    let result: ?Buffer = null;
     try {
-      if (message && message.getPayload) {
-        result = Messages.fromBinary(message.getPayload(), variableType);
+      if (packet.payload.length) {
+        result =
+          (CoapMessages.fromBinary(packet.payload, variableType): any);
       }
     } catch (error) {
       logger.error(
@@ -895,7 +915,7 @@ class Device extends EventEmitter {
     if (!functionState || !functionState.args) {
       return null;
     }
-    return Messages.buildArguments(args, functionState.args);
+    return CoapMessages.buildArguments(args, functionState.args);
   };
 
   _introspectionPromise: ?Promise<void> = null;
@@ -920,7 +940,7 @@ class Device extends EventEmitter {
 
     try {
       this._introspectionPromise = new Promise((
-        resolve: (message: Message) => void,
+        resolve: (packet: CoapPacket) => void,
         reject: (error?: Error) => void,
       ) => {
         const timeout = setTimeout(
@@ -933,13 +953,13 @@ class Device extends EventEmitter {
 
         let systemInformation = null;
         let functionState = null;
-        const handler = (message: Message) => {
-          const payload = message.getPayload();
-          if (!payload) {
+        const handler = (packet: CoapPacket) => {
+          const payload = packet.payload;
+          if (!payload.length) {
             reject(new Error('Payload empty for Describe message'));
           }
 
-          const data = JSON.parse(payload.toString());
+          const data = JSON.parse(payload.toString('utf8'));
 
           if (!systemInformation && data.m) {
             systemInformation = data;
@@ -948,7 +968,7 @@ class Device extends EventEmitter {
           if (data && data.v) {
             functionState = data;
             // 'v':{'temperature':2}
-            functionState.v = Messages.translateIntTypes(functionState.v);
+            functionState.v = CoapMessages.translateIntTypes(functionState.v);
           }
 
           if (!systemInformation || !functionState) {
@@ -1000,19 +1020,7 @@ class Device extends EventEmitter {
   };
 
   sendDeviceEvent = (event: Event) => {
-    const { data, isPublic, name, publishedAt, ttl } = event;
-
-    const rawFunction = (message: Message): void => {
-      try {
-        message.setMaxAge(ttl);
-        message.setTimestamp(moment(publishedAt).toDate());
-      } catch (error) {
-        logger.error(`onDeviceHeard - ${error.message}`);
-      }
-
-      return message;
-    };
-
+    const { data, isPublic, name, ttl } = event;
     const messageName = isPublic
       ? DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT
       : DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT;
@@ -1020,9 +1028,12 @@ class Device extends EventEmitter {
     this.sendMessage(
       messageName,
       {
-        _raw: rawFunction,
         event_name: name.toString(),
       },
+      [{
+        name: CoapMessage.Option.MAX_AGE,
+        value: CoapMessages.toBinary(ttl, 'uint32'),
+      }],
       data && new Buffer(data) || null,
     );
   };

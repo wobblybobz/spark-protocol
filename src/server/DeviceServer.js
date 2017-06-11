@@ -19,7 +19,6 @@
 */
 
 import type { Socket } from 'net';
-import type { Message } from 'h5.coap';
 import type { Event, IDeviceAttributeRepository } from '../types';
 import type ClaimCodeManager from '../lib/ClaimCodeManager';
 import type CryptoManager from '../lib/CryptoManager';
@@ -37,7 +36,7 @@ import Device from '../clients/Device';
 
 import FirmwareManager from '../lib/FirmwareManager';
 import logger from '../lib/logger';
-import Messages from '../lib/Messages';
+import CoapMessages from '../lib/CoapMessages';
 import { getRequestEventName } from '../lib/EventPublisher';
 import SPARK_SERVER_EVENTS from '../lib/SparkServerEvents';
 import {
@@ -209,34 +208,34 @@ class DeviceServer {
 
           device.on(
             DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE,
-            (message: Message): Promise<void> =>
-              this._onDeviceSubscribe(message, device),
+            (packet: CoapPacket): Promise<void> =>
+              this._onDeviceSubscribe(packet, device),
           );
 
           device.on(
             DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT,
-            (message: Message): Promise<void> =>
+            (packet: CoapPacket): Promise<void> =>
               this._onDeviceSentMessage(
-                message,
-                /* isPublic */false,
+                packet,
+                /* isPublic*/ false,
                 device,
               ),
           );
 
           device.on(
             DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT,
-            (message: Message): Promise<void> =>
+            (packet: CoapPacket): Promise<void> =>
               this._onDeviceSentMessage(
-                message,
-                /* isPublic */true,
+                packet,
+                /* isPublic*/ true,
                 device,
               ),
           );
 
           device.on(
             DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME,
-            (message: Message): void =>
-              this._onDeviceGetTime(message, device),
+            (packet: CoapPacket): void =>
+              this._onDeviceGetTime(packet, device),
           );
 
           device.on(
@@ -333,15 +332,15 @@ class DeviceServer {
     );
   };
 
-  _onDeviceGetTime = (message: Message, device: Device) => {
+  _onDeviceGetTime = (packet: CoapPacket, device: Device) => {
     const timeStamp = moment().utc().unix();
-    const binaryValue = Messages.toBinary(timeStamp, 'uint32');
+    const binaryValue = CoapMessages.toBinary(timeStamp, 'uint32');
 
     device.sendReply(
       'GetTimeReturn',
-      message.getId(),
+      packet.messageId,
       binaryValue,
-      message.getToken(),
+      packet.token.length ? packet.token.readUInt8(0) : 0,
     );
   };
 
@@ -396,7 +395,7 @@ class DeviceServer {
   };
 
   _onDeviceSentMessage = async (
-    message: Message,
+    packet: CoapPacket,
     isPublic: boolean,
     device: Device,
   ): Promise<void> => {
@@ -408,13 +407,11 @@ class DeviceServer {
 
       const eventData = {
         connectionID: device.getConnectionKey(),
-        data: message.getPayloadLength() === 0
-          ? ''
-          : message.getPayload().toString(),
+        data: packet.payload.toString('utf8'),
         deviceID,
         isPublic,
-        name: message.getUriPath().substr(3),
-        ttl: message.getMaxAge(),
+        name: CoapMessages.getUriPath(packet).substr(3),
+        ttl: CoapMessages.getMaxAge(packet),
       };
 
       const eventName = eventData.name.toLowerCase();
@@ -434,7 +431,7 @@ class DeviceServer {
             eventName.startsWith(specialEvent),
         );
         if (shouldSwallowEvent) {
-          device.sendReply('EventAck', message.getId());
+          device.sendReply('EventAck', packet.messageId);
         }
       }
 
@@ -443,7 +440,7 @@ class DeviceServer {
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-        await this._onDeviceClaimCodeMessage(message, device);
+        await this._onDeviceClaimCodeMessage(packet, device);
       }
 
       if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_IP)) {
@@ -530,10 +527,10 @@ class DeviceServer {
   };
 
   _onDeviceClaimCodeMessage = async (
-    message: Message,
+    packet: CoapPacket,
     device: Device,
   ): Promise<void> => {
-    const claimCode = message.getPayload().toString();
+    const claimCode = packet.payload.toString('utf8');
     const deviceID = device.getID();
     const deviceAttributes =
       await this._deviceAttributeRepository.getByID(deviceID);
@@ -562,7 +559,7 @@ class DeviceServer {
   };
 
   _onDeviceSubscribe = async (
-    message: Message,
+    packet: CoapPacket,
     device: Device,
   ): Promise<void> => {
     // uri -> /e/?u    --> firehose for all my devices
@@ -570,16 +567,16 @@ class DeviceServer {
     // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
     // uri -> /e/event_name?u    --> all my devices
     // uri -> /e/event_name?u (deviceid)    --> deviceid?
-    const messageName = message.getUriPath().substr(3);
+    const messageName = CoapMessages.getUriPath(packet).substr(3);
     const deviceID = device.getID();
     const deviceAttributes =
       await this._deviceAttributeRepository.getByID(deviceID);
     let ownerID = deviceAttributes && deviceAttributes.ownerID;
-    const query = message.getUriQuery();
-    const isFromMyDevices = query && !!query.match('u');
+    const query = CoapMessages.getUriQuery(packet);
+    const isFromMyDevices = !!query.match('u');
 
     if (!messageName) {
-      device.sendReply('SubscribeFail', message.getId());
+      device.sendReply('SubscribeFail', packet.messageId);
       return;
     }
 
@@ -592,7 +589,7 @@ class DeviceServer {
       },
     );
 
-    device.sendReply('SubscribeAck', message.getId());
+    device.sendReply('SubscribeAck', packet.messageId);
 
     process.nextTick(() => {
       if (!ownerID) {
@@ -610,7 +607,7 @@ class DeviceServer {
         device.onDeviceEvent,
         {
           filterOptions: {
-            connectionID: isSystemEvent ? device.getConnectionKey() : null,
+            connectionID: isSystemEvent ? device.getConnectionKey() : undefined,
             mydevices: isFromMyDevices,
             userID: ownerID,
           },

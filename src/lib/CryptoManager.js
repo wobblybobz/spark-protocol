@@ -4,7 +4,7 @@ import type { IDeviceKeyRepository, ServerKeyRepository } from '../types';
 
 import crypto from 'crypto';
 import CryptoStream from './CryptoStream';
-import ursa from 'ursa';
+import NodeRSA from 'node-rsa';
 
 const HASH_TYPE = 'sha1';
 
@@ -49,18 +49,18 @@ class CryptoManager {
     });
   };
 
-  _createServerKeys = async (): Promise<Object> => {
-    const privateKey = ursa.generatePrivateKey();
+  _createServerKeys = async (): Promise<NodeRSA> => {
+    const privateKey = new NodeRSA({ b: 1024 });
 
     await this._serverKeyRepository.createKeys(
-      privateKey.toPrivatePem('binary'),
-      privateKey.toPublicPem('binary'),
+      privateKey.exportKey('pkcs1-private-pem'),
+      privateKey.exportKey('pkcs8-public-pem'),
     );
 
     return privateKey;
   };
 
-  _getServerPrivateKey = async (): Promise<Object> => {
+  _getServerPrivateKey = async (): Promise<NodeRSA> => {
     const privateKeyString =
       await this._serverKeyRepository.getPrivateKey();
 
@@ -68,9 +68,12 @@ class CryptoManager {
       return await this._createServerKeys();
     }
 
-    return ursa.createPrivateKey(
+    return new NodeRSA(
       privateKeyString,
-      this._serverKeyPassword || undefined,
+      {
+        encryptionScheme: 'pkcs1',
+        signingScheme: 'pkcs1',
+      },
     );
   };
 
@@ -92,39 +95,43 @@ class CryptoManager {
   createDevicePublicKey = async (
     deviceID: string,
     publicKeyPem: string,
-  ): Promise<Object> => {
+  ): Promise<NodeRSA> => {
     await this._deviceKeyRepository.update({ deviceID, key: publicKeyPem });
-    return ursa.createPublicKey(publicKeyPem);
+    return new NodeRSA(
+      publicKeyPem,
+      'pkcs8-public-pem',
+      {
+        encryptionScheme: 'pkcs1',
+        signingScheme: 'pkcs1',
+      },
+    );
   };
 
   decrypt = (data: Buffer): Buffer =>
     this._serverPrivateKey.decrypt(
       data,
-      /* input buffer encoding */undefined,
-      /* output buffer encoding*/undefined,
-      ursa.RSA_PKCS1_PADDING,
     );
 
-  encrypt = (publicKey: Object, data: Buffer): Buffer =>
+  encrypt = (publicKey: NodeRSA, data: Buffer): Buffer =>
     publicKey.encrypt(
       data,
-      /* input buffer encoding */undefined,
-      /* output buffer encoding*/undefined,
-      ursa.RSA_PKCS1_PADDING,
     );
 
   getDevicePublicKey = async (deviceID: string): Promise<?Object> => {
     const publicKeyObject = await this._deviceKeyRepository.getByID(deviceID);
-    return publicKeyObject ? ursa.createPublicKey(publicKeyObject.key) : null;
+    return publicKeyObject
+      ? new NodeRSA(
+        publicKeyObject.key,
+        'pkcs8-public-pem',
+        {
+          encryptionScheme: 'pkcs1',
+          signingScheme: 'pkcs1',
+        },
+      )
+      : null;
   };
 
-  keysEqual = (existingKey: Object, publicKeyPem: ? string): bool => {
-    if (!publicKeyPem) {
-      return false;
-    }
-
-    return ursa.equalKeys(existingKey, ursa.createPublicKey(publicKeyPem));
-  }
+  keysEqual = (existingKey: NodeRSA, publicKeyPem: ? string): bool => existingKey.exportKey('pkcs8-public-pem') === publicKeyPem
 
   getRandomBytes = (size: number): Promise<Buffer> =>
     new Promise((
@@ -151,7 +158,7 @@ class CryptoManager {
   };
 
   sign = async (hash: Buffer): Promise<Buffer> =>
-    this._serverPrivateKey.privateEncrypt(hash);
+    this._serverPrivateKey.encryptPrivate(hash);
 }
 
 export default CryptoManager;

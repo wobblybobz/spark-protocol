@@ -21,19 +21,19 @@
 *
 */
 
+import type { CoapMessageTypes } from './CoapMessage';
 import type {
   MessageSpecificationType,
   MessageType,
 } from './MessageSpecifications';
 
-import { Message } from 'h5.coap';
-import Option from 'h5.coap/lib/Option';
-import logger from '../lib/logger';
-import { BufferBuilder, BufferReader } from 'h5.buffers';
+import CoapMessage from './CoapMessage';
 import MessageSpecifications from './MessageSpecifications';
+import CoapPacket from 'coap-packet';
+import compactArray from 'compact-array';
+import logger from '../lib/logger';
 
-
-const _getRouteKey = (code: string, path: string): string => {
+const _getRouteKey = (code: number, path: string): string => {
   const uri = code + path;
   const idx = uri.indexOf('/');
 
@@ -42,13 +42,49 @@ const _getRouteKey = (code: string, path: string): string => {
   // '/' or '?', or use the real coap parsing stuff
   return uri.substr(0, idx + 2);
 };
+const _messageTypeToPacketProps = (
+  type: CoapMessageTypes,
+): {ack: boolean, confirmable: boolean, reset: boolean} => {
+  const output = {
+    ack: false,
+    confirmable: false,
+    reset: false,
+  };
+  const types = CoapMessage.Type;
+  if (type === types.ACK) {
+    output.ack = true;
+  } else if (type === types.CON) {
+    output.confirmable = true;
+  } else if (type === types.RST) {
+    output.reset = true;
+  }
 
-class Messages {
-  _specifications: Map<MessageType, MessageSpecificationType> =
+  return output;
+};
+
+const _decodeNumericValue = (buffer: Buffer): number => {
+  const length = buffer.length;
+  if (length === 0) {
+    return 0;
+  } else if (length === 1) {
+    return buffer[0];
+  } else if (length === 2) {
+    return buffer.readUInt16BE(0);
+  } else if (length === 3) {
+    /* eslint-disable no-bitwise*/
+    return (buffer[1] << 8) | buffer[2] + (buffer[0] << 16 >>> 0);
+    /* eslint-enable no-bitwise*/
+  }
+
+  return buffer.readUInt32BE(0);
+};
+
+class CoapMessages {
+  static _specifications: Map<MessageType, MessageSpecificationType> =
     new Map(MessageSpecifications);
 
   // Maps CODE + URL to MessageNames as they appear in 'Spec'
-  _routes: Map<string, MessageType> = new Map(
+  static _routes: Map<string, MessageType> = new Map(
     MessageSpecifications
       .filter(
         // eslint-disable-next-line no-unused-vars
@@ -68,105 +104,117 @@ class Messages {
       ),
   );
 
-  /**
-   * does the special URL writing needed directly to the COAP message object,
-   * since the URI requires non-text values
-   */
-  raiseYourHandUrlGenerator = (
-    showSignal: boolean,
-  ): (message: Message) => Buffer =>
-    (message: Message): Buffer => {
-      const buffer = new Buffer(1);
-      buffer.writeUInt8(showSignal ? 1 : 0, 0);
+  static getUriPath = (packet: CoapPacket): string => {
+    const options = packet.options.filter(
+      (item: CoapOption): boolean => item.name === CoapMessage.Option.URI_PATH,
+    );
 
-      message.addOption(new Option(Message.Option.URI_PATH, new Buffer('s')));
-      message.addOption(new Option(Message.Option.URI_QUERY, buffer));
-      return message;
-    };
+    if (!options.length) {
+      return '';
+    }
 
-  getRequestType = (message: Message): ?string => {
-    const uri = _getRouteKey(message.getCode(), message.getUriPath());
-    return this._routes.get(uri);
+    return `/${options
+      .map((item: CoapOption): string => item.value.toString('utf8'))
+      .join('/')}`;
   };
 
-  getResponseType = (name: MessageType): ?string => {
-    const specification = this._specifications.get(name);
-    return specification ? specification.Response : null;
+  static getUriQuery = (packet: CoapPacket): string => packet.options
+    .filter(
+      (item: CoapOption): boolean => item.name === CoapMessage.Option.URI_QUERY,
+    )
+    .map((item: CoapOption): string => item.value.toString('utf8'))
+    .join('&');
+
+  static getMaxAge = (packet: CoapPacket): number => {
+    const option = packet.options.find(
+      (item: CoapOption): boolean => item.name === CoapMessage.Option.MAX_AGE,
+    );
+
+    if (!option) {
+      return 0;
+    }
+
+    return _decodeNumericValue(option.value);
   };
 
-  statusIsOkay = (message: Message): boolean =>
-    message.getCode() < Message.Code.BAD_REQUEST;
+  static getRequestType = (packet: CoapPacket): ?string => {
+    const uri = _getRouteKey(
+      packet.code,
+      CoapMessages.getUriPath(packet),
+    );
 
-  isNonTypeMessage = (messageName: MessageType): boolean => {
-    const specification = this._specifications.get(messageName);
+    return CoapMessages._routes.get(uri);
+  };
+
+  static getResponseType = (name: MessageType): ?string => {
+    const specification = CoapMessages._specifications.get(name);
+    return specification ? specification.response : null;
+  };
+
+  static statusIsOkay = (message: CoapPacket): boolean =>
+    message.code < CoapMessage.Code.BAD_REQUEST;
+
+  static isNonTypeMessage = (messageName: MessageType): boolean => {
+    const specification = CoapMessages._specifications.get(messageName);
     if (!specification) {
       return false;
     }
 
-    return specification.type === Message.Type.NON;
+    return specification.type === CoapMessage.Type.NON;
   };
 
-  wrap = (
+  static wrap = (
     messageName: MessageType,
-    messageCounterId: number,
+    messageId: number,
     params: ?Object,
+    options: ?Array<CoapOption>,
     data: ?Buffer,
     token: ?number,
   ): ?Buffer => {
-    const specification = this._specifications.get(messageName);
+    const specification = CoapMessages._specifications.get(messageName);
     if (!specification) {
       logger.error('Unknown Message Type');
       return null;
     }
 
-    // Setup the Message
-    let message = new Message();
-
     // Format our url
     let uri = specification.uri;
-    if (params && params._writeCoapUri) {
-      // for our messages that have nitty gritty urls that require raw bytes
-      // and no strings.
-      message = params._writeCoapUri(message);
-      uri = null;
-    } else if (params && specification.template) {
+    if (params && specification.template) {
       uri = specification.template.render(params);
     }
 
-    if (uri) {
-      message.setUri(uri);
-    }
-
-    message.setId(messageCounterId);
-
-    if (token !== null && token !== undefined) {
-      const buffer = new Buffer(1);
-      buffer.writeUInt8(token, 0);
-      message.setToken(buffer);
-    }
-
-    message.setCode(specification.code);
-    message.setType(specification.type);
-
-    // Set our payload
-    if (data) {
-      message.setPayload(data);
-    }
-
     if (params && params._raw) {
-      params._raw(message);
+      throw new Error('_raw', params);
     }
 
-    return message.toBuffer();
+    const uriOption = uri && (!options || !options.some(
+      (item: CoapOption): boolean =>
+        item.name === CoapMessage.Option.URI_PATH,
+    )) && {
+      name: CoapMessage.Option.URI_PATH,
+      value: new Buffer(uri),
+    };
+
+    return CoapPacket.generate({
+      ..._messageTypeToPacketProps(specification.type),
+      code: specification.code.toString(),
+      messageId,
+      options: compactArray([
+        ...(options || []),
+        uriOption,
+      ]),
+      payload: data,
+      token: token && Buffer.from([token]),
+    });
   };
 
-  unwrap = (data: Buffer): ?Message => {
+  static unwrap = (data: Buffer): ?CoapPacket => {
     if (!data) {
       return null;
     }
 
     try {
-      return Message.fromBuffer(data);
+      return CoapPacket.parse(data);
     } catch (error) {
       logger.error(`Coap Error: ${error}`);
     }
@@ -184,7 +232,7 @@ class Messages {
   // 5: NULL (void for return value only)
   // 9: REAL (double)
   // Translates the integer variable type enum to user friendly string types
-  translateIntTypes = (varState: ?Object): ?Object => {
+  static translateIntTypes = (varState: ?Object): ?Object => {
     if (!varState) {
       return null;
     }
@@ -208,7 +256,7 @@ class Messages {
     return { ...varState, ...translatedVarState };
   };
 
-  getNameFromTypeInt = (typeInt: number): string => {
+  static getNameFromTypeInt = (typeInt: number): string => {
     switch (typeInt) {
       case 1: {
         return 'bool';
@@ -238,7 +286,10 @@ class Messages {
   };
 
   // eslint-disable-next-line func-names
-  tryFromBinary = function<TType> (buffer: Buffer, typeName: string): ?TType {
+  static tryFromBinary = function<TType> (
+    buffer: Buffer,
+    typeName: string,
+  ): ?TType {
     let result = null;
     try {
       result = this.fromBinary(buffer, typeName);
@@ -251,110 +302,109 @@ class Messages {
   };
 
   // eslint-disable-next-line func-names
-  fromBinary = function<TType> (buffer: Buffer, typeName: string): TType {
-    const bufferReader = new BufferReader(buffer);
-
+  static fromBinary = (buffer: Buffer, typeName: string): * => {
     switch (typeName) {
       case 'bool': {
-        return !!bufferReader.shiftByte();
+        return !!buffer.readUInt8(0);
       }
 
       case 'byte': {
-        return bufferReader.shiftByte();
+        return buffer.readUInt8(0);
       }
 
       case 'crc': {
-        return bufferReader.shiftUInt32();
+        return buffer.readInt32BE(0);
       }
 
       case 'uint32': {
-        return bufferReader.shiftUInt32();
+        return buffer.readUInt32BE(0);
       }
 
       case 'uint16': {
-        return bufferReader.shiftUInt16();
+        return buffer.readUInt16BE(0);
       }
 
       case 'int32':
       case 'number': {
-        return bufferReader.shiftInt32();
+        return buffer.readInt32BE(0);
       }
 
       case 'float': {
-        return bufferReader.shiftFloat();
+        return buffer.readFloatBE(0);
       }
 
       case 'double': {
         // doubles on the device are little-endian
-        return bufferReader.shiftDouble(true);
+        return buffer.readDoubleLE(0);
       }
 
       case 'buffer': {
-        return ((bufferReader.buffer: any): TType);
+        return buffer;
       }
 
       case 'string':
       default: {
-        return bufferReader.buffer.toString();
+        return buffer.toString('utf8');
       }
     }
   };
 
-  toBinary = (
+  static toBinary = (
     value: ?(string | number | Buffer),
     typeName?: string,
-    bufferBuilder?: BufferBuilder = new BufferBuilder(),
   ): Buffer => {
     // eslint-disable-next-line no-param-reassign
     typeName = typeName || (typeof value);
 
     if (value === null) {
-      return bufferBuilder;
+      return new Buffer(0);
     }
 
     switch (typeName) {
       case 'uint16': {
-        bufferBuilder.pushUInt16(value);
-        break;
+        const buffer = Buffer.allocUnsafe(2);
+        buffer.writeUInt16BE((value: any), 0);
+        return buffer;
       }
       case 'uint32':
       case 'crc': {
-        bufferBuilder.pushUInt32(value);
-        break;
+        const buffer = Buffer.allocUnsafe(4);
+        buffer.writeUInt32BE((value: any), 0);
+        return buffer;
       }
 
       case 'int32': {
-        bufferBuilder.pushInt32(value);
-        break;
+        const buffer = Buffer.allocUnsafe(4);
+        buffer.writeInt32BE((value: any), 0);
+        return buffer;
       }
 
       case 'number':
       case 'double': {
-        bufferBuilder.pushDouble(value);
-        break;
+        const buffer = Buffer.allocUnsafe(4);
+        buffer.writeDoubleLE((value: any), 0);
+        return buffer;
       }
 
       case 'buffer': {
-        bufferBuilder.pushBuffer(value);
-        break;
+        return Buffer.concat([
+          (value: any),
+        ]);
       }
 
       case 'string':
       default: {
-        bufferBuilder.pushString(value || '');
-        break;
+        return new Buffer((value: any) || '');
       }
     }
-
-    return bufferBuilder.toBuffer();
   };
 
-  buildArguments = (
+  static buildArguments = (
     requestArgs: {[key: string]: string},
     args: Array<Array<any>>,
   ): ?Buffer => {
     try {
-      const bufferBuilder = new BufferBuilder();
+      const bufferBuilder = new Buffer([]);
       const requestArgsKey = Object.keys(requestArgs)[0];
       args
         .filter((arg: Array<any>): boolean => !!arg)
@@ -371,7 +421,7 @@ class Messages {
         });
 
 
-      return bufferBuilder.toBuffer();
+      return bufferBuilder;
     } catch (error) {
       logger.error(`buildArguments error: ${error}`);
     }
@@ -380,4 +430,4 @@ class Messages {
   };
 }
 
-export default new Messages();
+export default CoapMessages;

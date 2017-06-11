@@ -20,17 +20,16 @@
 
 import type { FileTransferStoreType } from './FileTransferStore';
 
-import messages from './Messages';
-import logger from '../lib/logger';
 import BufferStream from './BufferStream';
+import CoapMessage from './CoapMessage';
+import CoapMessages from './CoapMessages';
 import Device from '../clients/Device';
 import ProtocolErrors from './ProtocolErrors';
 import FileTransferStore from './FileTransferStore';
-
-import buffers from 'h5.buffers';
-import { Message } from 'h5.coap';
-import Option from 'h5.coap/lib/Option';
+import CoapPacket from 'coap-packet';
+import compactArray from 'compact-array';
 import crc32 from 'buffer-crc32';
+import logger from '../lib/logger';
 import nullthrows from 'nullthrows';
 
 //
@@ -141,7 +140,7 @@ class Flasher {
     // start listening for missed chunks before the update fully begins
     this._client.on(
       'msg_chunkmissed',
-      (message: Message): void => this._onChunkMissed(message),
+      (packet: CoapPacket): void => this._onChunkMissed(packet),
     );
   };
 
@@ -183,7 +182,7 @@ class Flasher {
 
       // Wait for UpdateReady — sent by device to indicate readiness to receive
       // firmware chunks
-      const message = await Promise.race([
+      const packet = await Promise.race([
         this._client.listenFor(
           'UpdateReady',
           /* uri */ null,
@@ -193,16 +192,10 @@ class Flasher {
           'UpdateAbort',
           /* uri */ null,
           /* token */ null,
-        ).then((updateStatusMessage: ?Message): ?Message => {
+        ).then((newPacket: ?CoapPacket): ?CoapPacket => {
           let failReason = '';
-          if (
-            updateStatusMessage &&
-            updateStatusMessage.getPayloadLength() > 0
-          ) {
-            failReason = messages.fromBinary(
-              updateStatusMessage.getPayload(),
-              'byte',
-            );
+          if (newPacket && newPacket.payload.length) {
+            failReason = !!newPacket.payload.readUInt8(0);
           }
 
           failReason = !Number.isNaN(failReason)
@@ -230,15 +223,19 @@ class Flasher {
 
       // Message will be null if the message isn't read by the device and we are
       // retrying
-      if (!message) {
+      if (!packet) {
         return;
       }
 
       maxTries = 0;
 
       let version = 0;
-      if (message && message.getPayloadLength() > 0) {
-        version = messages.fromBinary(message.getPayload(), 'byte');
+      if (
+        packet &&
+        packet.payload &&
+        packet.payload.length > 0
+      ) {
+        version = packet.payload.readUInt8(0);
       }
       this._protocolVersion = version;
     };
@@ -275,18 +272,18 @@ class Flasher {
       flags = 1;
     }
 
-    const bufferBuilder = new buffers.BufferBuilder();
-    bufferBuilder.pushUInt8(flags);
-    bufferBuilder.pushUInt16(chunkSize);
-    bufferBuilder.pushUInt32(fileSize);
-    bufferBuilder.pushUInt8(destFlag);
-    bufferBuilder.pushUInt32(destAddr);
-
     // UpdateBegin — sent by Server to initiate an OTA firmware update
     return !!this._client.sendMessage(
       'UpdateBegin',
       null,
-      bufferBuilder.toBuffer(),
+      null,
+      Buffer.concat([
+        CoapMessages.toBinary(flags, 'uint8'),
+        CoapMessages.toBinary(chunkSize, 'uint16'),
+        CoapMessages.toBinary(fileSize, 'uint32'),
+        CoapMessages.toBinary(destFlag, 'uint8'),
+        CoapMessages.toBinary(destAddr, 'uint32'),
+      ]),
       this,
     );
   };
@@ -326,7 +323,7 @@ class Flasher {
         null,
         messageToken,
       );
-      if (!messages.statusIsOkay(message)) {
+      if (!CoapMessages.statusIsOkay(message)) {
         throw new Error('\'ChunkReceived\' failed.');
       }
     }
@@ -370,7 +367,7 @@ class Flasher {
           messageToken,
         );
 
-        if (!messages.statusIsOkay(message)) {
+        if (!CoapMessages.statusIsOkay(message)) {
           throw new Error('\'ChunkReceived\' failed.');
         }
       }),
@@ -400,34 +397,21 @@ class Flasher {
   };
 
   _sendChunk = (chunkIndex: ?number = 0): number => {
-    const encodedCrc = messages.toBinary(
+    const encodedCrc = CoapMessages.toBinary(
       nullthrows(this._lastCrc),
       'crc',
     );
 
-    const writeCoapUri = (message: Message): Message => {
-      message.addOption(
-        new Option(Message.Option.URI_PATH, new Buffer('c')),
-      );
-      message.addOption(new Option(Message.Option.URI_QUERY, encodedCrc));
-      if (this._fastOtaEnabled && this._protocolVersion > 0) {
-        const indexBinary = messages.toBinary(
-          chunkIndex,
-          'uint16',
-        );
-        message.addOption(
-          new Option(Message.Option.URI_QUERY, indexBinary),
-        );
-      }
-      return message;
-    };
-
     return this._client.sendMessage(
       'Chunk',
-      {
-        _writeCoapUri: writeCoapUri,
-        crc: encodedCrc,
-      },
+      { crc: encodedCrc },
+      compactArray([{
+        name: CoapMessage.Option.URI_PATH,
+        value: new Buffer('c'),
+      }, !this._fastOtaEnabled || this._protocolVersion === 0 ? null : {
+        name: CoapMessage.Option.URI_QUERY,
+        value: CoapMessages.toBinary(chunkIndex, 'uint16'),
+      }]),
       this._chunk,
       this,
     );
@@ -435,7 +419,7 @@ class Flasher {
 
   _onAllChunksDone = async (): Promise<void> => {
     if (
-      !this._client.sendMessage('UpdateDone', null, null, this)
+      !this._client.sendMessage('UpdateDone', null, null, null, this)
     ) {
       throw new Error('Flasher - failed sending updateDone message');
     }
@@ -489,7 +473,7 @@ class Flasher {
     return { deviceID: 'unknown' };
   };
 
-  _onChunkMissed = (message: Message) => {
+  _onChunkMissed = (packet: CoapPacket) => {
     if (this._missedChunks.size > MAX_MISSED_CHUNKS) {
       const json = JSON.stringify(this._getLogInfo());
       throw new Error(
@@ -509,18 +493,17 @@ class Flasher {
     // kosher if I ack before I've read the payload?
     this._client.sendReply(
       'ChunkMissedAck',
-      message.getId(),
+      packet.messageId,
       null,
       null,
       this,
     );
 
     // the payload should include one or more chunk indexes
-    const payload = message.getPayload();
-    const bufferReader = new buffers.BufferReader(payload);
+    const payload = packet.payload;
     for (let ii = 0; ii < payload.length; ii += 2) {
       try {
-        this._missedChunks.add(bufferReader.shiftUInt16());
+        this._missedChunks.add(payload.readtUInt16BE());
       } catch (error) {
         logger.error(`onChunkMissed error reading payload: ${error}`);
       }

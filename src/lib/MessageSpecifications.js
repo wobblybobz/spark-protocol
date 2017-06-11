@@ -21,14 +21,16 @@
  *
  */
 
-import { Message } from 'h5.coap';
+import type { CoapMessageTypes } from './CoapMessage';
+
+import CoapMessage from './CoapMessage';
 import hogan from 'hogan.js';
 
 export type MessageSpecificationType = {
-  code: string,
-  Response?: ?string,
+  code: number,
+  response?: ?string,
   template?: ?HoganTemplate,
-  type: string,
+  type: CoapMessageTypes,
   uri?: ?string,
 };
 
@@ -83,78 +85,78 @@ const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
   [
     'Hello',
     {
-      code: Message.Code.POST,
-      Response: 'Hello',
-      type: Message.Type.NON,
+      code: CoapMessage.Code.POST,
+      response: 'Hello',
+      type: CoapMessage.Type.NON,
       uri: 'h',
     },
   ],
   [
     'KeyChange',
     {
-      code: Message.Code.PUT,
-      Response: 'KeyChanged',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.PUT,
+      response: 'KeyChanged',
+      type: CoapMessage.Type.CON,
       uri: 'k',
     }],
   [
     'UpdateBegin',
     {
-      code: Message.Code.POST,
-      Response: 'UpdateReady',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.POST,
+      response: 'UpdateReady',
+      type: CoapMessage.Type.CON,
       uri: 'u',
     },
   ],
   [
     'UpdateAbort',
     {
-      code: Message.Code.BAD_REQUEST,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.BAD_REQUEST,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'Chunk',
     {
-      code: Message.Code.POST,
-      Response: 'ChunkReceived',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.POST,
+      response: 'ChunkReceived',
+      type: CoapMessage.Type.CON,
       uri: 'c?{{{crc}}}',
     },
   ],
   [
     'ChunkMissed',
     {
-      code: Message.Code.GET,
-      Response: 'ChunkMissedAck',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.GET,
+      response: 'ChunkMissedAck',
+      type: CoapMessage.Type.CON,
       uri: 'c',
     },
   ],
   [
     'UpdateDone',
     {
-      code: Message.Code.PUT,
-      Response: null,
-      type: Message.Type.CON,
+      code: CoapMessage.Code.PUT,
+      response: null,
+      type: CoapMessage.Type.CON,
       uri: 'u',
     },
   ],
   [
     'FunctionCall',
     {
-      code: Message.Code.POST,
-      Response: 'FunctionReturn',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.POST,
+      response: 'FunctionReturn',
+      type: CoapMessage.Type.CON,
       uri: 'f/{{name}}?{{{args}}}',
     },
   ],
   [
     'VariableRequest',
     {
-      code: Message.Code.GET,
-      Response: 'VariableValue',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.GET,
+      response: 'VariableValue',
+      type: CoapMessage.Type.CON,
       uri: 'v/{{name}}',
     },
   ],
@@ -162,204 +164,204 @@ const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
   [
     'PrivateEvent',
     {
-      code: Message.Code.POST,
-      Response: null,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.POST,
+      response: null,
+      type: CoapMessage.Type.NON,
       uri: 'E/{{event_name}}',
     },
   ],
   [
     'PublicEvent',
     {
-      code: Message.Code.POST,
-      Response: null,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.POST,
+      response: null,
+      type: CoapMessage.Type.NON,
       uri: 'e/{{event_name}}',
     },
   ],
   [
     'Subscribe',
     {
-      code: Message.Code.GET,
-      Response: null,
-      type: Message.Type.CON,
+      code: CoapMessage.Code.GET,
+      response: null,
+      type: CoapMessage.Type.CON,
       uri: 'e/{{event_name}}',
     },
   ],
   [
     'Describe',
     {
-      code: Message.Code.GET,
-      Response: 'DescribeReturn',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.GET,
+      response: 'DescribeReturn',
+      type: CoapMessage.Type.CON,
       uri: 'd',
     },
   ],
   [
     'GetTime',
     {
-      code: Message.Code.GET,
-      Response: 'GetTimeReturn',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.GET,
+      response: 'GetTimeReturn',
+      type: CoapMessage.Type.CON,
       uri: 't',
     },
   ],
   [
     'SignalStart',
     {
-      code: Message.Code.PUT,
-      Response: 'SignalStartReturn',
-      type: Message.Type.CON,
+      code: CoapMessage.Code.PUT,
+      response: 'SignalStartReturn',
+      type: CoapMessage.Type.CON,
       uri: 's',
     },
   ],
   // 'PrivateSubscribe': {
-  //   code: Message.Code.GET,
+  //   code: CoapMessage.Code.GET,
   //   uri: 'E/{{event_name}}',
-  //   type: Message.Type.NON,
-  //   Response: null
+  //   type: CoapMessage.Type.NON,
+  //   response: null
   // },
   [
     'EventAck',
     {
-      code: Message.Code.EMPTY,
-      Response: null,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.EMPTY,
+      response: null,
+      type: CoapMessage.Type.ACK,
       uri: null,
     },
   ],
   [
     'EventSlowdown',
     {
-      code: Message.Code.BAD_REQUEST,
-      Response: null,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.BAD_REQUEST,
+      response: null,
+      type: CoapMessage.Type.ACK,
       uri: null,
     },
   ],
   [
     'SubscribeAck',
     {
-      code: Message.Code.EMPTY,
-      Response: null,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.EMPTY,
+      response: null,
+      type: CoapMessage.Type.ACK,
       uri: null,
     },
   ],
   [
     'SubscribeFail',
     {
-      code: Message.Code.BAD_REQUEST,
-      Response: null,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.BAD_REQUEST,
+      response: null,
+      type: CoapMessage.Type.ACK,
       uri: null,
     },
   ],
   [
     'GetTimeReturn',
     {
-      code: Message.Code.CONTENT,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.CONTENT,
+      type: CoapMessage.Type.ACK,
     },
   ],
   [
     'SignalStartReturn',
     {
-      code: Message.Code.CHANGED,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.CHANGED,
+      type: CoapMessage.Type.ACK,
     },
   ],
   [
     'ChunkMissedAck',
     {
-      code: Message.Code.EMPTY,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.EMPTY,
+      type: CoapMessage.Type.ACK,
     },
   ],
   [
     'DescribeReturn',
     {
-      code: Message.Code.CHANGED,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.CHANGED,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'KeyChanged',
     {
-      code: Message.Code.CHANGED,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.CHANGED,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'UpdateReady',
     {
-      code: Message.Code.CHANGED,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.CHANGED,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'ChunkReceived',
     {
-      code: Message.Code.CHANGED,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.CHANGED,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'ChunkReceivedError',
     {
-      code: Message.Code.BAD_REQUEST,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.BAD_REQUEST,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'FunctionReturn',
     {
-      code: Message.Code.CHANGED,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.CHANGED,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'FunctionReturnError',
     {
-      code: Message.Code.BAD_REQUEST,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.BAD_REQUEST,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'VariableValue',
     {
-      code: Message.Code.CONTENT,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.CONTENT,
+      type: CoapMessage.Type.ACK,
     },
   ],
   [
     'VariableValueError',
     {
-      code: Message.Code.BAD_REQUEST,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.BAD_REQUEST,
+      type: CoapMessage.Type.NON,
     },
   ],
   [
     'Ping',
     {
-      code: Message.Code.EMPTY,
-      type: Message.Type.CON,
+      code: CoapMessage.Code.EMPTY,
+      type: CoapMessage.Type.CON,
     },
   ],
   [
     'PingAck',
     {
-      code: Message.Code.EMPTY,
-      Response: null,
-      type: Message.Type.ACK,
+      code: CoapMessage.Code.EMPTY,
+      response: null,
+      type: CoapMessage.Type.ACK,
       uri: null,
     },
   ],
   [
     'SocketPing',
     {
-      code: Message.Code.EMPTY,
-      type: Message.Type.NON,
+      code: CoapMessage.Code.EMPTY,
+      type: CoapMessage.Type.NON,
     },
   ],
 ].map(

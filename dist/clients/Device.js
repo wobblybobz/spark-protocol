@@ -33,45 +33,49 @@ var _inherits2 = require('babel-runtime/helpers/inherits');
 
 var _inherits3 = _interopRequireDefault(_inherits2);
 
-var _events = require('events');
+var _CoapMessage = require('../lib/CoapMessage');
 
-var _events2 = _interopRequireDefault(_events);
+var _CoapMessage2 = _interopRequireDefault(_CoapMessage);
 
-var _moment = require('moment');
+var _coapPacket = require('coap-packet');
 
-var _moment2 = _interopRequireDefault(_moment);
-
-var _h = require('h5.coap');
-
-var _settings = require('../settings');
-
-var _settings2 = _interopRequireDefault(_settings);
+var _coapPacket2 = _interopRequireDefault(_coapPacket);
 
 var _CryptoManager = require('../lib/CryptoManager');
 
 var _CryptoManager2 = _interopRequireDefault(_CryptoManager);
 
-var _Messages = require('../lib/Messages');
-
-var _Messages2 = _interopRequireDefault(_Messages);
-
 var _FileTransferStore = require('../lib/FileTransferStore');
 
 var _FileTransferStore2 = _interopRequireDefault(_FileTransferStore);
+
+var _CoapMessages = require('../lib/CoapMessages');
+
+var _CoapMessages2 = _interopRequireDefault(_CoapMessages);
 
 var _Flasher = require('../lib/Flasher');
 
 var _Flasher2 = _interopRequireDefault(_Flasher);
 
+var _events = require('events');
+
+var _events2 = _interopRequireDefault(_events);
+
 var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
-var _h2 = require('h5.buffers');
+var _moment = require('moment');
+
+var _moment2 = _interopRequireDefault(_moment);
 
 var _nullthrows = require('nullthrows');
 
 var _nullthrows2 = _interopRequireDefault(_nullthrows);
+
+var _settings = require('../settings');
+
+var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -244,8 +248,7 @@ var Device = function (_EventEmitter) {
       }, _callee, _this2);
     }));
     _this.startHandshake = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
-      var _ref3, cipherStream, decipherStream, deviceID, handshakeBuffer;
-
+      var result, cipherStream, decipherStream, deviceID, handshakeBuffer;
       return _regenerator2.default.wrap(function _callee2$(_context2) {
         while (1) {
           switch (_context2.prev = _context2.next) {
@@ -255,11 +258,17 @@ var Device = function (_EventEmitter) {
               return _this._handshake.start(_this);
 
             case 3:
-              _ref3 = _context2.sent;
-              cipherStream = _ref3.cipherStream;
-              decipherStream = _ref3.decipherStream;
-              deviceID = _ref3.deviceID;
-              handshakeBuffer = _ref3.handshakeBuffer;
+              result = _context2.sent;
+
+              if (result) {
+                _context2.next = 6;
+                break;
+              }
+
+              throw new Error('Handshake result undefined');
+
+            case 6:
+              cipherStream = result.cipherStream, decipherStream = result.decipherStream, deviceID = result.deviceID, handshakeBuffer = result.handshakeBuffer;
 
 
               _this._id = deviceID;
@@ -270,19 +279,19 @@ var Device = function (_EventEmitter) {
 
               return _context2.abrupt('return', deviceID);
 
-            case 15:
-              _context2.prev = 15;
+            case 14:
+              _context2.prev = 14;
               _context2.t0 = _context2['catch'](0);
 
               _this.disconnect(_context2.t0);
               throw _context2.t0;
 
-            case 19:
+            case 18:
             case 'end':
               return _context2.stop();
           }
         }
-      }, _callee2, _this2, [[0, 15]]);
+      }, _callee2, _this2, [[0, 14]]);
     }));
 
     _this.completeProtocolInitialization = function () {
@@ -332,24 +341,23 @@ var Device = function (_EventEmitter) {
     };
 
     _this._getHello = function (chunk) {
-      var message = _Messages2.default.unwrap(chunk);
+      var message = _CoapMessages2.default.unwrap(chunk);
       if (!message) {
         throw new Error('failed to parse hello');
       }
 
-      _this._recieveCounter = message.getId();
+      _this._recieveCounter = message.messageId;
 
       try {
-        var payload = message.getPayload();
+        var payload = message.payload;
         if (payload.length <= 0) {
           return;
         }
 
-        var payloadBuffer = new _h2.BufferReader(payload);
-        _this._particleProductId = payloadBuffer.shiftUInt16();
-        _this._productFirmwareVersion = payloadBuffer.shiftUInt16();
-        _this._reservedFlags = payloadBuffer.shiftUInt16();
-        _this._platformId = payloadBuffer.shiftUInt16();
+        _this._particleProductId = payload.readUInt16BE(0);
+        _this._productFirmwareVersion = payload.readUInt16BE(2);
+        _this._reservedFlags = payload.readUInt16BE(4);
+        _this._platformId = payload.readUInt16BE(6);
       } catch (error) {
         _logger2.default.log('error while parsing hello payload ', error);
       }
@@ -373,43 +381,50 @@ var Device = function (_EventEmitter) {
     };
 
     _this.routeMessage = function (data) {
-      var message = _Messages2.default.unwrap(data);
-      if (!message) {
+      var packet = _CoapMessages2.default.unwrap(data);
+
+      if (!packet) {
         _logger2.default.error('routeMessage got a NULL coap message ', { deviceID: _this._id });
         return;
       }
 
-      // should be adequate
-      var messageCode = message.getCode();
+      // make sure the packet always has a number for code...
+      packet.code = parseFloat(packet.code);
+
+      // Get the message code (the decimal portion of the code) to determine
+      // how we should handle the message
+      var messageCode = packet.code;
       var requestType = '';
-      if (messageCode > _h.Message.Code.EMPTY && messageCode <= _h.Message.Code.DELETE) {
+      if (messageCode > _CoapMessage2.default.Code.EMPTY && messageCode <= _CoapMessage2.default.Code.DELETE) {
         // probably a request
-        requestType = _Messages2.default.getRequestType(message);
+        requestType = _CoapMessages2.default.getRequestType(packet);
       }
 
       if (!requestType) {
-        requestType = _this._getResponseType(message.getTokenString());
+        requestType = _this._getResponseType(packet.token);
       }
 
-      if (message.isAcknowledgement()) {
+      // This is just a dumb ack packet. We don't really need to do anything
+      // with it.
+      if (packet.ack) {
         if (!requestType) {
           // no type, can't route it.
           requestType = 'PingAck';
         }
 
-        _this.emit(requestType, message);
+        _this.emit(requestType, packet);
         return;
       }
 
       _this._incrementReceiveCounter();
-      if (message.isEmpty() && message.isConfirmable()) {
+      if (packet.code === 0 && packet.confirmable) {
         _this._lastDevicePing = new Date();
-        _this.sendReply('PingAck', message.getId());
+        _this.sendReply('PingAck', packet.messageId);
         return;
       }
 
-      if (!message || message.getId() !== _this._recieveCounter) {
-        _logger2.default.log('got counter ', message.getId(), ' expecting ', _this._recieveCounter, { deviceID: _this._id });
+      if (!packet || packet.messageId !== _this._recieveCounter) {
+        _logger2.default.log('got counter ', packet.messageId, ' expecting ', _this._recieveCounter, { deviceID: _this._id });
 
         if (requestType === 'Ignored') {
           // don't ignore an ignore...
@@ -422,7 +437,7 @@ var Device = function (_EventEmitter) {
         return;
       }
 
-      _this.emit(requestType || '', message);
+      _this.emit(requestType || '', packet);
     };
 
     _this.sendReply = function (messageName, id, data, token, requester) {
@@ -440,7 +455,7 @@ var Device = function (_EventEmitter) {
         id = _this._sendCounter; // eslint-disable-line no-param-reassign
       }
 
-      var message = _Messages2.default.wrap(messageName, id, null, data, token, null);
+      var message = _CoapMessages2.default.wrap(messageName, id, null, null, data, token);
       if (!message) {
         _logger2.default.error('Device - could not unwrap message', { deviceID: _this._id });
         return;
@@ -453,7 +468,7 @@ var Device = function (_EventEmitter) {
       _this._cipherStream.write(message);
     };
 
-    _this.sendMessage = function (messageName, params, data, requester) {
+    _this.sendMessage = function (messageName, params, options, data, requester) {
       if (!_this._isSocketAvailable(requester, messageName)) {
         _logger2.default.error('This client has an exclusive lock.');
         return -1;
@@ -463,13 +478,13 @@ var Device = function (_EventEmitter) {
       _this._incrementSendCounter();
 
       var token = null;
-      if (!_Messages2.default.isNonTypeMessage(messageName)) {
+      if (!_CoapMessages2.default.isNonTypeMessage(messageName)) {
         _this._incrementSendToken();
         _this._useToken(messageName, _this._sendToken);
         token = _this._sendToken;
       }
 
-      var message = _Messages2.default.wrap(messageName, _this._sendCounter, params, data, token);
+      var message = _CoapMessages2.default.wrap(messageName, _this._sendCounter, params, options, data, token);
 
       if (!message) {
         _logger2.default.error('Could not wrap message', messageName, params, data);
@@ -488,7 +503,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this.listenFor = function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(eventName, uri, token) {
+      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(eventName, uri, token) {
         var tokenHex, beVerbose;
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
@@ -503,24 +518,26 @@ var Device = function (_EventEmitter) {
                   }, KEEP_ALIVE_TIMEOUT);
 
                   // adds a one time event
-                  var handler = function handler(message) {
+                  var handler = function handler(packet) {
                     clearTimeout(timeout);
-                    if (uri && message.getUriPath().indexOf(uri) !== 0) {
+                    var packetUri = _CoapMessages2.default.getUriPath(packet);
+                    if (uri && packetUri.indexOf(uri) !== 0) {
                       if (beVerbose) {
-                        _logger2.default.log('URI filter did not match', uri, message.getUriPath(), { deviceID: _this._id });
+                        _logger2.default.log('URI filter did not match', uri, packetUri, { deviceID: _this._id });
                       }
                       return;
                     }
 
-                    if (tokenHex && tokenHex !== message.getTokenString()) {
+                    var packetTokenHex = packet.token.toString('hex');
+                    if (tokenHex && tokenHex !== packetTokenHex) {
                       if (beVerbose) {
-                        _logger2.default.log('Tokens did not match ', tokenHex, message.getTokenString(), { deviceID: _this._id });
+                        _logger2.default.log('Tokens did not match ', tokenHex, packetTokenHex, { deviceID: _this._id });
                       }
                       return;
                     }
 
                     cleanUpListeners();
-                    resolve(message);
+                    resolve(packet);
                   };
 
                   var disconnectHandler = function disconnectHandler() {
@@ -546,7 +563,7 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x, _x2, _x3) {
-        return _ref4.apply(this, arguments);
+        return _ref3.apply(this, arguments);
       };
     }();
 
@@ -587,13 +604,14 @@ var Device = function (_EventEmitter) {
       }
     };
 
-    _this._getResponseType = function (tokenString) {
+    _this._getResponseType = function (token) {
+      var tokenString = token.toString('hex');
       var request = _this._tokens[tokenString];
       if (!request) {
         return '';
       }
 
-      return _Messages2.default.getResponseType(request);
+      return _CoapMessages2.default.getResponseType(request);
     };
 
     _this.getDescription = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
@@ -638,7 +656,7 @@ var Device = function (_EventEmitter) {
     }));
 
     _this.getVariableValue = function () {
-      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(name) {
+      var _ref5 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(name) {
         var isBusy, messageToken, message;
         return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
@@ -683,13 +701,13 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x4) {
-        return _ref6.apply(this, arguments);
+        return _ref5.apply(this, arguments);
       };
     }();
 
     _this.callFunction = function () {
-      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(functionName, functionArguments) {
-        var isBusy, buffer, writeUrl, token, message;
+      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(functionName, functionArguments) {
+        var isBusy, buffer, token, message;
         return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
@@ -721,28 +739,21 @@ var Device = function (_EventEmitter) {
 
                 _logger2.default.log('sending function call to the device', { deviceID: _this._id, functionName: functionName });
 
-                writeUrl = function writeUrl(message) {
-                  message.setUri('f/' + functionName);
-                  if (buffer) {
-                    message.setUriQuery(buffer.toString());
-                  }
-
-                  return message;
-                };
-
                 token = _this.sendMessage('FunctionCall', {
-                  _writeCoapUri: writeUrl,
                   args: buffer,
                   name: functionName
-                }, null);
-                _context6.next = 13;
+                }, [{
+                  name: _CoapMessage2.default.Option.URI_PATH,
+                  value: new Buffer('f/' + functionName)
+                }], null);
+                _context6.next = 12;
                 return _this.listenFor('FunctionReturn', null, token);
 
-              case 13:
+              case 12:
                 message = _context6.sent;
                 return _context6.abrupt('return', _this._transformFunctionResult(functionName, message));
 
-              case 15:
+              case 14:
               case 'end':
                 return _context6.stop();
             }
@@ -751,13 +762,13 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x5, _x6) {
-        return _ref7.apply(this, arguments);
+        return _ref6.apply(this, arguments);
       };
     }();
 
     _this.raiseYourHand = function () {
-      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(shouldShowSignal) {
-        var isBusy, token;
+      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(shouldShowSignal) {
+        var isBusy, buffer, token;
         return _regenerator2.default.wrap(function _callee7$(_context7) {
           while (1) {
             switch (_context7.prev = _context7.next) {
@@ -772,14 +783,29 @@ var Device = function (_EventEmitter) {
                 throw new Error('This device is locked during the flashing process.');
 
               case 3:
-                token = _this.sendMessage('SignalStart', { _writeCoapUri: _Messages2.default.raiseYourHandUrlGenerator(shouldShowSignal) }, null);
-                _context7.next = 6;
+
+                /**
+                 * does the special URL writing needed directly to the COAP message object,
+                 * since the URI requires non-text values
+                 */
+                buffer = new Buffer(1);
+
+                buffer.writeUInt8(shouldShowSignal ? 1 : 0, 0);
+
+                token = _this.sendMessage('SignalStart', null, [{
+                  name: _CoapMessage2.default.Option.URI_PATH,
+                  value: new Buffer('s')
+                }, {
+                  name: _CoapMessage2.default.Option.URI_QUERY,
+                  value: buffer
+                }]);
+                _context7.next = 8;
                 return _this.listenFor('SignalStartReturn', null, token);
 
-              case 6:
+              case 8:
                 return _context7.abrupt('return', _context7.sent);
 
-              case 7:
+              case 9:
               case 'end':
                 return _context7.stop();
             }
@@ -788,12 +814,12 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x7) {
-        return _ref8.apply(this, arguments);
+        return _ref7.apply(this, arguments);
       };
     }();
 
     _this.flash = function () {
-      var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(binary) {
+      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(binary) {
         var fileTransferStore = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _FileTransferStore2.default.FIRMWARE;
         var address = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '0x0';
         var isBusy, flasher;
@@ -847,7 +873,7 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x8) {
-        return _ref9.apply(this, arguments);
+        return _ref8.apply(this, arguments);
       };
     }();
 
@@ -884,7 +910,7 @@ var Device = function (_EventEmitter) {
       }
     };
 
-    _this._transformVariableResult = function (name, message) {
+    _this._transformVariableResult = function (name, packet) {
       // grab the variable type, if the device doesn't say, assume it's a 'string'
       var variableFunctionState = _this._deviceFunctionState ? _this._deviceFunctionState.v : null;
       var variableType = variableFunctionState && variableFunctionState[name] ? variableFunctionState[name] : 'string';
@@ -892,11 +918,10 @@ var Device = function (_EventEmitter) {
       var result = null;
       var data = null;
       try {
-        if (message && message.getPayload) {
+        if (packet.payload.length) {
           // leaving raw payload in response message for now, so we don't shock
           // our users.
-          data = message.getPayload();
-          result = _Messages2.default.fromBinary(data, variableType);
+          result = _CoapMessages2.default.fromBinary(packet.payload, variableType);
         }
       } catch (error) {
         _logger2.default.error('_transformVariableResult - error transforming response: ' + error);
@@ -905,13 +930,13 @@ var Device = function (_EventEmitter) {
       return result;
     };
 
-    _this._transformFunctionResult = function (name, message) {
+    _this._transformFunctionResult = function (name, packet) {
       var variableType = 'int32';
 
       var result = null;
       try {
-        if (message && message.getPayload) {
-          result = _Messages2.default.fromBinary(message.getPayload(), variableType);
+        if (packet.payload.length) {
+          result = _CoapMessages2.default.fromBinary(packet.payload, variableType);
         }
       } catch (error) {
         _logger2.default.error('_transformFunctionResult - error transforming response: ' + error);
@@ -922,7 +947,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this._transformArguments = function () {
-      var _ref10 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(name, args) {
+      var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(name, args) {
         var lowercaseName, deviceFunctionState, functionState, oldProtocolFunctionState;
         return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
@@ -967,7 +992,7 @@ var Device = function (_EventEmitter) {
                 return _context9.abrupt('return', null);
 
               case 10:
-                return _context9.abrupt('return', _Messages2.default.buildArguments(args, functionState.args));
+                return _context9.abrupt('return', _CoapMessages2.default.buildArguments(args, functionState.args));
 
               case 11:
               case 'end':
@@ -978,7 +1003,7 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x11, _x12) {
-        return _ref10.apply(this, arguments);
+        return _ref9.apply(this, arguments);
       };
     }();
 
@@ -1022,13 +1047,13 @@ var Device = function (_EventEmitter) {
 
                 var systemInformation = null;
                 var functionState = null;
-                var handler = function handler(message) {
-                  var payload = message.getPayload();
-                  if (!payload) {
+                var handler = function handler(packet) {
+                  var payload = packet.payload;
+                  if (!payload.length) {
                     reject(new Error('Payload empty for Describe message'));
                   }
 
-                  var data = JSON.parse(payload.toString());
+                  var data = JSON.parse(payload.toString('utf8'));
 
                   if (!systemInformation && data.m) {
                     systemInformation = data;
@@ -1037,7 +1062,7 @@ var Device = function (_EventEmitter) {
                   if (data && data.v) {
                     functionState = data;
                     // 'v':{'temperature':2}
-                    functionState.v = _Messages2.default.translateIntTypes(functionState.v);
+                    functionState.v = _CoapMessages2.default.translateIntTypes(functionState.v);
                   }
 
                   if (!systemInformation || !functionState) {
@@ -1100,24 +1125,14 @@ var Device = function (_EventEmitter) {
           publishedAt = event.publishedAt,
           ttl = event.ttl;
 
-
-      var rawFunction = function rawFunction(message) {
-        try {
-          message.setMaxAge(ttl);
-          message.setTimestamp((0, _moment2.default)(publishedAt).toDate());
-        } catch (error) {
-          _logger2.default.error('onDeviceHeard - ' + error.message);
-        }
-
-        return message;
-      };
-
       var messageName = isPublic ? DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT : DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT;
 
       _this.sendMessage(messageName, {
-        _raw: rawFunction,
         event_name: name.toString()
-      }, data && new Buffer(data) || null);
+      }, [{
+        name: _CoapMessage2.default.Option.MAX_AGE,
+        value: _CoapMessages2.default.toBinary(ttl, 'uint32')
+      }], data && new Buffer(data) || null);
     };
 
     _this._hasFunctionState = function () {

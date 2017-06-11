@@ -40,17 +40,17 @@ var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _Messages = require('./Messages');
-
-var _Messages2 = _interopRequireDefault(_Messages);
-
-var _logger = require('../lib/logger');
-
-var _logger2 = _interopRequireDefault(_logger);
-
 var _BufferStream = require('./BufferStream');
 
 var _BufferStream2 = _interopRequireDefault(_BufferStream);
+
+var _CoapMessage = require('./CoapMessage');
+
+var _CoapMessage2 = _interopRequireDefault(_CoapMessage);
+
+var _CoapMessages = require('./CoapMessages');
+
+var _CoapMessages2 = _interopRequireDefault(_CoapMessages);
 
 var _Device = require('../clients/Device');
 
@@ -64,19 +64,21 @@ var _FileTransferStore = require('./FileTransferStore');
 
 var _FileTransferStore2 = _interopRequireDefault(_FileTransferStore);
 
-var _h = require('h5.buffers');
+var _coapPacket = require('coap-packet');
 
-var _h2 = _interopRequireDefault(_h);
+var _coapPacket2 = _interopRequireDefault(_coapPacket);
 
-var _h3 = require('h5.coap');
+var _compactArray = require('compact-array');
 
-var _Option = require('h5.coap/lib/Option');
-
-var _Option2 = _interopRequireDefault(_Option);
+var _compactArray2 = _interopRequireDefault(_compactArray);
 
 var _bufferCrc = require('buffer-crc32');
 
 var _bufferCrc2 = _interopRequireDefault(_bufferCrc);
+
+var _logger = require('../lib/logger');
+
+var _logger2 = _interopRequireDefault(_logger);
 
 var _nullthrows = require('nullthrows');
 
@@ -234,8 +236,8 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
     _this._chunkIndex = -1;
 
     // start listening for missed chunks before the update fully begins
-    _this._client.on('msg_chunkmissed', function (message) {
-      return _this._onChunkMissed(message);
+    _this._client.on('msg_chunkmissed', function (packet) {
+      return _this._onChunkMissed(packet);
     });
   };
 
@@ -259,7 +261,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
               tryBeginUpdate = function () {
                 var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2() {
-                  var delay, sentStatus, message, version;
+                  var delay, sentStatus, packet, version;
                   return _regenerator2.default.wrap(function _callee2$(_context2) {
                     while (1) {
                       switch (_context2.prev = _context2.next) {
@@ -295,10 +297,10 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
                           /* uri */null,
                           /* token */null), _this._client.listenFor('UpdateAbort',
                           /* uri */null,
-                          /* token */null).then(function (updateStatusMessage) {
+                          /* token */null).then(function (packet) {
                             var failReason = '';
-                            if (updateStatusMessage && updateStatusMessage.getPayloadLength() > 0) {
-                              failReason = _Messages2.default.fromBinary(updateStatusMessage.getPayload(), 'byte');
+                            if (packet && packet.payload && packet.payload.length > 0) {
+                              failReason = !!packet.payload.readUInt8(0);
                             }
 
                             failReason = !(0, _isNan2.default)(failReason) ? _ProtocolErrors2.default.get((0, _parseInt2.default)(failReason, 10)) || failReason : failReason;
@@ -319,9 +321,9 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
                           })]);
 
                         case 9:
-                          message = _context2.sent;
+                          packet = _context2.sent;
 
-                          if (message) {
+                          if (packet) {
                             _context2.next = 12;
                             break;
                           }
@@ -334,8 +336,8 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
                           version = 0;
 
-                          if (message && message.getPayloadLength() > 0) {
-                            version = _Messages2.default.fromBinary(message.getPayload(), 'byte');
+                          if (packet && packet.payload && packet.payload.length > 0) {
+                            version = packet.payload.readUInt8(0);
                           }
                           _this._protocolVersion = version;
 
@@ -393,15 +395,8 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
       flags = 1;
     }
 
-    var bufferBuilder = new _h2.default.BufferBuilder();
-    bufferBuilder.pushUInt8(flags);
-    bufferBuilder.pushUInt16(chunkSize);
-    bufferBuilder.pushUInt32(fileSize);
-    bufferBuilder.pushUInt8(destFlag);
-    bufferBuilder.pushUInt32(destAddr);
-
     // UpdateBegin — sent by Server to initiate an OTA firmware update
-    return !!_this._client.sendMessage('UpdateBegin', null, bufferBuilder.toBuffer(), _this);
+    return !!_this._client.sendMessage('UpdateBegin', null, null, Buffer.concat([_CoapMessages2.default.toBinary(flags, 'uint8'), _CoapMessages2.default.toBinary(chunkSize, 'uint16'), _CoapMessages2.default.toBinary(fileSize, 'uint32'), _CoapMessages2.default.toBinary(destFlag, 'uint8'), _CoapMessages2.default.toBinary(destAddr, 'uint32')]), _this);
   };
 
   this._sendFile = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
@@ -455,7 +450,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
           case 12:
             message = _context4.sent;
 
-            if (_Messages2.default.statusIsOkay(message)) {
+            if (_CoapMessages2.default.statusIsOkay(message)) {
               _context4.next = 15;
               break;
             }
@@ -548,7 +543,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
                       case 9:
                         message = _context5.sent;
 
-                        if (_Messages2.default.statusIsOkay(message)) {
+                        if (_CoapMessages2.default.statusIsOkay(message)) {
                           _context5.next = 12;
                           break;
                         }
@@ -599,22 +594,15 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
   this._sendChunk = function () {
     var chunkIndex = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : 0;
 
-    var encodedCrc = _Messages2.default.toBinary((0, _nullthrows2.default)(_this._lastCrc), 'crc');
+    var encodedCrc = _CoapMessages2.default.toBinary((0, _nullthrows2.default)(_this._lastCrc), 'crc');
 
-    var writeCoapUri = function writeCoapUri(message) {
-      message.addOption(new _Option2.default(_h3.Message.Option.URI_PATH, new Buffer('c')));
-      message.addOption(new _Option2.default(_h3.Message.Option.URI_QUERY, encodedCrc));
-      if (_this._fastOtaEnabled && _this._protocolVersion > 0) {
-        var indexBinary = _Messages2.default.toBinary(chunkIndex, 'uint16');
-        message.addOption(new _Option2.default(_h3.Message.Option.URI_QUERY, indexBinary));
-      }
-      return message;
-    };
-
-    return _this._client.sendMessage('Chunk', {
-      _writeCoapUri: writeCoapUri,
-      crc: encodedCrc
-    }, _this._chunk, _this);
+    return _this._client.sendMessage('Chunk', { crc: encodedCrc }, (0, _compactArray2.default)([{
+      name: _CoapMessage2.default.Option.URI_PATH,
+      value: new Buffer('c')
+    }, !_this._fastOtaEnabled || _this._protocolVersion == 0 ? null : {
+      name: _CoapMessage2.default.Option.URI_QUERY,
+      value: _CoapMessages2.default.toBinary(chunkIndex, 'uint16')
+    }]), _this._chunk, _this);
   };
 
   this._onAllChunksDone = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {
@@ -622,7 +610,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
       while (1) {
         switch (_context7.prev = _context7.next) {
           case 0:
-            if (_this._client.sendMessage('UpdateDone', null, null, _this)) {
+            if (_this._client.sendMessage('UpdateDone', null, null, null, _this)) {
               _context7.next = 2;
               break;
             }
@@ -692,7 +680,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
     return { deviceID: 'unknown' };
   };
 
-  this._onChunkMissed = function (message) {
+  this._onChunkMissed = function (packet) {
     if (_this._missedChunks.size > MAX_MISSED_CHUNKS) {
       var json = (0, _stringify2.default)(_this._getLogInfo());
       throw new Error('flasher - chunk missed - device over limit, killing! ' + json);
@@ -708,14 +696,13 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
     _logger2.default.log('flasher - chunk missed - recovering ', _this._getLogInfo());
 
     // kosher if I ack before I've read the payload?
-    _this._client.sendReply('ChunkMissedAck', message.getId(), null, null, _this);
+    _this._client.sendReply('ChunkMissedAck', packet.messageId, null, null, _this);
 
     // the payload should include one or more chunk indexes
-    var payload = message.getPayload();
-    var bufferReader = new _h2.default.BufferReader(payload);
+    var payload = packet.payload;
     for (var ii = 0; ii < payload.length; ii += 2) {
       try {
-        _this._missedChunks.add(bufferReader.shiftUInt16());
+        _this._missedChunks.add(payload.readtUInt16BE());
       } catch (error) {
         _logger2.default.error('onChunkMissed error reading payload: ' + error);
       }

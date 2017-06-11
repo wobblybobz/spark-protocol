@@ -72,9 +72,9 @@ var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
-var _Messages = require('../lib/Messages');
+var _CoapMessages = require('../lib/CoapMessages');
 
-var _Messages2 = _interopRequireDefault(_Messages);
+var _CoapMessages2 = _interopRequireDefault(_CoapMessages);
 
 var _EventPublisher = require('../lib/EventPublisher');
 
@@ -84,27 +84,25 @@ var _SparkServerEvents2 = _interopRequireDefault(_SparkServerEvents);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
-*/
-
-var NAME_GENERATOR = _moniker2.default.generator([_moniker2.default.adjective, _moniker2.default.noun]);
+var NAME_GENERATOR = _moniker2.default.generator([_moniker2.default.adjective, _moniker2.default.noun]); /*
+                                                                                                         *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                                                                                                         *
+                                                                                                         *   This program is free software; you can redistribute it and/or
+                                                                                                         *   modify it under the terms of the GNU Lesser General Public
+                                                                                                         *   License as published by the Free Software Foundation, either
+                                                                                                         *   version 3 of the License, or (at your option) any later version.
+                                                                                                         *
+                                                                                                         *   This program is distributed in the hope that it will be useful,
+                                                                                                         *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                                                                                                         *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                                                                                                         *   Lesser General Public License for more details.
+                                                                                                         *
+                                                                                                         *   You should have received a copy of the GNU Lesser General Public
+                                                                                                         *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                                                                                                         *
+                                                                                                         * 
+                                                                                                         *
+                                                                                                         */
 
 var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_NAMES.FLASH_AVAILABLE, _Device.SYSTEM_EVENT_NAMES.FLASH_PROGRESS, _Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, _Device.SYSTEM_EVENT_NAMES.SAFE_MODE, _Device.SYSTEM_EVENT_NAMES.SPARK_STATUS];
 
@@ -228,22 +226,22 @@ var DeviceServer = function () {
                             return _this._onDeviceDisconnect(device);
                           });
 
-                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE, function (message) {
-                            return _this._onDeviceSubscribe(message, device);
+                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.SUBSCRIBE, function (packet) {
+                            return _this._onDeviceSubscribe(packet, device);
                           });
 
-                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT, function (message) {
-                            return _this._onDeviceSentMessage(message,
-                            /* isPublic */false, device);
+                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT, function (packet) {
+                            return _this._onDeviceSentMessage(packet,
+                            /*isPublic*/false, device);
                           });
 
-                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT, function (message) {
-                            return _this._onDeviceSentMessage(message,
-                            /* isPublic */true, device);
+                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT, function (packet) {
+                            return _this._onDeviceSentMessage(packet,
+                            /*isPublic*/true, device);
                           });
 
-                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME, function (message) {
-                            return _this._onDeviceGetTime(message, device);
+                          device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME, function (packet) {
+                            return _this._onDeviceGetTime(packet, device);
                           });
 
                           device.on(_Device.DEVICE_EVENT_NAMES.FLASH_STARTED, function () {
@@ -361,11 +359,11 @@ var DeviceServer = function () {
       };
     }();
 
-    this._onDeviceGetTime = function (message, device) {
+    this._onDeviceGetTime = function (packet, device) {
       var timeStamp = (0, _moment2.default)().utc().unix();
-      var binaryValue = _Messages2.default.toBinary(timeStamp, 'uint32');
+      var binaryValue = _CoapMessages2.default.toBinary(timeStamp, 'uint32');
 
-      device.sendReply('GetTimeReturn', message.getId(), binaryValue, message.getToken());
+      device.sendReply('GetTimeReturn', packet.messageId, binaryValue, packet.token.length ? packet.token.readUInt8(0) : 0);
     };
 
     this._onDeviceReady = function () {
@@ -437,7 +435,7 @@ var DeviceServer = function () {
     }();
 
     this._onDeviceSentMessage = function () {
-      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(message, isPublic, device) {
+      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(packet, isPublic, device) {
         var deviceID, deviceAttributes, ownerID, eventData, eventName, shouldSwallowEvent, cryptoString;
         return _regenerator2.default.wrap(function _callee7$(_context7) {
           while (1) {
@@ -453,11 +451,11 @@ var DeviceServer = function () {
                 ownerID = deviceAttributes && deviceAttributes.ownerID;
                 eventData = {
                   connectionID: device.getConnectionKey(),
-                  data: message.getPayloadLength() === 0 ? '' : message.getPayload().toString(),
+                  data: packet.payload.toString('utf8'),
                   deviceID: deviceID,
                   isPublic: isPublic,
-                  name: message.getUriPath().substr(3),
-                  ttl: message.getMaxAge()
+                  name: _CoapMessages2.default.getUriPath(packet).substr(3),
+                  ttl: _CoapMessages2.default.getMaxAge(packet)
                 };
                 eventName = eventData.name.toLowerCase();
                 shouldSwallowEvent = false;
@@ -475,7 +473,7 @@ var DeviceServer = function () {
                     return eventName.startsWith(specialEvent);
                   });
                   if (shouldSwallowEvent) {
-                    device.sendReply('EventAck', message.getId());
+                    device.sendReply('EventAck', packet.messageId);
                   }
                 }
 
@@ -489,7 +487,7 @@ var DeviceServer = function () {
                 }
 
                 _context7.next = 14;
-                return _this._onDeviceClaimCodeMessage(message, device);
+                return _this._onDeviceClaimCodeMessage(packet, device);
 
               case 14:
 
@@ -573,13 +571,13 @@ var DeviceServer = function () {
     }();
 
     this._onDeviceClaimCodeMessage = function () {
-      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(message, device) {
+      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(packet, device) {
         var claimCode, deviceID, deviceAttributes, claimRequestUserID;
         return _regenerator2.default.wrap(function _callee8$(_context8) {
           while (1) {
             switch (_context8.prev = _context8.next) {
               case 0:
-                claimCode = message.getPayload().toString();
+                claimCode = packet.payload.toString('utf8');
                 deviceID = device.getID();
                 _context8.next = 4;
                 return _this._deviceAttributeRepository.getByID(deviceID);
@@ -629,7 +627,7 @@ var DeviceServer = function () {
     }();
 
     this._onDeviceSubscribe = function () {
-      var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(message, device) {
+      var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(packet, device) {
         var messageName, deviceID, deviceAttributes, ownerID, query, isFromMyDevices;
         return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
@@ -640,7 +638,7 @@ var DeviceServer = function () {
                 // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
                 // uri -> /e/event_name?u    --> all my devices
                 // uri -> /e/event_name?u (deviceid)    --> deviceid?
-                messageName = message.getUriPath().substr(3);
+                messageName = _CoapMessages2.default.getUriPath(packet).substr(3);
                 deviceID = device.getID();
                 _context9.next = 4;
                 return _this._deviceAttributeRepository.getByID(deviceID);
@@ -648,15 +646,15 @@ var DeviceServer = function () {
               case 4:
                 deviceAttributes = _context9.sent;
                 ownerID = deviceAttributes && deviceAttributes.ownerID;
-                query = message.getUriQuery();
-                isFromMyDevices = query && !!query.match('u');
+                query = _CoapMessages2.default.getUriQuery(packet);
+                isFromMyDevices = !!query.match('u');
 
                 if (messageName) {
                   _context9.next = 11;
                   break;
                 }
 
-                device.sendReply('SubscribeFail', message.getId());
+                device.sendReply('SubscribeFail', packet.messageId);
                 return _context9.abrupt('return');
 
               case 11:
@@ -667,7 +665,7 @@ var DeviceServer = function () {
                   messageName: messageName
                 });
 
-                device.sendReply('SubscribeAck', message.getId());
+                device.sendReply('SubscribeAck', packet.messageId);
 
                 process.nextTick(function () {
                   if (!ownerID) {
@@ -679,7 +677,7 @@ var DeviceServer = function () {
 
                   _this._eventPublisher.subscribe(messageName, device.onDeviceEvent, {
                     filterOptions: {
-                      connectionID: isSystemEvent ? device.getConnectionKey() : null,
+                      connectionID: isSystemEvent ? device.getConnectionKey() : undefined,
                       mydevices: isFromMyDevices,
                       userID: ownerID
                     },

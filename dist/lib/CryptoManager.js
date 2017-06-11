@@ -30,9 +30,9 @@ var _CryptoStream = require('./CryptoStream');
 
 var _CryptoStream2 = _interopRequireDefault(_CryptoStream);
 
-var _ursa = require('ursa');
+var _nodeRsa = require('node-rsa');
 
-var _ursa2 = _interopRequireDefault(_ursa);
+var _nodeRsa2 = _interopRequireDefault(_nodeRsa);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -67,9 +67,9 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            privateKey = _ursa2.default.generatePrivateKey();
+            privateKey = new _nodeRsa2.default({ b: 1024 });
             _context.next = 3;
-            return _this._serverKeyRepository.createKeys(privateKey.toPrivatePem('binary'), privateKey.toPublicPem('binary'));
+            return _this._serverKeyRepository.createKeys(privateKey.exportKey('pkcs1-private-pem'), privateKey.exportKey('pkcs8-public-pem'));
 
           case 3:
             return _context.abrupt('return', privateKey);
@@ -105,7 +105,10 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
             return _context2.abrupt('return', _context2.sent);
 
           case 7:
-            return _context2.abrupt('return', _ursa2.default.createPrivateKey(privateKeyString, _this._serverKeyPassword || undefined));
+            return _context2.abrupt('return', new _nodeRsa2.default(privateKeyString, {
+              encryptionScheme: 'pkcs1',
+              signingScheme: 'pkcs1'
+            }));
 
           case 8:
           case 'end':
@@ -139,7 +142,10 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
               return _this._deviceKeyRepository.update({ deviceID: deviceID, key: publicKeyPem });
 
             case 2:
-              return _context3.abrupt('return', _ursa2.default.createPublicKey(publicKeyPem));
+              return _context3.abrupt('return', new _nodeRsa2.default(publicKeyPem, 'pkcs8-public-pem', {
+                encryptionScheme: 'pkcs1',
+                signingScheme: 'pkcs1'
+              }));
 
             case 3:
             case 'end':
@@ -155,15 +161,11 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
   }();
 
   this.decrypt = function (data) {
-    return _this._serverPrivateKey.decrypt(data,
-    /* input buffer encoding */undefined,
-    /* output buffer encoding*/undefined, _ursa2.default.RSA_PKCS1_PADDING);
+    return _this._serverPrivateKey.decrypt(data);
   };
 
   this.encrypt = function (publicKey, data) {
-    return publicKey.encrypt(data,
-    /* input buffer encoding */undefined,
-    /* output buffer encoding*/undefined, _ursa2.default.RSA_PKCS1_PADDING);
+    return publicKey.encrypt(data);
   };
 
   this.getDevicePublicKey = function () {
@@ -178,7 +180,10 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
 
             case 2:
               publicKeyObject = _context4.sent;
-              return _context4.abrupt('return', publicKeyObject ? _ursa2.default.createPublicKey(publicKeyObject.key) : null);
+              return _context4.abrupt('return', publicKeyObject ? new _nodeRsa2.default(publicKeyObject.key, 'pkcs8-public-pem', {
+                encryptionScheme: 'pkcs1',
+                signingScheme: 'pkcs1'
+              }) : null);
 
             case 4:
             case 'end':
@@ -194,11 +199,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
   }();
 
   this.keysEqual = function (existingKey, publicKeyPem) {
-    if (!publicKeyPem) {
-      return false;
-    }
-
-    return _ursa2.default.equalKeys(existingKey, _ursa2.default.createPublicKey(publicKeyPem));
+    return existingKey.exportKey('pkcs8-public-pem') === publicKeyPem;
   };
 
   this.getRandomBytes = function (size) {
@@ -220,7 +221,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
         while (1) {
           switch (_context5.prev = _context5.next) {
             case 0:
-              return _context5.abrupt('return', _this._serverPrivateKey.privateEncrypt(hash));
+              return _context5.abrupt('return', _this._serverPrivateKey.encryptPrivate(hash));
 
             case 1:
             case 'end':
