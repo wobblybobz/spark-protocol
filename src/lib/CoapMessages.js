@@ -244,7 +244,7 @@ class CoapMessages {
         (varName: string) => {
           const intType = varState && varState[varName];
           if (typeof intType === 'number') {
-            const str = this.getNameFromTypeInt(intType);
+            const str = CoapMessages.getNameFromTypeInt(intType);
 
             if (str !== null) {
               translatedVarState[varName] = str;
@@ -286,13 +286,13 @@ class CoapMessages {
   };
 
   // eslint-disable-next-line func-names
-  static tryFromBinary = function<TType> (
+  static tryFromBinary = (
     buffer: Buffer,
     typeName: string,
-  ): ?TType {
+  ): * => {
     let result = null;
     try {
-      result = this.fromBinary(buffer, typeName);
+      result = CoapMessages.fromBinary(buffer, typeName);
     } catch (error) {
       logger.error(
         `Could not parse type: ${typeName} ${buffer.toString()} ${error}`,
@@ -410,14 +410,14 @@ class CoapMessages {
         .filter((arg: Array<any>): boolean => !!arg)
         .forEach((arg: Array<any>, index: number) => {
           if (index > 0) {
-            this.toBinary('&', 'string', bufferBuilder);
+            CoapMessages.toBinary('&', 'string', bufferBuilder);
           }
 
           const name = arg[0] || requestArgsKey;
           const type = arg[1];
           const val = requestArgs[name];
 
-          this.toBinary(val, type, bufferBuilder);
+          CoapMessages.toBinary(val, type, bufferBuilder);
         });
 
 

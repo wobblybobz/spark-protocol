@@ -79,10 +79,6 @@ var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
-var _nullthrows = require('nullthrows');
-
-var _nullthrows2 = _interopRequireDefault(_nullthrows);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var _getRouteKey = function _getRouteKey(code, path) {
@@ -121,7 +117,9 @@ var _decodeNumericValue = function _decodeNumericValue(buffer) {
   } else if (length === 2) {
     return buffer.readUInt16BE(0);
   } else if (length === 3) {
+    /* eslint-disable no-bitwise*/
     return buffer[1] << 8 | buffer[2] + (buffer[0] << 16 >>> 0);
+    /* eslint-enable no-bitwise*/
   }
 
   return buffer.readUInt32BE(0);
@@ -208,8 +206,8 @@ function (_ref) {
     throw new Error('_raw', params);
   }
 
-  var uriOption = uri && (!options || !options.some(function (option) {
-    return option.name === _CoapMessage2.default.Option.URI_PATH;
+  var uriOption = uri && (!options || !options.some(function (item) {
+    return item.name === _CoapMessage2.default.Option.URI_PATH;
   })) && {
     name: _CoapMessage2.default.Option.URI_PATH,
     value: new Buffer(uri)
@@ -243,7 +241,7 @@ function (_ref) {
   (0, _getOwnPropertyNames2.default)(varState).forEach(function (varName) {
     var intType = varState && varState[varName];
     if (typeof intType === 'number') {
-      var str = undefined.getNameFromTypeInt(intType);
+      var str = CoapMessages.getNameFromTypeInt(intType);
 
       if (str !== null) {
         translatedVarState[varName] = str;
@@ -288,7 +286,7 @@ function (_ref) {
 }, _class.tryFromBinary = function (buffer, typeName) {
   var result = null;
   try {
-    result = this.fromBinary(buffer, typeName);
+    result = CoapMessages.fromBinary(buffer, typeName);
   } catch (error) {
     _logger2.default.error('Could not parse type: ' + typeName + ' ' + buffer.toString() + ' ' + error);
   }
@@ -405,14 +403,14 @@ function (_ref) {
       return !!arg;
     }).forEach(function (arg, index) {
       if (index > 0) {
-        undefined.toBinary('&', 'string', bufferBuilder);
+        CoapMessages.toBinary('&', 'string', bufferBuilder);
       }
 
       var name = arg[0] || requestArgsKey;
       var type = arg[1];
       var val = requestArgs[name];
 
-      undefined.toBinary(val, type, bufferBuilder);
+      CoapMessages.toBinary(val, type, bufferBuilder);
     });
 
     return bufferBuilder;
