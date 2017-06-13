@@ -12,6 +12,10 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
 var _chalk = require('chalk');
 
 var _chalk2 = _interopRequireDefault(_chalk);
@@ -45,6 +49,20 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 *
 */
 
+function _transform() {
+  for (var _len = arguments.length, params = Array(_len), _key = 0; _key < _len; _key++) {
+    params[_key] = arguments[_key];
+  }
+
+  return params.map(function (param) {
+    if (typeof param === 'string') {
+      return param;
+    }
+
+    return (0, _stringify2.default)(param);
+  });
+}
+
 var Logger = function () {
   function Logger() {
     (0, _classCallCheck3.default)(this, Logger);
@@ -54,25 +72,23 @@ var Logger = function () {
     key: 'log',
     value: function log() {
       if (_logger2.default.SHOW_VERBOSE_DEVICE_LOGS) {
-        var _console;
-
-        (_console = console).log.apply(_console, arguments);
+        console.log(_transform.apply(undefined, arguments));
       }
     }
   }, {
     key: 'info',
     value: function info() {
-      console.log(_chalk2.default.cyan.apply(_chalk2.default, arguments));
+      console.log(_chalk2.default.cyan(_transform.apply(undefined, arguments)));
     }
   }, {
     key: 'warn',
     value: function warn() {
-      console.warn(_chalk2.default.yellow.apply(_chalk2.default, arguments));
+      console.warn(_chalk2.default.yellow(_transform.apply(undefined, arguments)));
     }
   }, {
     key: 'error',
     value: function error() {
-      console.error(_chalk2.default.red.apply(_chalk2.default, arguments));
+      console.error(_chalk2.default.red(_transform.apply(undefined, arguments)));
     }
   }]);
   return Logger;

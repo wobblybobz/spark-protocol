@@ -21,13 +21,11 @@
 import type { FileTransferStoreType } from './FileTransferStore';
 
 import BufferStream from './BufferStream';
-import CoapMessage from './CoapMessage';
 import CoapMessages from './CoapMessages';
 import Device from '../clients/Device';
 import ProtocolErrors from './ProtocolErrors';
 import FileTransferStore from './FileTransferStore';
 import CoapPacket from 'coap-packet';
-import compactArray from 'compact-array';
 import crc32 from 'buffer-crc32';
 import logger from '../lib/logger';
 import nullthrows from 'nullthrows';
@@ -232,7 +230,6 @@ class Flasher {
       let version = 0;
       if (
         packet &&
-        packet.payload &&
         packet.payload.length > 0
       ) {
         version = packet.payload.readUInt8(0);
@@ -402,16 +399,14 @@ class Flasher {
       'crc',
     );
 
+    const args = [encodedCrc];
+    if (this._fastOtaEnabled || this._protocolVersion !== 0) {
+      args.push(CoapMessages.toBinary(chunkIndex, 'uint16'));
+    }
     return this._client.sendMessage(
       'Chunk',
-      { crc: encodedCrc },
-      compactArray([{
-        name: CoapMessage.Option.URI_PATH,
-        value: new Buffer('c'),
-      }, !this._fastOtaEnabled || this._protocolVersion === 0 ? null : {
-        name: CoapMessage.Option.URI_QUERY,
-        value: CoapMessages.toBinary(chunkIndex, 'uint16'),
-      }]),
+      { args },
+      null,
       this._chunk,
       this,
     );

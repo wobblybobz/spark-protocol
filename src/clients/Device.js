@@ -301,7 +301,7 @@ class Device extends EventEmitter {
   _sendHello = () => {
     // client will set the counter property on the message
     this._sendCounter = CryptoManager.getRandomUINT16();
-    this.sendMessage('Hello', {}, null);
+    this.sendMessage('Hello');
   };
 
   ping = (): {
@@ -443,7 +443,7 @@ class Device extends EventEmitter {
 
   sendMessage = (
     messageName: MessageType,
-    params: ?Object,
+    params: ?{args?: Array<any>, name?: string},
     options: ?Array<CoapOption>,
     data: ?Buffer,
     requester?: Object,
@@ -676,33 +676,18 @@ class Device extends EventEmitter {
       throw new Error('This device is locked during the flashing process.');
     }
 
-    const buffer = await this._transformArguments(
-      functionName,
-      functionArguments,
-    );
-
-    if (!buffer) {
-      throw new Error(`Unknown Function ${functionName}`);
-    }
-
     logger.log(
       'sending function call to the device',
       { deviceID: this._id, functionName },
     );
 
     const token = this.sendMessage(
-      'FunctionCall',
+    'FunctionCall',
       {
-        args: buffer,
+        args: Object.values(functionArguments),
         name: functionName,
       },
-      [{
-        name: CoapMessage.Option.URI_PATH,
-        value: new Buffer(`f/${functionName}`),
-      }],
-      null,
     );
-
     const message = await this.listenFor('FunctionReturn', null, token);
     return this._transformFunctionResult(functionName, message);
   };
@@ -729,9 +714,6 @@ class Device extends EventEmitter {
       'SignalStart',
       null,
       [{
-        name: CoapMessage.Option.URI_PATH,
-        value: new Buffer('s'),
-      }, {
         name: CoapMessage.Option.URI_QUERY,
         value: buffer,
       }],
@@ -879,44 +861,6 @@ class Device extends EventEmitter {
     return result;
   };
 
-  // transforms our object into a nice coap query string
-  _transformArguments = async (
-    name: string,
-    args: {[key: string]: string},
-  ): Promise<?Buffer> => {
-    if (!args) {
-      return null;
-    }
-
-    await this._ensureWeHaveIntrospectionData();
-    const lowercaseName = name.toLowerCase();
-    const deviceFunctionState = nullthrows(this._deviceFunctionState);
-
-    let functionState = deviceFunctionState[lowercaseName];
-    if (!functionState || !functionState.args) {
-      // maybe it's the old protocol?
-      const oldProtocolFunctionState = deviceFunctionState.f;
-      if (
-        oldProtocolFunctionState &&
-        oldProtocolFunctionState.some(
-          (fn: string): boolean => fn.toLowerCase() === lowercaseName,
-        )
-      ) {
-        // current/simplified function format (one string arg, int return type)
-        functionState = {
-          args: [
-            ['', 'string'],
-          ],
-          returns: 'int',
-        };
-      }
-    }
-
-    if (!functionState || !functionState.args) {
-      return null;
-    }
-    return CoapMessages.buildArguments(args, functionState.args);
-  };
 
   _introspectionPromise: ?Promise<void> = null;
   /**

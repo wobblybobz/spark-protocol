@@ -4,10 +4,6 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _keys = require('babel-runtime/core-js/object/keys');
-
-var _keys2 = _interopRequireDefault(_keys);
-
 var _typeof2 = require('babel-runtime/helpers/typeof');
 
 var _typeof3 = _interopRequireDefault(_typeof2);
@@ -199,30 +195,37 @@ function (_ref) {
 
     // Format our url
     var uri = specification.uri;
+    var queryParams = [];
     if (params && specification.template) {
       uri = specification.template.render(params);
+      queryParams = (params.args || []).map(function (value) {
+        return {
+          name: _CoapMessage2.default.Option.URI_QUERY,
+          value: Buffer.isBuffer(value) ? value : new Buffer(value)
+        };
+      });
     }
 
-    if (params && params._raw) {
-      throw new Error('_raw', params);
-    }
-
-    var uriOption = null;
+    var uriOptions = [];
     var hasExistingUri = (options || []).some(function (item) {
       return item.name === _CoapMessage2.default.Option.URI_PATH;
     });
 
     if (uri && !hasExistingUri) {
-      uriOption = {
-        name: _CoapMessage2.default.Option.URI_PATH,
-        value: new Buffer(uri)
-      };
+      uriOptions = uri.split('/').filter(function (segment) {
+        return !!segment;
+      }).map(function (segment) {
+        return {
+          name: _CoapMessage2.default.Option.URI_PATH,
+          value: new Buffer(segment)
+        };
+      });
     }
 
     return _coapPacket2.default.generate((0, _extends3.default)({}, _messageTypeToPacketProps(specification.type), {
       code: specification.code.toString(),
       messageId: messageId,
-      options: (0, _compactArray2.default)([].concat((0, _toConsumableArray3.default)(options || []), [uriOption])),
+      options: (0, _compactArray2.default)([].concat((0, _toConsumableArray3.default)(uriOptions), (0, _toConsumableArray3.default)(options || []), (0, _toConsumableArray3.default)(queryParams))),
       payload: data || new Buffer(0),
       token: token && Buffer.from([token])
     }));
@@ -406,29 +409,5 @@ function (_ref) {
         return new Buffer(value || '');
       }
   }
-}, _class.buildArguments = function (requestArgs, args) {
-  try {
-    var bufferBuilder = new Buffer([]);
-    var requestArgsKey = (0, _keys2.default)(requestArgs)[0];
-    args.filter(function (arg) {
-      return !!arg;
-    }).forEach(function (arg, index) {
-      if (index > 0) {
-        CoapMessages.toBinary('&', 'string', bufferBuilder);
-      }
-
-      var name = arg[0] || requestArgsKey;
-      var type = arg[1];
-      var val = requestArgs[name];
-
-      CoapMessages.toBinary(val, type, bufferBuilder);
-    });
-
-    return bufferBuilder;
-  } catch (error) {
-    _logger2.default.error('buildArguments error: ' + error);
-  }
-
-  return null;
 }, _temp);
 exports.default = CoapMessages;

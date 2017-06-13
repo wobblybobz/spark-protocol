@@ -121,7 +121,7 @@ const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
       code: CoapMessage.Code.POST,
       response: 'ChunkReceived',
       type: CoapMessage.Type.CON,
-      uri: 'c?{{{crc}}}',
+      uri: 'c',
     },
   ],
   [
@@ -148,7 +148,7 @@ const MessageSpecifications: Array<[MessageType, MessageSpecificationType]> = [
       code: CoapMessage.Code.POST,
       response: 'FunctionReturn',
       type: CoapMessage.Type.CON,
-      uri: 'f/{{name}}?{{{args}}}',
+      uri: 'f/{{name}}',
     },
   ],
   [

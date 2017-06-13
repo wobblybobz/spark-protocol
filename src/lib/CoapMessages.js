@@ -166,7 +166,7 @@ class CoapMessages {
   static wrap = (
     messageName: MessageType,
     messageId: number,
-    params: ?Object,
+    params: ?{args?: Array<any>, name?: string},
     options: ?Array<CoapOption>,
     data: ?Buffer,
     token: ?number,
@@ -180,25 +180,32 @@ class CoapMessages {
 
       // Format our url
       let uri = specification.uri;
+      let queryParams = [];
       if (params && specification.template) {
         uri = specification.template.render(params);
+        queryParams = (params.args || []).map(
+          (value: any): CoapOption => ({
+            name: CoapMessage.Option.URI_QUERY,
+            value: Buffer.isBuffer(value)
+              ? value
+              : new Buffer(value),
+          }),
+        );
       }
 
-      if (params && params._raw) {
-        throw new Error('_raw', params);
-      }
-
-      let uriOption = null;
+      let uriOptions = [];
       const hasExistingUri = (options || []).some(
         (item: CoapOption): boolean =>
           item.name === CoapMessage.Option.URI_PATH,
       );
 
       if (uri && !hasExistingUri) {
-        uriOption = {
-          name: CoapMessage.Option.URI_PATH,
-          value: new Buffer(uri),
-        };
+        uriOptions = uri.split('/')
+          .filter((segment: string): boolean => !!segment)
+          .map((segment: string): CoapOption => ({
+            name: CoapMessage.Option.URI_PATH,
+            value: new Buffer(segment),
+          }));
       }
 
       return CoapPacket.generate({
@@ -206,8 +213,9 @@ class CoapMessages {
         code: specification.code.toString(),
         messageId,
         options: compactArray([
+          ...uriOptions,
           ...(options || []),
-          uriOption,
+          ...queryParams,
         ]),
         payload: data || new Buffer(0),
         token: token && Buffer.from([token]),
@@ -408,36 +416,6 @@ class CoapMessages {
         return new Buffer((value: any) || '');
       }
     }
-  };
-
-  static buildArguments = (
-    requestArgs: {[key: string]: string},
-    args: Array<Array<any>>,
-  ): ?Buffer => {
-    try {
-      const bufferBuilder = new Buffer([]);
-      const requestArgsKey = Object.keys(requestArgs)[0];
-      args
-        .filter((arg: Array<any>): boolean => !!arg)
-        .forEach((arg: Array<any>, index: number) => {
-          if (index > 0) {
-            CoapMessages.toBinary('&', 'string', bufferBuilder);
-          }
-
-          const name = arg[0] || requestArgsKey;
-          const type = arg[1];
-          const val = requestArgs[name];
-
-          CoapMessages.toBinary(val, type, bufferBuilder);
-        });
-
-
-      return bufferBuilder;
-    } catch (error) {
-      logger.error(`buildArguments error: ${error}`);
-    }
-
-    return null;
   };
 }
 

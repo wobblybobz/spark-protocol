@@ -44,10 +44,6 @@ var _BufferStream = require('./BufferStream');
 
 var _BufferStream2 = _interopRequireDefault(_BufferStream);
 
-var _CoapMessage = require('./CoapMessage');
-
-var _CoapMessage2 = _interopRequireDefault(_CoapMessage);
-
 var _CoapMessages = require('./CoapMessages');
 
 var _CoapMessages2 = _interopRequireDefault(_CoapMessages);
@@ -67,10 +63,6 @@ var _FileTransferStore2 = _interopRequireDefault(_FileTransferStore);
 var _coapPacket = require('coap-packet');
 
 var _coapPacket2 = _interopRequireDefault(_coapPacket);
-
-var _compactArray = require('compact-array');
-
-var _compactArray2 = _interopRequireDefault(_compactArray);
 
 var _bufferCrc = require('buffer-crc32');
 
@@ -297,10 +289,10 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
                           /* uri */null,
                           /* token */null), _this._client.listenFor('UpdateAbort',
                           /* uri */null,
-                          /* token */null).then(function (packet) {
+                          /* token */null).then(function (newPacket) {
                             var failReason = '';
-                            if (packet && packet.payload && packet.payload.length > 0) {
-                              failReason = !!packet.payload.readUInt8(0);
+                            if (newPacket && newPacket.payload.length) {
+                              failReason = !!newPacket.payload.readUInt8(0);
                             }
 
                             failReason = !(0, _isNan2.default)(failReason) ? _ProtocolErrors2.default.get((0, _parseInt2.default)(failReason, 10)) || failReason : failReason;
@@ -336,7 +328,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
                           version = 0;
 
-                          if (packet && packet.payload && packet.payload.length > 0) {
+                          if (packet && packet.payload.length > 0) {
                             version = packet.payload.readUInt8(0);
                           }
                           _this._protocolVersion = version;
@@ -596,13 +588,11 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
     var encodedCrc = _CoapMessages2.default.toBinary((0, _nullthrows2.default)(_this._lastCrc), 'crc');
 
-    return _this._client.sendMessage('Chunk', { crc: encodedCrc }, (0, _compactArray2.default)([{
-      name: _CoapMessage2.default.Option.URI_PATH,
-      value: new Buffer('c')
-    }, !_this._fastOtaEnabled || _this._protocolVersion == 0 ? null : {
-      name: _CoapMessage2.default.Option.URI_QUERY,
-      value: _CoapMessages2.default.toBinary(chunkIndex, 'uint16')
-    }]), _this._chunk, _this);
+    var args = [encodedCrc];
+    if (_this._fastOtaEnabled || _this._protocolVersion !== 0) {
+      args.push(_CoapMessages2.default.toBinary(chunkIndex, 'uint16'));
+    }
+    return _this._client.sendMessage('Chunk', { args: args }, null, _this._chunk, _this);
   };
 
   this._onAllChunksDone = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {

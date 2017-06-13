@@ -44,7 +44,7 @@ var MessageSpecifications = [['Hello', {
   code: _CoapMessage2.default.Code.POST,
   response: 'ChunkReceived',
   type: _CoapMessage2.default.Type.CON,
-  uri: 'c?{{{crc}}}'
+  uri: 'c'
 }], ['ChunkMissed', {
   code: _CoapMessage2.default.Code.GET,
   response: 'ChunkMissedAck',
@@ -59,7 +59,7 @@ var MessageSpecifications = [['Hello', {
   code: _CoapMessage2.default.Code.POST,
   response: 'FunctionReturn',
   type: _CoapMessage2.default.Type.CON,
-  uri: 'f/{{name}}?{{{args}}}'
+  uri: 'f/{{name}}'
 }], ['VariableRequest', {
   code: _CoapMessage2.default.Code.GET,
   response: 'VariableValue',

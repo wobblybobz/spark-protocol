@@ -5,6 +5,10 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.DEVICE_MESSAGE_EVENTS_NAMES = exports.SYSTEM_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = undefined;
 
+var _values = require('babel-runtime/core-js/object/values');
+
+var _values2 = _interopRequireDefault(_values);
+
 var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
@@ -362,7 +366,7 @@ var Device = function (_EventEmitter) {
     _this._sendHello = function () {
       // client will set the counter property on the message
       _this._sendCounter = _CryptoManager2.default.getRandomUINT16();
-      _this.sendMessage('Hello', {}, null);
+      _this.sendMessage('Hello');
     };
 
     _this.ping = function () {
@@ -703,7 +707,7 @@ var Device = function (_EventEmitter) {
 
     _this.callFunction = function () {
       var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(functionName, functionArguments) {
-        var isBusy, buffer, token, message;
+        var isBusy, token, message;
         return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
@@ -718,38 +722,21 @@ var Device = function (_EventEmitter) {
                 throw new Error('This device is locked during the flashing process.');
 
               case 3:
-                _context6.next = 5;
-                return _this._transformArguments(functionName, functionArguments);
-
-              case 5:
-                buffer = _context6.sent;
-
-                if (buffer) {
-                  _context6.next = 8;
-                  break;
-                }
-
-                throw new Error('Unknown Function ' + functionName);
-
-              case 8:
 
                 _logger2.default.log('sending function call to the device', { deviceID: _this._id, functionName: functionName });
 
                 token = _this.sendMessage('FunctionCall', {
-                  args: buffer,
+                  args: (0, _values2.default)(functionArguments),
                   name: functionName
-                }, [{
-                  name: _CoapMessage2.default.Option.URI_PATH,
-                  value: new Buffer('f/' + functionName)
-                }], null);
-                _context6.next = 12;
+                });
+                _context6.next = 7;
                 return _this.listenFor('FunctionReturn', null, token);
 
-              case 12:
+              case 7:
                 message = _context6.sent;
                 return _context6.abrupt('return', _this._transformFunctionResult(functionName, message));
 
-              case 14:
+              case 9:
               case 'end':
                 return _context6.stop();
             }
@@ -789,9 +776,6 @@ var Device = function (_EventEmitter) {
                 buffer.writeUInt8(shouldShowSignal ? 1 : 0, 0);
 
                 token = _this.sendMessage('SignalStart', null, [{
-                  name: _CoapMessage2.default.Option.URI_PATH,
-                  value: new Buffer('s')
-                }, {
                   name: _CoapMessage2.default.Option.URI_QUERY,
                   value: buffer
                 }]);
@@ -941,90 +925,29 @@ var Device = function (_EventEmitter) {
       return result;
     };
 
-    _this._transformArguments = function () {
-      var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(name, args) {
-        var lowercaseName, deviceFunctionState, functionState, oldProtocolFunctionState;
-        return _regenerator2.default.wrap(function _callee9$(_context9) {
-          while (1) {
-            switch (_context9.prev = _context9.next) {
-              case 0:
-                if (args) {
-                  _context9.next = 2;
-                  break;
-                }
-
-                return _context9.abrupt('return', null);
-
-              case 2:
-                _context9.next = 4;
-                return _this._ensureWeHaveIntrospectionData();
-
-              case 4:
-                lowercaseName = name.toLowerCase();
-                deviceFunctionState = (0, _nullthrows2.default)(_this._deviceFunctionState);
-                functionState = deviceFunctionState[lowercaseName];
-
-                if (!functionState || !functionState.args) {
-                  // maybe it's the old protocol?
-                  oldProtocolFunctionState = deviceFunctionState.f;
-
-                  if (oldProtocolFunctionState && oldProtocolFunctionState.some(function (fn) {
-                    return fn.toLowerCase() === lowercaseName;
-                  })) {
-                    // current/simplified function format (one string arg, int return type)
-                    functionState = {
-                      args: [['', 'string']],
-                      returns: 'int'
-                    };
-                  }
-                }
-
-                if (!(!functionState || !functionState.args)) {
-                  _context9.next = 10;
-                  break;
-                }
-
-                return _context9.abrupt('return', null);
-
-              case 10:
-                return _context9.abrupt('return', _CoapMessages2.default.buildArguments(args, functionState.args));
-
-              case 11:
-              case 'end':
-                return _context9.stop();
-            }
-          }
-        }, _callee9, _this2);
-      }));
-
-      return function (_x11, _x12) {
-        return _ref9.apply(this, arguments);
-      };
-    }();
-
     _this._introspectionPromise = null;
-    _this._ensureWeHaveIntrospectionData = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10() {
-      return _regenerator2.default.wrap(function _callee10$(_context10) {
+    _this._ensureWeHaveIntrospectionData = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9() {
+      return _regenerator2.default.wrap(function _callee9$(_context9) {
         while (1) {
-          switch (_context10.prev = _context10.next) {
+          switch (_context9.prev = _context9.next) {
             case 0:
               if (!_this._hasFunctionState()) {
-                _context10.next = 2;
+                _context9.next = 2;
                 break;
               }
 
-              return _context10.abrupt('return', _promise2.default.resolve());
+              return _context9.abrupt('return', _promise2.default.resolve());
 
             case 2:
               if (!_this._introspectionPromise) {
-                _context10.next = 4;
+                _context9.next = 4;
                 break;
               }
 
-              return _context10.abrupt('return', _this._introspectionPromise);
+              return _context9.abrupt('return', _this._introspectionPromise);
 
             case 4:
-              _context10.next = 6;
+              _context9.next = 6;
               return new _promise2.default(function (resolve) {
                 return setTimeout(function () {
                   return resolve();
@@ -1032,7 +955,7 @@ var Device = function (_EventEmitter) {
               });
 
             case 6:
-              _context10.prev = 6;
+              _context9.prev = 6;
 
               _this._introspectionPromise = new _promise2.default(function (resolve, reject) {
                 var timeout = setTimeout(function () {
@@ -1088,25 +1011,25 @@ var Device = function (_EventEmitter) {
                 _this.sendMessage('Describe');
               });
 
-              return _context10.abrupt('return', (0, _nullthrows2.default)(_this._introspectionPromise).then(function (result) {
+              return _context9.abrupt('return', (0, _nullthrows2.default)(_this._introspectionPromise).then(function (result) {
                 _this._systemInformation = result.systemInformation;
                 _this._deviceFunctionState = result.functionState;
                 _this._introspectionPromise = null;
               }));
 
             case 11:
-              _context10.prev = 11;
-              _context10.t0 = _context10['catch'](6);
+              _context9.prev = 11;
+              _context9.t0 = _context9['catch'](6);
 
-              _this.disconnect('_ensureWeHaveIntrospectionData error: ' + _context10.t0);
-              throw _context10.t0;
+              _this.disconnect('_ensureWeHaveIntrospectionData error: ' + _context9.t0);
+              throw _context9.t0;
 
             case 15:
             case 'end':
-              return _context10.stop();
+              return _context9.stop();
           }
         }
-      }, _callee10, _this2, [[6, 11]]);
+      }, _callee9, _this2, [[6, 11]]);
     }));
 
     _this.onDeviceEvent = function (event) {
@@ -1279,9 +1202,6 @@ var Device = function (_EventEmitter) {
 
 
   // Transforms the result from a device function to the correct type.
-
-
-  // transforms our object into a nice coap query string
 
   /**
    * Checks our cache to see if we have the function state, otherwise requests
