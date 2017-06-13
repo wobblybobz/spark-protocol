@@ -171,41 +171,51 @@ class CoapMessages {
     data: ?Buffer,
     token: ?number,
   ): ?Buffer => {
-    const specification = CoapMessages._specifications.get(messageName);
-    if (!specification) {
-      logger.error('Unknown Message Type');
-      return null;
+    try {
+      const specification = CoapMessages._specifications.get(messageName);
+      if (!specification) {
+        logger.error('Unknown Message Type');
+        return null;
+      }
+
+      // Format our url
+      let uri = specification.uri;
+      if (params && specification.template) {
+        uri = specification.template.render(params);
+      }
+
+      if (params && params._raw) {
+        throw new Error('_raw', params);
+      }
+
+      let uriOption = null;
+      const hasExistingUri = (options || []).some(
+        (item: CoapOption): boolean =>
+          item.name === CoapMessage.Option.URI_PATH,
+      );
+
+      if (uri && !hasExistingUri) {
+        uriOption = {
+          name: CoapMessage.Option.URI_PATH,
+          value: new Buffer(uri),
+        };
+      }
+
+      return CoapPacket.generate({
+        ..._messageTypeToPacketProps(specification.type),
+        code: specification.code.toString(),
+        messageId,
+        options: compactArray([
+          ...(options || []),
+          uriOption,
+        ]),
+        payload: data || new Buffer(0),
+        token: token && Buffer.from([token]),
+      });
+    } catch (error) {
+      console.error(error);
     }
-
-    // Format our url
-    let uri = specification.uri;
-    if (params && specification.template) {
-      uri = specification.template.render(params);
-    }
-
-    if (params && params._raw) {
-      throw new Error('_raw', params);
-    }
-
-    const uriOption = uri && (!options || !options.some(
-      (item: CoapOption): boolean =>
-        item.name === CoapMessage.Option.URI_PATH,
-    )) && {
-      name: CoapMessage.Option.URI_PATH,
-      value: new Buffer(uri),
-    };
-
-    return CoapPacket.generate({
-      ..._messageTypeToPacketProps(specification.type),
-      code: specification.code.toString(),
-      messageId,
-      options: compactArray([
-        ...(options || []),
-        uriOption,
-      ]),
-      payload: data,
-      token: token && Buffer.from([token]),
-    });
+    return null;
   };
 
   static unwrap = (data: Buffer): ?CoapPacket => {
@@ -303,7 +313,7 @@ class CoapMessages {
 
   // eslint-disable-next-line func-names
   static fromBinary = (buffer: Buffer, typeName: string): * => {
-    switch (typeName) {
+    switch (typeName.toLowerCase()) {
       case 'bool': {
         return !!buffer.readUInt8(0);
       }
@@ -324,6 +334,7 @@ class CoapMessages {
         return buffer.readUInt16BE(0);
       }
 
+      case 'int':
       case 'int32':
       case 'number': {
         return buffer.readInt32BE(0);

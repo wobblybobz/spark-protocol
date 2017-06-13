@@ -65,10 +65,6 @@ var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
-var _moment = require('moment');
-
-var _moment2 = _interopRequireDefault(_moment);
-
 var _nullthrows = require('nullthrows');
 
 var _nullthrows2 = _interopRequireDefault(_nullthrows);
@@ -107,10 +103,6 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  * How high do our counters go before we wrap around to 0?
  * (CoAP maxes out at a 16 bit int)
  */
-var COUNTER_MAX = 65536;
-/**
- * How big can our tokens be in CoAP messages?
- */
 /*
 *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
 *
@@ -131,6 +123,10 @@ var COUNTER_MAX = 65536;
 *
 */
 
+var COUNTER_MAX = 65536;
+/**
+ * How big can our tokens be in CoAP messages?
+ */
 var TOKEN_COUNTER_MAX = 256;
 var KEEP_ALIVE_TIMEOUT = _settings2.default.KEEP_ALIVE_TIMEOUT;
 var SOCKET_TIMEOUT = _settings2.default.SOCKET_TIMEOUT;
@@ -741,7 +737,7 @@ var Device = function (_EventEmitter) {
 
                 token = _this.sendMessage('FunctionCall', {
                   args: buffer,
-                  name: functionName
+                  name: functionName.toLowerCase()
                 }, [{
                   name: _CoapMessage2.default.Option.URI_PATH,
                   value: new Buffer('f/' + functionName)
@@ -916,7 +912,6 @@ var Device = function (_EventEmitter) {
       var variableType = variableFunctionState && variableFunctionState[name] ? variableFunctionState[name] : 'string';
 
       var result = null;
-      var data = null;
       try {
         if (packet.payload.length) {
           // leaving raw payload in response message for now, so we don't shock
@@ -1122,7 +1117,6 @@ var Device = function (_EventEmitter) {
       var data = event.data,
           isPublic = event.isPublic,
           name = event.name,
-          publishedAt = event.publishedAt,
           ttl = event.ttl;
 
       var messageName = isPublic ? DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT : DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT;

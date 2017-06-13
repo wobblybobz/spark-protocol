@@ -190,36 +190,46 @@ function (_ref) {
 
   return specification.type === _CoapMessage2.default.Type.NON;
 }, _class.wrap = function (messageName, messageId, params, options, data, token) {
-  var specification = CoapMessages._specifications.get(messageName);
-  if (!specification) {
-    _logger2.default.error('Unknown Message Type');
-    return null;
+  try {
+    var specification = CoapMessages._specifications.get(messageName);
+    if (!specification) {
+      _logger2.default.error('Unknown Message Type');
+      return null;
+    }
+
+    // Format our url
+    var uri = specification.uri;
+    if (params && specification.template) {
+      uri = specification.template.render(params);
+    }
+
+    if (params && params._raw) {
+      throw new Error('_raw', params);
+    }
+
+    var uriOption = null;
+    var hasExistingUri = (options || []).some(function (item) {
+      return item.name === _CoapMessage2.default.Option.URI_PATH;
+    });
+
+    if (uri && !hasExistingUri) {
+      uriOption = {
+        name: _CoapMessage2.default.Option.URI_PATH,
+        value: new Buffer(uri)
+      };
+    }
+
+    return _coapPacket2.default.generate((0, _extends3.default)({}, _messageTypeToPacketProps(specification.type), {
+      code: specification.code.toString(),
+      messageId: messageId,
+      options: (0, _compactArray2.default)([].concat((0, _toConsumableArray3.default)(options || []), [uriOption])),
+      payload: data || new Buffer(0),
+      token: token && Buffer.from([token])
+    }));
+  } catch (error) {
+    console.error(error);
   }
-
-  // Format our url
-  var uri = specification.uri;
-  if (params && specification.template) {
-    uri = specification.template.render(params);
-  }
-
-  if (params && params._raw) {
-    throw new Error('_raw', params);
-  }
-
-  var uriOption = uri && (!options || !options.some(function (item) {
-    return item.name === _CoapMessage2.default.Option.URI_PATH;
-  })) && {
-    name: _CoapMessage2.default.Option.URI_PATH,
-    value: new Buffer(uri)
-  };
-
-  return _coapPacket2.default.generate((0, _extends3.default)({}, _messageTypeToPacketProps(specification.type), {
-    code: specification.code.toString(),
-    messageId: messageId,
-    options: (0, _compactArray2.default)([].concat((0, _toConsumableArray3.default)(options || []), [uriOption])),
-    payload: data,
-    token: token && Buffer.from([token])
-  }));
+  return null;
 }, _class.unwrap = function (data) {
   if (!data) {
     return null;
@@ -292,7 +302,7 @@ function (_ref) {
   }
   return result;
 }, _class.fromBinary = function (buffer, typeName) {
-  switch (typeName) {
+  switch (typeName.toLowerCase()) {
     case 'bool':
       {
         return !!buffer.readUInt8(0);
@@ -318,6 +328,7 @@ function (_ref) {
         return buffer.readUInt16BE(0);
       }
 
+    case 'int':
     case 'int32':
     case 'number':
       {

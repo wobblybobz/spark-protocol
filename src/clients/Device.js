@@ -694,7 +694,7 @@ class Device extends EventEmitter {
       'FunctionCall',
       {
         args: buffer,
-        name: functionName,
+        name: functionName.toLowerCase(),
       },
       [{
         name: CoapMessage.Option.URI_PATH,
