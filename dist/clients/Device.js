@@ -737,7 +737,7 @@ var Device = function (_EventEmitter) {
 
                 token = _this.sendMessage('FunctionCall', {
                   args: buffer,
-                  name: functionName.toLowerCase()
+                  name: functionName
                 }, [{
                   name: _CoapMessage2.default.Option.URI_PATH,
                   value: new Buffer('f/' + functionName)
