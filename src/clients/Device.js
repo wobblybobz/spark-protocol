@@ -20,7 +20,7 @@
 
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
-import type { Event } from '../types';
+import type { DeviceAttributes, Event } from '../types';
 import type Handshake from '../lib/Handshake';
 import type { MessageType } from '../lib/MessageSpecifications';
 import type { FileTransferStoreType } from '../lib/FileTransferStore';
@@ -42,6 +42,15 @@ type DeviceDescription = {|
   state: Object,
   systemInformation: Object,
 |};
+
+type DeviceStatus = 1 | 2 | 3 | 4;
+
+type GetHelloInfo = {
+  particleProductId: number,
+  platformId: number,
+  productFirmwareVersion: number,
+  reservedFlags: number,
+};
 
 // Hello — sent first by Device then by Server immediately after handshake, never again
 // Ignored — sent by either side to respond to a message with a bad counter value.
@@ -116,31 +125,57 @@ export const DEVICE_MESSAGE_EVENTS_NAMES = {
   SUBSCRIBE: 'Subscribe',
 };
 
+// TODO we should make getDescription private method
+// and call it before fetching attributes from repo.
+// Right now doing this drops performance on ~1/3.
+// so change the order after fixing the perf bug.
+// `ready` state indicates that attributes are fulfilled
+// and consist of handshake info + existingAttributesFromRepo + describe info
+export const DEVICE_STATUS_MAP = {
+  GOT_HELLO: 2,
+  GOT_REPO_ATTRIBUTES: 3,
+  INITIAL: 1,
+  READY: 4,
+};
+
+const NEW_STATUS_EVENT_NAME = 'newStatus';
+
 /**
  * Implementation of the Particle messaging protocol
  * @Device
  */
 class Device extends EventEmitter {
+  _attributes: DeviceAttributes = {
+    appHash: null,
+    deviceID: '',
+    functions: null,
+    ip: 'unkonwn',
+    lastHeard: null,
+    name: '',
+    ownerID: null,
+    particleProductId: 0,
+    platformId: 0,
+    productFirmwareVersion: 0,
+    registrar: null,
+    reservedFlags: 0,
+    variables: null,
+  };
   _cipherStream: ?Duplex = null;
   _connectionKey: ?string = null;
   _connectionStartTime: ?Date = null;
   _decipherStream: ?Duplex = null;
   _deviceFunctionState: ?Object = null;
   _disconnectCounter: number = 0;
-  _id: string = '';
-  _lastDevicePing: Date = new Date();
   _maxBinarySize: ?number = null;
   _otaChunkSize: ?number = null;
   _owningFlasher: ?Flasher;
-  _particleProductId: number = 0;
-  _platformId: number = 0;
-  _productFirmwareVersion: number = 0;
-  _recieveCounter: number = 0;
-  _reservedFlags: number = 0;
+  _receiveCounter: number = 0;
   _sendCounter: number = 0;
   _sendToken: number = 0;
   _socket: Socket;
   _socketTimeoutInterval: ?number = null;
+  _status: DeviceStatus = DEVICE_STATUS_MAP.INITIAL;
+  _statusEventEmitter: EventEmitter = new EventEmitter();
   _systemInformation: ?Object;
   _tokens: {[key: string]: MessageType} = {};
   _handshake: Handshake;
@@ -157,12 +192,50 @@ class Device extends EventEmitter {
     this._handshake = handshake;
   }
 
+  getAttributes = (): DeviceAttributes => this._attributes;
+
+  getSystemInformation = (): Object => nullthrows(this._systemInformation);
+
+  updateAttributes = (attributes: $Shape<DeviceAttributes>): DeviceAttributes => {
+    this._attributes = {
+      ...this._attributes,
+      ...attributes,
+    };
+
+    return this._attributes;
+  };
+
   setMaxBinarySize = (maxBinarySize: number) => {
     this._maxBinarySize = maxBinarySize;
   };
 
   setOtaChunkSize = (maxBinarySize: number) => {
     this._otaChunkSize = maxBinarySize;
+  };
+
+  setStatus = (status: DeviceStatus) => {
+    this._status = status;
+    this._statusEventEmitter.emit(NEW_STATUS_EVENT_NAME, status);
+  };
+
+  hasStatus = async (status: DeviceStatus): Promise<void> => {
+    if (status <= this._status) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve: () => void) => {
+      const deviceStatusListener = (newStatus: DeviceStatus) => {
+        if (status <= newStatus) {
+          resolve();
+          this._statusEventEmitter.removeListener(
+            NEW_STATUS_EVENT_NAME,
+            deviceStatusListener,
+          );
+        }
+      };
+
+      this._statusEventEmitter.on(NEW_STATUS_EVENT_NAME, deviceStatusListener);
+    });
   };
 
   /**
@@ -206,11 +279,17 @@ class Device extends EventEmitter {
         handshakeBuffer,
       } = result;
 
-      this._id = deviceID;
       this._cipherStream = cipherStream;
       this._decipherStream = decipherStream;
 
-      this._getHello(handshakeBuffer);
+      const getHelloInfo = this._getHello(handshakeBuffer);
+
+      this.updateAttributes({
+        ...(getHelloInfo || {}),
+        deviceID,
+        ip: this.getRemoteIPAddress(),
+      });
+      this.setStatus(DEVICE_STATUS_MAP.GOT_HELLO);
 
       return deviceID;
     } catch (error) {
@@ -225,7 +304,6 @@ class Device extends EventEmitter {
       if (!decipherStream) {
         throw new Error('decipherStream not set.');
       }
-      this._sendHello();
 
       decipherStream.on(
         'readable',
@@ -243,17 +321,21 @@ class Device extends EventEmitter {
         },
       );
 
+      this._sendHello();
+
       this._connectionStartTime = new Date();
 
+      // todo if we don't do describe here,we don't have platforID etc info.
+      // so the log doesn't make sense right now.
       logger.log(
-        'On Device Ready:\r\n',
+        'On device protocol initialization complete:\r\n',
         {
           cache_key: this._connectionKey,
-          deviceID: this._id,
-          firmwareVersion: this._productFirmwareVersion,
+          deviceID: this.getDeviceID(),
+          firmwareVersion: this._attributes.productFirmwareVersion,
           ip: this.getRemoteIPAddress(),
-          platformID: this._platformId,
-          productID: this._particleProductId,
+          platformID: this._attributes.platformId,
+          productID: this._attributes.particleProductId,
         },
       );
     } catch (error) {
@@ -275,26 +357,29 @@ class Device extends EventEmitter {
     );
   };
 
-  _getHello = (chunk: Buffer) => {
+  _getHello = (chunk: Buffer): ?GetHelloInfo => {
     const message = CoapMessages.unwrap(chunk);
     if (!message) {
       throw new Error('failed to parse hello');
     }
 
-    this._recieveCounter = message.messageId;
+    this._receiveCounter = message.messageId;
 
     try {
       const payload = message.payload;
       if (payload.length <= 0) {
-        return;
+        return null;
       }
 
-      this._particleProductId = payload.readUInt16BE(0);
-      this._productFirmwareVersion = payload.readUInt16BE(2);
-      this._reservedFlags = payload.readUInt16BE(4);
-      this._platformId = payload.readUInt16BE(6);
+      return {
+        particleProductId: payload.readUInt16BE(0),
+        platformId: payload.readUInt16BE(6),
+        productFirmwareVersion: payload.readUInt16BE(2),
+        reservedFlags: payload.readUInt16BE(4),
+      };
     } catch (error) {
       logger.log('error while parsing hello payload ', error);
+      return null;
     }
   };
 
@@ -306,15 +391,15 @@ class Device extends EventEmitter {
 
   ping = (): {
     connected: boolean,
-    lastPing: Date,
+    lastHeard: ?Date,
   } => {
     if (settings.logApiMessages) {
-      logger.log('Pinged, replying', { deviceID: this._id });
+      logger.log('Pinged, replying', { deviceID: this.getDeviceID() });
     }
 
     return {
       connected: this._socket !== null,
-      lastPing: this._lastDevicePing,
+      lastHeard: this._attributes.lastHeard,
     };
   };
 
@@ -328,7 +413,7 @@ class Device extends EventEmitter {
     if (!packet) {
       logger.error(
         'routeMessage got a NULL coap message ',
-        { deviceID: this._id },
+        { deviceID: this.getDeviceID() },
       );
       return;
     }
@@ -366,18 +451,18 @@ class Device extends EventEmitter {
 
     this._incrementReceiveCounter();
     if (packet.code === 0 && packet.confirmable) {
-      this._lastDevicePing = new Date();
+      this.updateAttributes({ lastHeard: new Date() });
       this.sendReply('PingAck', packet.messageId);
       return;
     }
 
-    if (!packet || packet.messageId !== this._recieveCounter) {
+    if (!packet || packet.messageId !== this._receiveCounter) {
       logger.log(
         'got counter ',
         packet.messageId,
         ' expecting ',
-        this._recieveCounter,
-        { deviceID: this._id },
+        this._receiveCounter,
+        { deviceID: this.getDeviceID() },
       );
 
       if (requestType === 'Ignored') {
@@ -426,7 +511,7 @@ class Device extends EventEmitter {
     if (!message) {
       logger.error(
         'Device - could not unwrap message',
-        { deviceID: this._id },
+        { deviceID: this.getDeviceID() },
       );
       return;
     }
@@ -434,7 +519,7 @@ class Device extends EventEmitter {
     if (!this._cipherStream) {
       logger.error(
         'Device - sendReply before READY',
-        { deviceID: this._id },
+        { deviceID: this.getDeviceID() },
       );
       return;
     }
@@ -480,7 +565,7 @@ class Device extends EventEmitter {
     if (!this._cipherStream) {
       logger.error(
         'Client - sendMessage before READY',
-        { deviceID: this._id, messageName },
+        { deviceID: this.getDeviceID(), messageName },
       );
     }
 
@@ -522,7 +607,7 @@ class Device extends EventEmitter {
               'URI filter did not match',
               uri,
               packetUri,
-              { deviceID: this._id },
+              { deviceID: this.getDeviceID() },
             );
           }
           return;
@@ -535,7 +620,7 @@ class Device extends EventEmitter {
               'Tokens did not match ',
                tokenHex,
                packetTokenHex,
-               { deviceID: this._id },
+               { deviceID: this.getDeviceID() },
              );
           }
           return;
@@ -570,7 +655,7 @@ class Device extends EventEmitter {
   };
 
   _incrementReceiveCounter = () => {
-    this._recieveCounter = this._increment(this._recieveCounter, COUNTER_MAX);
+    this._receiveCounter = this._increment(this._receiveCounter, COUNTER_MAX);
   };
 
   // increments or wraps our token value, and makes sure it isn't in use
@@ -622,11 +707,13 @@ class Device extends EventEmitter {
     }
 
     try {
+      // todo _ensureWeHaveIntrospectionData work should be in this method
+      // since we call getDescription() only once on deviceConnection now.
       await this._ensureWeHaveIntrospectionData();
 
       return {
-        firmwareVersion: this._productFirmwareVersion,
-        productID: this._particleProductId,
+        firmwareVersion: this._attributes.productFirmwareVersion,
+        productID: this._attributes.particleProductId,
         state: nullthrows(this._deviceFunctionState),
         systemInformation: nullthrows(this._systemInformation),
       };
@@ -635,11 +722,6 @@ class Device extends EventEmitter {
     }
   };
 
-  /**
-   * Ensures we have introspection data from the device, and then
-   * requests a variable value to be sent, when received it transforms
-   * the response into the appropriate type
-   **/
   getVariableValue = async (
     name: string,
   ): Promise<*> => {
@@ -648,7 +730,8 @@ class Device extends EventEmitter {
       throw new Error('This device is locked during the flashing process.');
     }
 
-    await this._ensureWeHaveIntrospectionData();
+    await this.hasStatus(DEVICE_STATUS_MAP.READY);
+
     if (!this._hasParticleVariable(name)) {
       throw new Error('Variable not found');
     }
@@ -666,7 +749,6 @@ class Device extends EventEmitter {
     return this._transformVariableResult(name, message);
   };
 
-  // call function on device firmware
   callFunction = async (
     functionName: string,
     functionArguments: {[key: string]: string},
@@ -676,9 +758,11 @@ class Device extends EventEmitter {
       throw new Error('This device is locked during the flashing process.');
     }
 
+    await this.hasStatus(DEVICE_STATUS_MAP.READY);
+
     logger.log(
       'sending function call to the device',
-      { deviceID: this._id, functionName },
+      { deviceID: this.getDeviceID(), functionName },
     );
 
     const token = this.sendMessage(
@@ -740,7 +824,7 @@ class Device extends EventEmitter {
     try {
       logger.log(
         'flash device started! - sending api event',
-        { deviceID: this._id },
+        { deviceID: this.getDeviceID() },
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
@@ -749,7 +833,7 @@ class Device extends EventEmitter {
 
       logger.log(
         'flash device finished! - sending api event',
-        { deviceID: this._id },
+        { deviceID: this.getDeviceID() },
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
@@ -758,7 +842,7 @@ class Device extends EventEmitter {
     } catch (error) {
       logger.log(
         'flash device failed! - sending api event',
-        { deviceID: this._id, error },
+        { deviceID: this.getDeviceID(), error },
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
@@ -778,7 +862,7 @@ class Device extends EventEmitter {
       'This client has an exclusive lock',
       {
         cache_key: this._connectionKey,
-        deviceID: this._id,
+        deviceID: this.getDeviceID(),
         messageName,
       },
     );
@@ -788,7 +872,7 @@ class Device extends EventEmitter {
 
   takeOwnership = (flasher: Flasher): boolean => {
     if (this._owningFlasher) {
-      logger.error('already owned', { deviceID: this._id });
+      logger.error('already owned', { deviceID: this.getDeviceID() });
       return false;
     }
     // only permit the owning object to send messages.
@@ -797,7 +881,7 @@ class Device extends EventEmitter {
   };
 
   releaseOwnership = (flasher: Flasher) => {
-    logger.log('releasing flash ownership ', { deviceID: this._id });
+    logger.log('releasing flash ownership ', { deviceID: this.getDeviceID() });
     if (this._owningFlasher === flasher) {
       this._owningFlasher = null;
     } else if (this._owningFlasher) {
@@ -805,7 +889,7 @@ class Device extends EventEmitter {
         'cannot releaseOwnership, ',
         flasher,
         ' isn\'t the current owner ',
-        { deviceID: this._id },
+        { deviceID: this.getDeviceID() },
       );
     }
   };
@@ -815,12 +899,8 @@ class Device extends EventEmitter {
     packet: CoapPacket,
   ): ?Buffer => {
     // grab the variable type, if the device doesn't say, assume it's a 'string'
-    const variableFunctionState = this._deviceFunctionState
-      ? this._deviceFunctionState.v
-      : null;
-    const variableType = variableFunctionState && variableFunctionState[name]
-      ? variableFunctionState[name]
-      : 'string';
+    const variableType =
+      this._attributes.variables && this._attributes.variables[name] || 'string';
 
     let result: ?Buffer = null;
     try {
@@ -945,6 +1025,12 @@ class Device extends EventEmitter {
 
       return nullthrows(this._introspectionPromise).then(
         (result: Object) => {
+          this.updateAttributes({
+            functions: result.functionState.f,
+            variables: result.functionState.v,
+          });
+
+          // todo remove this after refactoring _ensureWeHaveIntrospectionData
           this._systemInformation = result.systemInformation;
           this._deviceFunctionState = result.functionState;
           this._introspectionPromise = null;
@@ -986,11 +1072,7 @@ class Device extends EventEmitter {
     !!this._deviceFunctionState;
 
   _hasParticleVariable = (name: string): boolean =>
-    !!(
-      this._deviceFunctionState &&
-      this._deviceFunctionState.v &&
-      this._deviceFunctionState.v[name]
-    );
+    !!(this._attributes.variables && this._attributes.variables[name]);
 
   _hasSparkFunction = (name: string): boolean => {
     // has state, and... the function is an object, or it's in the function array
@@ -1012,7 +1094,7 @@ class Device extends EventEmitter {
   _toHexString = (value: number): string =>
     (value < 10 ? '0' : '') + value.toString(16);
 
-  getID = (): string => this._id;
+  getDeviceID = (): string => this._attributes.deviceID;
 
   getConnectionKey = (): ?string => this._connectionKey;
 
@@ -1037,7 +1119,7 @@ class Device extends EventEmitter {
     try {
       const logInfo = {
         cache_key: this._connectionKey,
-        deviceID: this._id,
+        deviceID: this.getDeviceID(),
         duration: this._connectionStartTime
          ? ((new Date()) - this._connectionStartTime) / 1000.0
          : undefined,

@@ -2,20 +2,23 @@
 
 export type DeviceAttributes = {
   appHash: ?string,
-  claimCode: ?string,
-  currentBuildTarget: string,
+  claimCode?: ?string,
+  currentBuildTarget?: string,
   deviceID: string,
+  functions: ?Array<string>,
   imei?: string,
   ip: string,
-  isCellular: boolean,
+  isCellular?: boolean,
   last_iccid?: string,
-  lastHeard: Date,
+  lastHeard: ?Date,
   name: string,
   ownerID: ?string,
   particleProductId: number,
+  platformId: number,
   productFirmwareVersion: number,
-  registrar: string,
-  timestamp: Date,
+  registrar?: ?string,
+  variables: ?Object,
+  reservedFlags: ?number,
 };
 
 export type DeviceKeyObject = {

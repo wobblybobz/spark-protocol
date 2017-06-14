@@ -42,6 +42,7 @@ import SPARK_SERVER_EVENTS from '../lib/SparkServerEvents';
 import {
   DEVICE_EVENT_NAMES,
   DEVICE_MESSAGE_EVENTS_NAMES,
+  DEVICE_STATUS_MAP,
   SYSTEM_EVENT_NAMES,
 } from '../clients/Device';
 
@@ -100,8 +101,8 @@ class DeviceServer {
     );
 
     this._eventPublisher.subscribe(
-      getRequestEventName(SPARK_SERVER_EVENTS.GET_DEVICE_DESCRIPTION),
-      this._onSparkServerGetDeviceDescriptionRequest,
+      getRequestEventName(SPARK_SERVER_EVENTS.GET_DEVICE_ATTRIBUTES),
+      this._onSparkServerGetDeviceAttributes,
     );
 
     this._eventPublisher.subscribe(
@@ -117,6 +118,11 @@ class DeviceServer {
     this._eventPublisher.subscribe(
       getRequestEventName(SPARK_SERVER_EVENTS.RAISE_YOUR_HAND),
       this._onSparkServerRaiseYourHandRequest,
+    );
+
+    this._eventPublisher.subscribe(
+      getRequestEventName(SPARK_SERVER_EVENTS.UPDATE_DEVICE_ATTRIBUTES),
+      this._onSparkServerUpdateDeviceAttributesRequest,
     );
 
     const server = net.createServer(
@@ -147,16 +153,10 @@ class DeviceServer {
     );
   }
 
-  _updateDeviceSystemFirmware = async (
-    device: Device,
-    ownerID: ?string,
-  ): Promise<void> => {
-    const description = await device.getDescription();
-    const systemInformation = description.systemInformation;
-    if (!systemInformation) {
-      return;
-    }
-    const deviceID = device.getID();
+  _updateDeviceSystemFirmware = async (device: Device): Promise<void> => {
+    await device.hasStatus(DEVICE_STATUS_MAP.READY);
+    const { deviceID, ownerID } = device.getAttributes();
+    const systemInformation = device.getSystemInformation();
 
     const config = await FirmwareManager.getOtaSystemUpdateConfig(
       systemInformation,
@@ -195,12 +195,14 @@ class DeviceServer {
 
       const deviceID = await device.startProtocolInitialization();
 
+      logger.info(
+        `Connection from: ${device.getRemoteIPAddress()} - ` +
+        `Device ID: ${deviceID}`,
+        `Connection ID: ${counter}`,
+      );
+
       process.nextTick(async (): Promise<void> => {
         try {
-          const deviceAttributes =
-            await this._deviceAttributeRepository.getByID(device.getID());
-          const ownerID = deviceAttributes && deviceAttributes.ownerID;
-
           device.on(
             DEVICE_EVENT_NAMES.DISCONNECT,
             (): Promise<void> => this._onDeviceDisconnect(device),
@@ -238,34 +240,50 @@ class DeviceServer {
               this._onDeviceGetTime(packet, device),
           );
 
+          // TODO in the next 3 subscriptions for flashing events
+          // there is code duplication, its not clean, but
+          // i guess we'll remove these subscription soon anyways
+          // so I keep it like this for now.
           device.on(
             DEVICE_EVENT_NAMES.FLASH_STARTED,
-            (): void => this.publishSpecialEvent(
-              SYSTEM_EVENT_NAMES.FLASH_STATUS,
-              'started',
-              deviceID,
-              ownerID,
-            ),
+            async (): Promise<void> => {
+              await device.hasStatus(DEVICE_STATUS_MAP.READY);
+              const { ownerID } = device.getAttributes();
+              this.publishSpecialEvent(
+                SYSTEM_EVENT_NAMES.FLASH_STATUS,
+                'started',
+                deviceID,
+                ownerID,
+              );
+            },
           );
 
           device.on(
             DEVICE_EVENT_NAMES.FLASH_SUCCESS,
-            (): void => this.publishSpecialEvent(
-              SYSTEM_EVENT_NAMES.FLASH_STATUS,
-              'success',
-              deviceID,
-              ownerID,
-            ),
+            async (): Promise<void> => {
+              await device.hasStatus(DEVICE_STATUS_MAP.READY);
+              const { ownerID } = device.getAttributes();
+              this.publishSpecialEvent(
+                SYSTEM_EVENT_NAMES.FLASH_STATUS,
+                'success',
+                deviceID,
+                ownerID,
+              );
+            },
           );
 
           device.on(
             DEVICE_EVENT_NAMES.FLASH_FAILED,
-            (): void => this.publishSpecialEvent(
-              SYSTEM_EVENT_NAMES.FLASH_STATUS,
-              'failed',
-              deviceID,
-              ownerID,
-            ),
+            async (): Promise<void> => {
+              await device.hasStatus(DEVICE_STATUS_MAP.READY);
+              const { ownerID } = device.getAttributes();
+              this.publishSpecialEvent(
+                SYSTEM_EVENT_NAMES.FLASH_STATUS,
+                'failed',
+                deviceID,
+                ownerID,
+              );
+            },
           );
 
           if (this._devicesById.has(deviceID)) {
@@ -278,13 +296,65 @@ class DeviceServer {
           this._devicesById.set(deviceID, device);
 
           device.completeProtocolInitialization();
-          this._onDeviceReady(device);
 
-          logger.info(
-            `Connection from: ${device.getRemoteIPAddress()} - ` +
-              `Device ID: ${deviceID}`,
-              `Connection ID: ${counter}`,
+          const existingAttributes =
+            await this._deviceAttributeRepository.getByID(deviceID);
+          const ownerID = existingAttributes && existingAttributes.ownerID;
+
+          // ip newer in the current device state, than in
+          // existing attributes from repo, so filter them,
+          // and update only what we need.
+          // eslint-disable-next-line no-unused-vars
+          const { ip, ...attributes } = existingAttributes || {};
+          device.updateAttributes(attributes);
+          device.setStatus(DEVICE_STATUS_MAP.GOT_REPO_ATTRIBUTES);
+
+          this.publishSpecialEvent(
+            SYSTEM_EVENT_NAMES.SPARK_STATUS,
+            'online',
+            deviceID,
+            ownerID,
           );
+
+          // TODO we should make getDescription private method
+          // and call it before fetching attributes from repo.
+          // inside completeProtocolInitialization()
+          // Right now if we do like this it drops performance on ~1/3.
+          // so change this after fixing the perf bug.
+          const description = await device.getDescription();
+
+          const { uuid: appHash } = FirmwareManager.getAppModule(
+            description.systemInformation,
+          );
+
+          device.updateAttributes({
+            appHash,
+            lastHeard: new Date(),
+            name: existingAttributes && existingAttributes.name ||
+            NAME_GENERATOR.choose(),
+            particleProductId: description.productID,
+            productFirmwareVersion: description.firmwareVersion,
+          });
+          device.setStatus(DEVICE_STATUS_MAP.READY);
+
+          // TODO
+          // we may update attributes only on disconnect, but currently
+          // removing update here can break claim/provision flow
+          // so need to test carefully before doing this.
+          await this._deviceAttributeRepository.updateByID(
+            deviceID,
+            device.getAttributes(),
+          );
+
+          // Send app-hash if this is a new app firmware
+          if (!existingAttributes || appHash !== existingAttributes.appHash) {
+            this.publishSpecialEvent(
+              SYSTEM_EVENT_NAMES.APP_HASH,
+              appHash,
+              deviceID,
+              ownerID,
+            );
+          }
         } catch (error) {
           device.disconnect(
             `Error during connection: ${error}`,
@@ -299,7 +369,8 @@ class DeviceServer {
   _onDeviceDisconnect = async (
     device: Device,
   ): Promise<void> => {
-    const deviceID = device.getID();
+    const attributes = device.getAttributes();
+    const { deviceID, ownerID } = attributes;
 
     const newDevice = this._devicesById.get(deviceID);
     const connectionKey = device.getConnectionKey();
@@ -310,15 +381,7 @@ class DeviceServer {
     this._devicesById.delete(deviceID);
     this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
-    const deviceAttributes =
-      await this._deviceAttributeRepository.getByID(deviceID);
-
-    await this._deviceAttributeRepository.updateByID(
-      deviceID,
-      { lastHeard: device.ping().lastPing },
-    );
-
-    const ownerID = deviceAttributes && deviceAttributes.ownerID;
+    await this._deviceAttributeRepository.updateByID(deviceID, attributes);
 
     this.publishSpecialEvent(
       SYSTEM_EVENT_NAMES.SPARK_STATUS,
@@ -344,65 +407,14 @@ class DeviceServer {
     );
   };
 
-  _onDeviceReady = async (device: Device): Promise<void> => {
-    try {
-      logger.log('Device online!');
-      const deviceID = device.getID();
-
-      const existingAttributes =
-        await this._deviceAttributeRepository.getByID(deviceID);
-      const ownerID = existingAttributes && existingAttributes.ownerID;
-
-      this.publishSpecialEvent(
-        SYSTEM_EVENT_NAMES.SPARK_STATUS,
-        'online',
-        deviceID,
-        ownerID,
-      );
-
-      const description = await device.getDescription();
-      const { uuid } = FirmwareManager.getAppModule(
-        description.systemInformation,
-      );
-
-      await this._deviceAttributeRepository.updateByID(
-        deviceID,
-        {
-          name: NAME_GENERATOR.choose(),
-          ...existingAttributes,
-          appHash: uuid,
-          deviceID,
-          ip: device.getRemoteIPAddress(),
-          lastHeard: new Date(),
-          particleProductId: description.productID,
-          productFirmwareVersion: description.firmwareVersion,
-        },
-      );
-
-      // Send app-hash if this is a new app firmware
-      if (!existingAttributes || uuid !== existingAttributes.appHash) {
-        this.publishSpecialEvent(
-          SYSTEM_EVENT_NAMES.APP_HASH,
-          uuid,
-          deviceID,
-          ownerID,
-        );
-      }
-    } catch (error) {
-      logger.error(error);
-    }
-  };
-
   _onDeviceSentMessage = async (
     packet: CoapPacket,
     isPublic: boolean,
     device: Device,
   ): Promise<void> => {
     try {
-      const deviceID = device.getID();
-      const deviceAttributes =
-        await this._deviceAttributeRepository.getByID(deviceID);
-      const ownerID = deviceAttributes && deviceAttributes.ownerID;
+      await device.hasStatus(DEVICE_STATUS_MAP.READY);
+      const { deviceID, name, ownerID } = device.getAttributes();
 
       const eventData = {
         connectionID: device.getConnectionKey(),
@@ -451,10 +463,10 @@ class DeviceServer {
         );
       }
 
-      if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME) && deviceAttributes) {
+      if (eventName.startsWith(SYSTEM_EVENT_NAMES.GET_NAME)) {
         this.publishSpecialEvent(
           SYSTEM_EVENT_NAMES.GET_NAME,
-          deviceAttributes.name,
+          name,
           deviceID,
           ownerID,
         );
@@ -507,10 +519,7 @@ class DeviceServer {
         );
 
         if (this._areSystemFirmwareAutoupdatesEnabled) {
-          await this._updateDeviceSystemFirmware(
-            device,
-            ownerID,
-          );
+          await this._updateDeviceSystemFirmware(device);
         }
       }
 
@@ -529,16 +538,15 @@ class DeviceServer {
     packet: CoapPacket,
     device: Device,
   ): Promise<void> => {
+    await device.hasStatus(DEVICE_STATUS_MAP.READY);
     const claimCode = packet.payload.toString('utf8');
-    const deviceID = device.getID();
-    const deviceAttributes =
-      await this._deviceAttributeRepository.getByID(deviceID);
+    const {
+      claimCode: previousClaimCode,
+      deviceID,
+      ownerID,
+    } = device.getAttributes();
 
-    if (
-      !deviceAttributes ||
-      deviceAttributes.ownerID ||
-      deviceAttributes.claimCode === claimCode
-    ) {
+    if (ownerID || claimCode === previousClaimCode) {
       return;
     }
 
@@ -548,6 +556,10 @@ class DeviceServer {
       return;
     }
 
+    device.updateAttributes({
+      claimCode,
+      ownerID: claimRequestUserID,
+    });
     await this._deviceAttributeRepository.updateByID(
       deviceID,
       {
@@ -563,16 +575,16 @@ class DeviceServer {
     packet: CoapPacket,
     device: Device,
   ): Promise<void> => {
+    const deviceAttributes = device.getAttributes();
+    const deviceID = deviceAttributes.deviceID;
+    let ownerID = deviceAttributes.ownerID;
+
     // uri -> /e/?u    --> firehose for all my devices
     // uri -> /e/ (deviceid in body)   --> allowed
     // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
     // uri -> /e/event_name?u    --> all my devices
     // uri -> /e/event_name?u (deviceid)    --> deviceid?
     const messageName = CoapMessages.getUriPath(packet).substr(3);
-    const deviceID = device.getID();
-    const deviceAttributes =
-      await this._deviceAttributeRepository.getByID(deviceID);
-    let ownerID = deviceAttributes && deviceAttributes.ownerID;
     const query = CoapMessages.getUriQuery(packet);
     const isFromMyDevices = !!query.match('u');
 
@@ -671,19 +683,21 @@ class DeviceServer {
     }
   };
 
-  _onSparkServerGetDeviceDescriptionRequest = async (event: Event): Promise<void> => {
+  _onSparkServerGetDeviceAttributes = async (event: Event): Promise<void> => {
     const {
       deviceID,
       responseEventName,
     } = nullthrows(event.context);
+
     try {
       const device = this.getDevice(deviceID);
       if (!device) {
         throw new Error('Could not get device for ID');
       }
+      await device.hasStatus(DEVICE_STATUS_MAP.READY);
 
       this._eventPublisher.publish({
-        context: await device.getDescription(),
+        context: device.getAttributes(),
         isPublic: false,
         name: responseEventName,
       });
@@ -754,8 +768,40 @@ class DeviceServer {
         throw new Error('Could not get device for ID');
       }
 
+      await device.hasStatus(DEVICE_STATUS_MAP.READY);
+
       this._eventPublisher.publish({
         context: await device.raiseYourHand(shouldShowSignal),
+        isPublic: false,
+        name: responseEventName,
+      });
+    } catch (error) {
+      this._eventPublisher.publish({
+        context: { error },
+        isPublic: false,
+        name: responseEventName,
+      });
+    }
+  };
+
+  _onSparkServerUpdateDeviceAttributesRequest = async (event: Event): Promise<void> => {
+    const {
+      attributes,
+      deviceID,
+      responseEventName,
+    } = nullthrows(event.context);
+
+    try {
+      const device = this.getDevice(deviceID);
+      if (!device) {
+        throw new Error('Could not get device for ID');
+      }
+
+      await device.hasStatus(DEVICE_STATUS_MAP.READY);
+      device.updateAttributes({ ...attributes });
+
+      this._eventPublisher.publish({
+        context: await device.getAttributes(),
         isPublic: false,
         name: responseEventName,
       });
