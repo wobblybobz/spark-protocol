@@ -147,23 +147,28 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
 
 
   (0, _createClass3.default)(DeviceAttributeFileRepository, [{
-    key: 'update',
+    key: 'updateByID',
     value: function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(model) {
-        var modelToSave;
+      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(deviceID, props) {
+        var currentAttributes, modelToSave;
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                modelToSave = (0, _extends3.default)({}, model, {
+                _context3.next = 2;
+                return this.getByID(deviceID);
+
+              case 2:
+                currentAttributes = _context3.sent;
+                modelToSave = (0, _extends3.default)({}, currentAttributes || {}, props, {
                   timestamp: new Date()
                 });
 
 
-                this._fileManager.writeFile(model.deviceID + '.json', modelToSave);
+                this._fileManager.writeFile(deviceID + '.json', modelToSave);
                 return _context3.abrupt('return', modelToSave);
 
-              case 3:
+              case 6:
               case 'end':
                 return _context3.stop();
             }
@@ -171,11 +176,11 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
         }, _callee3, this);
       }));
 
-      function update(_x3) {
+      function updateByID(_x3, _x4) {
         return _ref3.apply(this, arguments);
       }
 
-      return update;
+      return updateByID;
     }()
   }, {
     key: 'deleteByID',
@@ -195,7 +200,7 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
         }, _callee4, this);
       }));
 
-      function deleteByID(_x4) {
+      function deleteByID(_x5) {
         return _ref4.apply(this, arguments);
       }
 
@@ -219,7 +224,7 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
         }, _callee5, this);
       }));
 
-      function getByID(_x5) {
+      function getByID(_x6) {
         return _ref5.apply(this, arguments);
       }
 
@@ -251,5 +256,5 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
     }()
   }]);
   return DeviceAttributeFileRepository;
-}(), (_applyDecoratedDescriptor(_class.prototype, 'update', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'update'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteByID', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getByID', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getAll'), _class.prototype)), _class));
+}(), (_applyDecoratedDescriptor(_class.prototype, 'updateByID', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'updateByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteByID', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getByID', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getAll'), _class.prototype)), _class));
 exports.default = DeviceAttributeFileRepository;

@@ -96,7 +96,10 @@ class CryptoManager {
     deviceID: string,
     publicKeyPem: string,
   ): Promise<NodeRSA> => {
-    await this._deviceKeyRepository.update({ deviceID, key: publicKeyPem });
+    await this._deviceKeyRepository.updateByID(
+      deviceID,
+      { deviceID, key: publicKeyPem },
+    );
     return new NodeRSA(
       publicKeyPem,
       'pkcs8-public-pem',
