@@ -268,9 +268,7 @@ var Handshake = function Handshake(cryptoManager) {
           case 2:
             nonce = _context3.sent;
 
-            process.nextTick(function () {
-              return _this._socket.write(nonce);
-            });
+            _this._socket.write(nonce);
 
             return _context3.abrupt('return', nonce);
 
@@ -446,9 +444,7 @@ var Handshake = function Handshake(cryptoManager) {
               message = Buffer.concat([ciphertext, signedhmac], ciphertext.length + signedhmac.length);
 
 
-              process.nextTick(function () {
-                return _this._socket.write(message);
-              });
+              _this._socket.write(message);
 
               decipherStream = _this._cryptoManager.createAESDecipherStream(sessionKey);
               cipherStream = _this._cryptoManager.createAESCipherStream(sessionKey);

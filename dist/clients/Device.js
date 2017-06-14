@@ -491,13 +491,13 @@ var Device = function (_EventEmitter) {
         return -1;
       }
 
-      if (!_this._cipherStream) {
+      var cipherStream = _this._cipherStream;
+      if (!cipherStream) {
         _logger2.default.error('Client - sendMessage before READY', { deviceID: _this._id, messageName: messageName });
+        return 0;
       }
 
-      process.nextTick(function () {
-        return !!_this._cipherStream && _this._cipherStream.write(message);
-      });
+      cipherStream.write(message);
 
       return token || 0;
     };

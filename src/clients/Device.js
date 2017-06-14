@@ -477,16 +477,16 @@ class Device extends EventEmitter {
       return -1;
     }
 
-    if (!this._cipherStream) {
+    const cipherStream = this._cipherStream;
+    if (!cipherStream) {
       logger.error(
         'Client - sendMessage before READY',
         { deviceID: this._id, messageName },
       );
+      return 0;
     }
 
-    process.nextTick(
-      (): bool => !!this._cipherStream && this._cipherStream.write(message),
-    );
+    cipherStream.write(message);
 
     return token || 0;
   };

@@ -207,7 +207,7 @@ class Handshake {
 
   _sendNonce = async (): Promise<Buffer> => {
     const nonce = await this._cryptoManager.getRandomBytes(NONCE_BYTES);
-    process.nextTick((): boolean => this._socket.write(nonce));
+    this._socket.write(nonce);
 
     return nonce;
   };
@@ -354,7 +354,7 @@ class Handshake {
       ciphertext.length + signedhmac.length,
     );
 
-    process.nextTick((): boolean => this._socket.write(message));
+    this._socket.write(message);
 
     const decipherStream =
       this._cryptoManager.createAESDecipherStream(sessionKey);
