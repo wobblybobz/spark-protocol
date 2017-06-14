@@ -114,7 +114,7 @@ var NONCE_BYTES = 40; /*
 
 var ID_BYTES = 12;
 var SESSION_BYTES = 40;
-var GLOBAL_TIMEOUT = 30;
+var GLOBAL_TIMEOUT = 10;
 var DECIPHER_STREAM_TIMEOUT = 30;
 
 var Handshake = function Handshake(cryptoManager) {

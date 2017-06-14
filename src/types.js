@@ -10,7 +10,7 @@ export type DeviceAttributes = {
   ip: string,
   isCellular?: boolean,
   last_iccid?: string,
-  lastHeard: Date,
+  lastHeard: ?Date,
   name: string,
   ownerID: ?string,
   particleProductId: number,

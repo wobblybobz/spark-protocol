@@ -88,7 +88,7 @@ import logger from './logger';
 const NONCE_BYTES = 40;
 const ID_BYTES = 12;
 const SESSION_BYTES = 40;
-const GLOBAL_TIMEOUT = 30;
+const GLOBAL_TIMEOUT = 10;
 const DECIPHER_STREAM_TIMEOUT = 30;
 
 type HandshakeResult = {

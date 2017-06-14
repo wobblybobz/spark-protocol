@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.DEVICE_MESSAGE_EVENTS_NAMES = exports.SYSTEM_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = undefined;
+exports.DEVICE_STATUS_MAP = exports.DEVICE_MESSAGE_EVENTS_NAMES = exports.SYSTEM_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = undefined;
 
 var _values = require('babel-runtime/core-js/object/values');
 
@@ -176,11 +176,17 @@ var DEVICE_MESSAGE_EVENTS_NAMES = exports.DEVICE_MESSAGE_EVENTS_NAMES = {
   SUBSCRIBE: 'Subscribe'
 };
 
-var DEVICE_STATUS_MAP = {
-  gotHello: 1,
-  gotSystemState: 2,
-  initial: 0,
-  ready: 3
+// TODO we should make getDescription private method
+// and call it before fetching attributes from repo.
+// Right now doing this drops performance on ~1/3.
+// so change the order after fixing the perf bug.
+// `ready` state indicates that attributes are fulfilled
+// and consist of handshake info + existingAttributesFromRepo + describe info
+var DEVICE_STATUS_MAP = exports.DEVICE_STATUS_MAP = {
+  GOT_HELLO: 2,
+  GOT_REPO_ATTRIBUTES: 3,
+  INITIAL: 1,
+  READY: 4
 };
 
 var NEW_STATUS_EVENT_NAME = 'newStatus';
@@ -205,7 +211,7 @@ var Device = function (_EventEmitter) {
       deviceID: '',
       functions: null,
       ip: 'unkonwn',
-      lastHeard: new Date(),
+      lastHeard: null,
       name: '',
       ownerID: null,
       particleProductId: 0,
@@ -227,7 +233,7 @@ var Device = function (_EventEmitter) {
     _this._sendCounter = 0;
     _this._sendToken = 0;
     _this._socketTimeoutInterval = null;
-    _this._status = 'initial';
+    _this._status = DEVICE_STATUS_MAP.INITIAL;
     _this._statusEventEmitter = new _events2.default();
     _this._tokens = {};
 
@@ -264,7 +270,7 @@ var Device = function (_EventEmitter) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                if (!(DEVICE_STATUS_MAP[status] >= DEVICE_STATUS_MAP[_this._status])) {
+                if (!(status <= _this._status)) {
                   _context.next = 2;
                   break;
                 }
@@ -274,7 +280,7 @@ var Device = function (_EventEmitter) {
               case 2:
                 return _context.abrupt('return', new _promise2.default(function (resolve) {
                   var deviceStatusListener = function deviceStatusListener(newStatus) {
-                    if (DEVICE_STATUS_MAP[status] <= DEVICE_STATUS_MAP[newStatus]) {
+                    if (status <= newStatus) {
                       resolve();
                       _this._statusEventEmitter.removeListener(NEW_STATUS_EVENT_NAME, deviceStatusListener);
                     }
@@ -362,7 +368,7 @@ var Device = function (_EventEmitter) {
                 deviceID: deviceID,
                 ip: _this.getRemoteIPAddress()
               }));
-              _this.setStatus('gotHello');
+              _this.setStatus(DEVICE_STATUS_MAP.GOT_HELLO);
 
               return _context3.abrupt('return', deviceID);
 
@@ -406,18 +412,8 @@ var Device = function (_EventEmitter) {
 
         _this._connectionStartTime = new Date();
 
-        // 2
-
-        // const description = await this.getDescription();
-        // this.updateAttributes(({ ...description }));
-        // this.setStatus('gotSystemState');
-        // return description;
-
-        // 3
-        // const { uuid: appHash } = FirmwareManager.getAppModule(
-        //   description.systemInformation,
-        // );
-        // todo if we don't do describe here ,we don't have this info.
+        // todo if we don't do describe here,we don't have platforID etc info.
+        // so the log doesn't make sense right now.
         _logger2.default.log('On device protocol initialization complete:\r\n', {
           cache_key: _this._connectionKey,
           deviceID: _this.getDeviceID(),
@@ -479,7 +475,7 @@ var Device = function (_EventEmitter) {
 
       return {
         connected: _this._socket !== null,
-        lastPing: _this._attributes.lastHeard
+        lastHeard: _this._attributes.lastHeard
       };
     };
 
@@ -776,7 +772,7 @@ var Device = function (_EventEmitter) {
 
               case 3:
                 _context6.next = 5;
-                return _this._ensureWeHaveIntrospectionData();
+                return _this.hasStatus(DEVICE_STATUS_MAP.READY);
 
               case 5:
                 if (_this._hasParticleVariable(name)) {
@@ -825,6 +821,10 @@ var Device = function (_EventEmitter) {
                 throw new Error('This device is locked during the flashing process.');
 
               case 3:
+                _context7.next = 5;
+                return _this.hasStatus(DEVICE_STATUS_MAP.READY);
+
+              case 5:
 
                 _logger2.default.log('sending function call to the device', { deviceID: _this.getDeviceID(), functionName: functionName });
 
@@ -832,14 +832,14 @@ var Device = function (_EventEmitter) {
                   args: (0, _values2.default)(functionArguments),
                   name: functionName
                 });
-                _context7.next = 7;
+                _context7.next = 9;
                 return _this.listenFor('FunctionReturn', null, token);
 
-              case 7:
+              case 9:
                 message = _context7.sent;
                 return _context7.abrupt('return', _this._transformFunctionResult(functionName, message));
 
-              case 9:
+              case 11:
               case 'end':
                 return _context7.stop();
             }
@@ -1119,6 +1119,7 @@ var Device = function (_EventEmitter) {
                   variables: result.functionState.v
                 });
 
+                // todo remove this after refactoring _ensureWeHaveIntrospectionData
                 _this._systemInformation = result.systemInformation;
                 _this._deviceFunctionState = result.functionState;
                 _this._introspectionPromise = null;
@@ -1289,16 +1290,6 @@ var Device = function (_EventEmitter) {
 
 
   // clears the association with a particular token
-
-
-  /**
-   * Ensures we have introspection data from the device, and then
-   * requests a variable value to be sent, when received it transforms
-   * the response into the appropriate type
-   **/
-
-
-  // call function on device firmware
 
 
   /**

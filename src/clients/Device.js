@@ -43,7 +43,7 @@ type DeviceDescription = {|
   systemInformation: Object,
 |};
 
-type DeviceStatus = 'initial' | 'gotHello' | 'gotSystemState' | 'ready';
+type DeviceStatus = 1 | 2 | 3 | 4;
 
 type GetHelloInfo = {
   particleProductId: number,
@@ -125,11 +125,17 @@ export const DEVICE_MESSAGE_EVENTS_NAMES = {
   SUBSCRIBE: 'Subscribe',
 };
 
-const DEVICE_STATUS_MAP: { [key: DeviceStatus]: number } = {
-  gotHello: 1,
-  gotSystemState: 2,
-  initial: 0,
-  ready: 3,
+// TODO we should make getDescription private method
+// and call it before fetching attributes from repo.
+// Right now doing this drops performance on ~1/3.
+// so change the order after fixing the perf bug.
+// `ready` state indicates that attributes are fulfilled
+// and consist of handshake info + existingAttributesFromRepo + describe info
+export const DEVICE_STATUS_MAP = {
+  GOT_HELLO: 2,
+  GOT_REPO_ATTRIBUTES: 3,
+  INITIAL: 1,
+  READY: 4,
 };
 
 const NEW_STATUS_EVENT_NAME = 'newStatus';
@@ -144,7 +150,7 @@ class Device extends EventEmitter {
     deviceID: '',
     functions: null,
     ip: 'unkonwn',
-    lastHeard: new Date(),
+    lastHeard: null,
     name: '',
     ownerID: null,
     particleProductId: 0,
@@ -168,7 +174,7 @@ class Device extends EventEmitter {
   _sendToken: number = 0;
   _socket: Socket;
   _socketTimeoutInterval: ?number = null;
-  _status: DeviceStatus = 'initial';
+  _status: DeviceStatus = DEVICE_STATUS_MAP.INITIAL;
   _statusEventEmitter: EventEmitter = new EventEmitter();
   _systemInformation: ?Object;
   _tokens: {[key: string]: MessageType} = {};
@@ -213,13 +219,13 @@ class Device extends EventEmitter {
   };
 
   hasStatus = async (status: DeviceStatus): Promise<void> => {
-    if (DEVICE_STATUS_MAP[status] >= DEVICE_STATUS_MAP[this._status]) {
+    if (status <= this._status) {
       return Promise.resolve();
     }
 
     return new Promise((resolve: () => void) => {
       const deviceStatusListener = (newStatus: DeviceStatus) => {
-        if (DEVICE_STATUS_MAP[status] <= DEVICE_STATUS_MAP[newStatus]) {
+        if (status <= newStatus) {
           resolve();
           this._statusEventEmitter.removeListener(
             NEW_STATUS_EVENT_NAME,
@@ -283,7 +289,7 @@ class Device extends EventEmitter {
         deviceID,
         ip: this.getRemoteIPAddress(),
       });
-      this.setStatus('gotHello');
+      this.setStatus(DEVICE_STATUS_MAP.GOT_HELLO);
 
       return deviceID;
     } catch (error) {
@@ -319,18 +325,8 @@ class Device extends EventEmitter {
 
       this._connectionStartTime = new Date();
 
-      // 2
-
-      // const description = await this.getDescription();
-      // this.updateAttributes(({ ...description }));
-      // this.setStatus('gotSystemState');
-      // return description;
-
-      // 3
-      // const { uuid: appHash } = FirmwareManager.getAppModule(
-      //   description.systemInformation,
-      // );
-      // todo if we don't do describe here ,we don't have this info.
+      // todo if we don't do describe here,we don't have platforID etc info.
+      // so the log doesn't make sense right now.
       logger.log(
         'On device protocol initialization complete:\r\n',
         {
@@ -395,7 +391,7 @@ class Device extends EventEmitter {
 
   ping = (): {
     connected: boolean,
-    lastPing: Date,
+    lastHeard: ?Date,
   } => {
     if (settings.logApiMessages) {
       logger.log('Pinged, replying', { deviceID: this.getDeviceID() });
@@ -403,7 +399,7 @@ class Device extends EventEmitter {
 
     return {
       connected: this._socket !== null,
-      lastPing: this._attributes.lastHeard,
+      lastHeard: this._attributes.lastHeard,
     };
   };
 
@@ -711,6 +707,8 @@ class Device extends EventEmitter {
     }
 
     try {
+      // todo _ensureWeHaveIntrospectionData work should be in this method
+      // since we call getDescription() only once on deviceConnection now.
       await this._ensureWeHaveIntrospectionData();
 
       return {
@@ -724,11 +722,6 @@ class Device extends EventEmitter {
     }
   };
 
-  /**
-   * Ensures we have introspection data from the device, and then
-   * requests a variable value to be sent, when received it transforms
-   * the response into the appropriate type
-   **/
   getVariableValue = async (
     name: string,
   ): Promise<*> => {
@@ -737,7 +730,8 @@ class Device extends EventEmitter {
       throw new Error('This device is locked during the flashing process.');
     }
 
-    await this._ensureWeHaveIntrospectionData();
+    await this.hasStatus(DEVICE_STATUS_MAP.READY);
+
     if (!this._hasParticleVariable(name)) {
       throw new Error('Variable not found');
     }
@@ -755,7 +749,6 @@ class Device extends EventEmitter {
     return this._transformVariableResult(name, message);
   };
 
-  // call function on device firmware
   callFunction = async (
     functionName: string,
     functionArguments: {[key: string]: string},
@@ -764,6 +757,8 @@ class Device extends EventEmitter {
     if (isBusy) {
       throw new Error('This device is locked during the flashing process.');
     }
+
+    await this.hasStatus(DEVICE_STATUS_MAP.READY);
 
     logger.log(
       'sending function call to the device',
@@ -1035,6 +1030,7 @@ class Device extends EventEmitter {
             variables: result.functionState.v,
           });
 
+          // todo remove this after refactoring _ensureWeHaveIntrospectionData
           this._systemInformation = result.systemInformation;
           this._deviceFunctionState = result.functionState;
           this._introspectionPromise = null;
