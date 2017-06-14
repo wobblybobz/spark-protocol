@@ -139,7 +139,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
           switch (_context3.prev = _context3.next) {
             case 0:
               _context3.next = 2;
-              return _this._deviceKeyRepository.update({ deviceID: deviceID, key: publicKeyPem });
+              return _this._deviceKeyRepository.updateByID(deviceID, { deviceID: deviceID, key: publicKeyPem });
 
             case 2:
               return _context3.abrupt('return', new _nodeRsa2.default(publicKeyPem, 'pkcs8-public-pem', {

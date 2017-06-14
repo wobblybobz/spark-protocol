@@ -313,10 +313,10 @@ class DeviceServer {
     const deviceAttributes =
       await this._deviceAttributeRepository.getByID(deviceID);
 
-    await this._deviceAttributeRepository.update({
-      ...deviceAttributes,
-      lastHeard: device.ping().lastPing,
-    });
+    await this._deviceAttributeRepository.updateByID(
+      deviceID,
+      { lastHeard: device.ping().lastPing },
+    );
 
     const ownerID = deviceAttributes && deviceAttributes.ownerID;
 
@@ -365,19 +365,18 @@ class DeviceServer {
         description.systemInformation,
       );
 
-      const deviceAttributes = {
-        name: NAME_GENERATOR.choose(),
-        ...existingAttributes,
-        appHash: uuid,
+      await this._deviceAttributeRepository.updateByID(
         deviceID,
-        ip: device.getRemoteIPAddress(),
-        lastHeard: new Date(),
-        particleProductId: description.productID,
-        productFirmwareVersion: description.firmwareVersion,
-      };
-
-      this._deviceAttributeRepository.update(
-        deviceAttributes,
+        {
+          name: NAME_GENERATOR.choose(),
+          ...existingAttributes,
+          appHash: uuid,
+          deviceID,
+          ip: device.getRemoteIPAddress(),
+          lastHeard: new Date(),
+          particleProductId: description.productID,
+          productFirmwareVersion: description.firmwareVersion,
+        },
       );
 
       // Send app-hash if this is a new app firmware
@@ -549,11 +548,13 @@ class DeviceServer {
       return;
     }
 
-    await this._deviceAttributeRepository.update({
-      ...deviceAttributes,
-      claimCode,
-      ownerID: claimRequestUserID,
-    });
+    await this._deviceAttributeRepository.updateByID(
+      deviceID,
+      {
+        claimCode,
+        ownerID: claimRequestUserID,
+      },
+    );
 
     this._claimCodeManager.removeClaimCode(claimCode);
   };

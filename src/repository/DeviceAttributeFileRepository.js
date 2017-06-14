@@ -20,13 +20,18 @@ class DeviceAttributeFileRepository {
   };
 
   @memoizeSet()
-  async update(model: DeviceAttributes): Promise<DeviceAttributes> {
+  async updateByID(
+    deviceID: string,
+    props: $Shape<DeviceAttributes>,
+  ): Promise<DeviceAttributes> {
+    const currentAttributes = await this.getByID(deviceID);
     const modelToSave = {
-      ...model,
+      ...(currentAttributes || {}),
+      ...props,
       timestamp: new Date(),
     };
 
-    this._fileManager.writeFile(`${model.deviceID}.json`, modelToSave);
+    this._fileManager.writeFile(`${deviceID}.json`, modelToSave);
     return modelToSave;
   }
 

@@ -9,6 +9,7 @@ export type DeviceAttributes = {
   ip: string,
   isCellular: boolean,
   last_iccid?: string,
+  lastHeard: Date,
   name: string,
   ownerID: ?string,
   particleProductId: number,
@@ -50,7 +51,7 @@ export interface IBaseRepository<TModel> {
   deleteByID(id: string): Promise<void>;
   getAll(): Promise<Array<TModel>>;
   getByID(id: string): Promise<?TModel>;
-  update(model: TModel): Promise<TModel>;
+  updateByID(id: string, props: $Shape<TModel>): Promise<TModel>;
 }
 
 export interface IDeviceAttributeRepository extends IBaseRepository<DeviceAttributes> {}

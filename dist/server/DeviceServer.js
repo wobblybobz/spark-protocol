@@ -335,9 +335,7 @@ var DeviceServer = function () {
               case 9:
                 deviceAttributes = _context5.sent;
                 _context5.next = 12;
-                return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
-                  lastHeard: device.ping().lastPing
-                }));
+                return _this._deviceAttributeRepository.updateByID(deviceID, { lastHeard: device.ping().lastPing });
 
               case 12:
                 ownerID = deviceAttributes && deviceAttributes.ownerID;
@@ -368,7 +366,7 @@ var DeviceServer = function () {
 
     this._onDeviceReady = function () {
       var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(device) {
-        var deviceID, existingAttributes, ownerID, description, _FirmwareManager$getA, uuid, deviceAttributes;
+        var deviceID, existingAttributes, ownerID, description, _FirmwareManager$getA, uuid;
 
         return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
@@ -394,7 +392,8 @@ var DeviceServer = function () {
               case 10:
                 description = _context6.sent;
                 _FirmwareManager$getA = _FirmwareManager2.default.getAppModule(description.systemInformation), uuid = _FirmwareManager$getA.uuid;
-                deviceAttributes = (0, _extends3.default)({
+                _context6.next = 14;
+                return _this._deviceAttributeRepository.updateByID(deviceID, (0, _extends3.default)({
                   name: NAME_GENERATOR.choose()
                 }, existingAttributes, {
                   appHash: uuid,
@@ -403,10 +402,9 @@ var DeviceServer = function () {
                   lastHeard: new Date(),
                   particleProductId: description.productID,
                   productFirmwareVersion: description.firmwareVersion
-                });
+                }));
 
-
-                _this._deviceAttributeRepository.update(deviceAttributes);
+              case 14:
 
                 // Send app-hash if this is a new app firmware
                 if (!existingAttributes || uuid !== existingAttributes.appHash) {
@@ -604,10 +602,10 @@ var DeviceServer = function () {
 
               case 10:
                 _context8.next = 12;
-                return _this._deviceAttributeRepository.update((0, _extends3.default)({}, deviceAttributes, {
+                return _this._deviceAttributeRepository.updateByID(deviceID, {
                   claimCode: claimCode,
                   ownerID: claimRequestUserID
-                }));
+                });
 
               case 12:
 

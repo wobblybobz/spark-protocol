@@ -39,9 +39,13 @@ class DeviceKeyFileRepository implements IDeviceKeyRepository {
   }
 
   @memoizeSet()
-  async update(model: DeviceKeyObject): Promise<DeviceKeyObject> {
-    this._fileManager.writeFile(model.deviceID + FILE_EXTENSION, model.key);
-    return model;
+  async updateByID(
+    deviceID: string,
+    props: $Shape<DeviceKeyObject>,
+  ): Promise<DeviceKeyObject> {
+    const { key } = props;
+    this._fileManager.writeFile(deviceID + FILE_EXTENSION, key);
+    return { deviceID, key };
   }
 }
 
