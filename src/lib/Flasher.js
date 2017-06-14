@@ -75,7 +75,7 @@ class Flasher {
     if (!buffer || buffer.length === 0) {
       logger.log(
         'flash failed! - file is empty! ',
-        { deviceID: this._client.getID() },
+        { deviceID: this._client.getDeviceID() },
       );
 
       throw new Error('Update failed - File was empty!');
@@ -84,7 +84,7 @@ class Flasher {
     if (buffer && buffer.length > this._maxBinarySize) {
       logger.log(
         `flash failed! - file is too BIG ${buffer.length}`,
-        { deviceID: this._client.getID() },
+        { deviceID: this._client.getDeviceID() },
       );
 
       throw new Error('Update failed - File was too big!');
@@ -302,7 +302,7 @@ class Flasher {
     if (canUseFastOTA) {
       logger.log(
         'Starting FastOTA update',
-        { deviceID: this._client.getID() },
+        { deviceID: this._client.getDeviceID() },
       );
     }
 
@@ -461,7 +461,7 @@ class Flasher {
     if (this._client) {
       return {
         cache_key: this._client._connectionKey || undefined,
-        deviceID: this._client.getID(),
+        deviceID: this._client.getDeviceID(),
       };
     }
 

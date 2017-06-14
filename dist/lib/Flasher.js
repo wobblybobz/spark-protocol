@@ -142,7 +142,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
                 break;
               }
 
-              _logger2.default.log('flash failed! - file is empty! ', { deviceID: _this._client.getID() });
+              _logger2.default.log('flash failed! - file is empty! ', { deviceID: _this._client.getDeviceID() });
 
               throw new Error('Update failed - File was empty!');
 
@@ -152,7 +152,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
                 break;
               }
 
-              _logger2.default.log('flash failed! - file is too BIG ' + buffer.length, { deviceID: _this._client.getID() });
+              _logger2.default.log('flash failed! - file is too BIG ' + buffer.length, { deviceID: _this._client.getDeviceID() });
 
               throw new Error('Update failed - File was too big!');
 
@@ -412,7 +412,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
             canUseFastOTA = _this._fastOtaEnabled && _this._protocolVersion > 0;
 
             if (canUseFastOTA) {
-              _logger2.default.log('Starting FastOTA update', { deviceID: _this._client.getID() });
+              _logger2.default.log('Starting FastOTA update', { deviceID: _this._client.getDeviceID() });
             }
 
             _this._readNextChunk();
@@ -663,7 +663,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
     if (_this._client) {
       return {
         cache_key: _this._client._connectionKey || undefined,
-        deviceID: _this._client.getID()
+        deviceID: _this._client.getDeviceID()
       };
     }
 
