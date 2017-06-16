@@ -575,6 +575,7 @@ class DeviceServer {
     packet: CoapPacket,
     device: Device,
   ): Promise<void> => {
+    await device.hasStatus(DEVICE_STATUS_MAP.READY);
     const deviceAttributes = device.getAttributes();
     const deviceID = deviceAttributes.deviceID;
     let ownerID = deviceAttributes.ownerID;

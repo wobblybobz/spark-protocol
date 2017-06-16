@@ -665,6 +665,10 @@ var DeviceServer = function () {
           while (1) {
             switch (_context11.prev = _context11.next) {
               case 0:
+                _context11.next = 2;
+                return device.hasStatus(_Device.DEVICE_STATUS_MAP.READY);
+
+              case 2:
                 deviceAttributes = device.getAttributes();
                 deviceID = deviceAttributes.deviceID;
                 ownerID = deviceAttributes.ownerID;
@@ -680,14 +684,14 @@ var DeviceServer = function () {
                 isFromMyDevices = !!query.match('u');
 
                 if (messageName) {
-                  _context11.next = 9;
+                  _context11.next = 11;
                   break;
                 }
 
                 device.sendReply('SubscribeFail', packet.messageId);
                 return _context11.abrupt('return');
 
-              case 9:
+              case 11:
 
                 _logger2.default.log('Subscribe Request:\r\n', {
                   deviceID: deviceID,
@@ -715,7 +719,7 @@ var DeviceServer = function () {
                   });
                 });
 
-              case 12:
+              case 14:
               case 'end':
                 return _context11.stop();
             }
