@@ -321,9 +321,17 @@ class Device extends EventEmitter {
         },
       );
 
+      // Wait for this thing to be readable before sending any messages
+      /* await new Promise((resolve: () => void) => {
+        decipherStream.once('readable', resolve);
+      });*/
+
       this._sendHello();
 
       this._connectionStartTime = new Date();
+
+      // We don't need to await this as other functions will await the response
+      this._getDescription();
 
       // todo if we don't do describe here,we don't have platforID etc info.
       // so the log doesn't make sense right now.
@@ -942,7 +950,6 @@ class Device extends EventEmitter {
   };
 
 
-  _introspectionPromise: ?Promise<void> = null;
   /**
    * Checks our cache to see if we have the function state, otherwise requests
    * it from the device, listens for it, and resolves our deferred on success
@@ -952,88 +959,10 @@ class Device extends EventEmitter {
       return Promise.resolve();
     }
 
-    if (this._introspectionPromise) {
-      return this._introspectionPromise;
-    }
-    // We need to wait a little bit to make sure that the device's function
-    // data is ready. This is super hacky but there wasn't another event to
-    // listen to.
-    await new Promise(
-      (resolve: () => void): number => setTimeout((): void => resolve(), 10),
-    );
-
     try {
-      this._introspectionPromise = new Promise((
-        resolve: (packet: CoapPacket) => void,
-        reject: (error?: Error) => void,
-      ) => {
-        const timeout = setTimeout(
-          () => {
-            cleanUpListeners();
-            reject(new Error('Request timed out - Describe'));
-          },
-          KEEP_ALIVE_TIMEOUT,
-        );
-
-        let systemInformation = null;
-        let functionState = null;
-        const handler = (packet: CoapPacket) => {
-          const payload = packet.payload;
-          if (!payload.length) {
-            reject(new Error('Payload empty for Describe message'));
-          }
-
-          const data = JSON.parse(payload.toString('utf8'));
-
-          if (!systemInformation && data.m) {
-            systemInformation = data;
-          }
-
-          if (data && data.v) {
-            functionState = data;
-            // 'v':{'temperature':2}
-            functionState.v = CoapMessages.translateIntTypes(functionState.v);
-          }
-
-          if (!systemInformation || !functionState) {
-            return;
-          }
-
-          clearTimeout(timeout);
-          cleanUpListeners();
-          resolve({ functionState, systemInformation });
-        };
-
-        const disconnectHandler = () => {
-          cleanUpListeners();
-          reject();
-        };
-
-        const cleanUpListeners = () => {
-          this.removeListener('DescribeReturn', handler);
-          this.removeListener('disconnect', disconnectHandler);
-        };
-
-        this.on('DescribeReturn', handler);
-        this.on('disconnect', disconnectHandler);
-
-        // Because some firmware versions do not send the app + system state
-        // in a single message, we cannot use `listenFor` and instead have to
-        // write some hacky code that duplicates a lot of the functionality
-        this.sendMessage('Describe');
-      });
-
-      return nullthrows(this._introspectionPromise).then(
-        (result: Object) => {
-          this.updateAttributes({
-            functions: result.functionState.f,
-            variables: result.functionState.v,
-          });
-
-          // todo remove this after refactoring _ensureWeHaveIntrospectionData
-          this._systemInformation = result.systemInformation;
-          this._deviceFunctionState = result.functionState;
-          this._introspectionPromise = null;
+      return new Promise(
+        (resolve: () => void) => {
+          this.once('describe_complete', resolve);
         },
       );
     } catch (error) {
@@ -1041,6 +970,65 @@ class Device extends EventEmitter {
       throw error;
     }
   };
+
+  _getDescription = () => {
+    const timeout = setTimeout(
+      () => {
+        cleanUpListeners();
+        throw new Error('Request timed out - Describe');
+      },
+      KEEP_ALIVE_TIMEOUT,
+    );
+    const handler = (packet: CoapPacket) => {
+      const payload = packet.payload;
+      if (!payload.length) {
+        throw new Error('Payload empty for Describe message');
+      }
+
+      const data = JSON.parse(payload.toString('utf8'));
+
+      if (!this._systemInformation && data.m) {
+        this._systemInformation = data;
+      }
+
+      if (data && data.v) {
+        this._deviceFunctionState = data;
+        // 'v':{'temperature':2}
+        nullthrows(this._deviceFunctionState).v =
+          CoapMessages.translateIntTypes(nullthrows(data.v));
+      }
+
+      if (!this._systemInformation || !this._deviceFunctionState) {
+        return;
+      }
+
+      clearTimeout(timeout);
+      cleanUpListeners();
+
+      this.updateAttributes({
+        functions: nullthrows(this._deviceFunctionState).f,
+        variables: nullthrows(this._deviceFunctionState).v,
+      });
+      this.emit('describe_complete');
+    };
+
+    const disconnectHandler = () => {
+      cleanUpListeners();
+    };
+
+    const cleanUpListeners = () => {
+      this.removeListener('DescribeReturn', handler);
+      this.removeListener('disconnect', disconnectHandler);
+    };
+
+    this.on('DescribeReturn', handler);
+    this.on('disconnect', disconnectHandler);
+
+    // Because some firmware versions do not send the app + system state
+    // in a single message, we cannot use `listenFor` and instead have to
+    // write some hacky code that duplicates a lot of the functionality
+    this.sendMessage('Describe');
+  }
 
   //-------------
   // Device Events / Spark.publish / Spark.subscribe

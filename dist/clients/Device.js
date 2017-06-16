@@ -408,9 +408,17 @@ var Device = function (_EventEmitter) {
           _this._clientHasWrittenToSocket();
         });
 
+        // Wait for this thing to be readable before sending any messages
+        /* await new Promise((resolve: () => void) => {
+          decipherStream.once('readable', resolve);
+        });*/
+
         _this._sendHello();
 
         _this._connectionStartTime = new Date();
+
+        // We don't need to await this as other functions will await the response
+        _this._getDescription();
 
         // todo if we don't do describe here,we don't have platforID etc info.
         // so the log doesn't make sense right now.
@@ -1027,7 +1035,6 @@ var Device = function (_EventEmitter) {
       return result;
     };
 
-    _this._introspectionPromise = null;
     _this._ensureWeHaveIntrospectionData = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10() {
       return _regenerator2.default.wrap(function _callee10$(_context10) {
         while (1) {
@@ -1041,104 +1048,80 @@ var Device = function (_EventEmitter) {
               return _context10.abrupt('return', _promise2.default.resolve());
 
             case 2:
-              if (!_this._introspectionPromise) {
-                _context10.next = 4;
-                break;
-              }
-
-              return _context10.abrupt('return', _this._introspectionPromise);
-
-            case 4:
-              _context10.next = 6;
-              return new _promise2.default(function (resolve) {
-                return setTimeout(function () {
-                  return resolve();
-                }, 10);
-              });
+              _context10.prev = 2;
+              return _context10.abrupt('return', new _promise2.default(function (resolve) {
+                _this.once('describe_complete', resolve);
+              }));
 
             case 6:
               _context10.prev = 6;
-
-              _this._introspectionPromise = new _promise2.default(function (resolve, reject) {
-                var timeout = setTimeout(function () {
-                  cleanUpListeners();
-                  reject(new Error('Request timed out - Describe'));
-                }, KEEP_ALIVE_TIMEOUT);
-
-                var systemInformation = null;
-                var functionState = null;
-                var handler = function handler(packet) {
-                  var payload = packet.payload;
-                  if (!payload.length) {
-                    reject(new Error('Payload empty for Describe message'));
-                  }
-
-                  var data = JSON.parse(payload.toString('utf8'));
-
-                  if (!systemInformation && data.m) {
-                    systemInformation = data;
-                  }
-
-                  if (data && data.v) {
-                    functionState = data;
-                    // 'v':{'temperature':2}
-                    functionState.v = _CoapMessages2.default.translateIntTypes(functionState.v);
-                  }
-
-                  if (!systemInformation || !functionState) {
-                    return;
-                  }
-
-                  clearTimeout(timeout);
-                  cleanUpListeners();
-                  resolve({ functionState: functionState, systemInformation: systemInformation });
-                };
-
-                var disconnectHandler = function disconnectHandler() {
-                  cleanUpListeners();
-                  reject();
-                };
-
-                var cleanUpListeners = function cleanUpListeners() {
-                  _this.removeListener('DescribeReturn', handler);
-                  _this.removeListener('disconnect', disconnectHandler);
-                };
-
-                _this.on('DescribeReturn', handler);
-                _this.on('disconnect', disconnectHandler);
-
-                // Because some firmware versions do not send the app + system state
-                // in a single message, we cannot use `listenFor` and instead have to
-                // write some hacky code that duplicates a lot of the functionality
-                _this.sendMessage('Describe');
-              });
-
-              return _context10.abrupt('return', (0, _nullthrows2.default)(_this._introspectionPromise).then(function (result) {
-                _this.updateAttributes({
-                  functions: result.functionState.f,
-                  variables: result.functionState.v
-                });
-
-                // todo remove this after refactoring _ensureWeHaveIntrospectionData
-                _this._systemInformation = result.systemInformation;
-                _this._deviceFunctionState = result.functionState;
-                _this._introspectionPromise = null;
-              }));
-
-            case 11:
-              _context10.prev = 11;
-              _context10.t0 = _context10['catch'](6);
+              _context10.t0 = _context10['catch'](2);
 
               _this.disconnect('_ensureWeHaveIntrospectionData error: ' + _context10.t0);
               throw _context10.t0;
 
-            case 15:
+            case 10:
             case 'end':
               return _context10.stop();
           }
         }
-      }, _callee10, _this2, [[6, 11]]);
+      }, _callee10, _this2, [[2, 6]]);
     }));
+
+    _this._getDescription = function () {
+      var timeout = setTimeout(function () {
+        cleanUpListeners();
+        throw new Error('Request timed out - Describe');
+      }, KEEP_ALIVE_TIMEOUT);
+      var handler = function handler(packet) {
+        var payload = packet.payload;
+        if (!payload.length) {
+          throw new Error('Payload empty for Describe message');
+        }
+
+        var data = JSON.parse(payload.toString('utf8'));
+
+        if (!_this._systemInformation && data.m) {
+          _this._systemInformation = data;
+        }
+
+        if (data && data.v) {
+          _this._deviceFunctionState = data;
+          // 'v':{'temperature':2}
+          (0, _nullthrows2.default)(_this._deviceFunctionState).v = _CoapMessages2.default.translateIntTypes((0, _nullthrows2.default)(data.v));
+        }
+
+        if (!_this._systemInformation || !_this._deviceFunctionState) {
+          return;
+        }
+
+        clearTimeout(timeout);
+        cleanUpListeners();
+
+        _this.updateAttributes({
+          functions: (0, _nullthrows2.default)(_this._deviceFunctionState).f,
+          variables: (0, _nullthrows2.default)(_this._deviceFunctionState).v
+        });
+        _this.emit('describe_complete');
+      };
+
+      var disconnectHandler = function disconnectHandler() {
+        cleanUpListeners();
+      };
+
+      var cleanUpListeners = function cleanUpListeners() {
+        _this.removeListener('DescribeReturn', handler);
+        _this.removeListener('disconnect', disconnectHandler);
+      };
+
+      _this.on('DescribeReturn', handler);
+      _this.on('disconnect', disconnectHandler);
+
+      // Because some firmware versions do not send the app + system state
+      // in a single message, we cannot use `listenFor` and instead have to
+      // write some hacky code that duplicates a lot of the functionality
+      _this.sendMessage('Describe');
+    };
 
     _this.onDeviceEvent = function (event) {
       _this.sendDeviceEvent(event);
@@ -1300,6 +1283,7 @@ var Device = function (_EventEmitter) {
 
 
   // Transforms the result from a device function to the correct type.
+
 
   /**
    * Checks our cache to see if we have the function state, otherwise requests
