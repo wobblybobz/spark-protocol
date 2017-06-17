@@ -22,7 +22,7 @@
 */
 
 import chalk from 'chalk';
-import settings from '../lib/logger';
+import settings from '../settings';
 
 function _transform(...params: Array<any>): Array<any> {
   return params.map((param: any): string => {

@@ -419,7 +419,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
           case 5:
             if (!_this._chunk) {
-              _context4.next = 17;
+              _context4.next = 18;
               break;
             }
 
@@ -442,50 +442,53 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
           case 12:
             message = _context4.sent;
 
+
+            console.log(message);
+
             if (_CoapMessages2.default.statusIsOkay(message)) {
-              _context4.next = 15;
+              _context4.next = 16;
               break;
             }
 
             throw new Error('\'ChunkReceived\' failed.');
 
-          case 15:
+          case 16:
             _context4.next = 5;
             break;
 
-          case 17:
+          case 18:
             if (!canUseFastOTA) {
-              _context4.next = 20;
+              _context4.next = 21;
               break;
             }
 
-            _context4.next = 20;
+            _context4.next = 21;
             return _this._waitForMissedChunks();
 
-          case 20:
+          case 21:
 
             // Handle missed chunks
             counter = 0;
 
-          case 21:
+          case 22:
             if (!(_this._missedChunks.size > 0 && counter < 3)) {
-              _context4.next = 29;
+              _context4.next = 30;
               break;
             }
 
-            _context4.next = 24;
+            _context4.next = 25;
             return _this._resendChunks();
 
-          case 24:
-            _context4.next = 26;
+          case 25:
+            _context4.next = 27;
             return _this._waitForMissedChunks();
 
-          case 26:
+          case 27:
             counter += 1;
-            _context4.next = 21;
+            _context4.next = 22;
             break;
 
-          case 29:
+          case 30:
           case 'end':
             return _context4.stop();
         }
@@ -589,7 +592,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
     var encodedCrc = _CoapMessages2.default.toBinary((0, _nullthrows2.default)(_this._lastCrc), 'crc');
 
     var args = [encodedCrc];
-    if (_this._fastOtaEnabled || _this._protocolVersion !== 0) {
+    if (_this._fastOtaEnabled && _this._protocolVersion > 0) {
       args.push(_CoapMessages2.default.toBinary(chunkIndex, 'uint16'));
     }
     return _this._client.sendMessage('Chunk', { args: args }, null, _this._chunk, _this);

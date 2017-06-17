@@ -196,8 +196,10 @@ function (_ref) {
     // Format our url
     var uri = specification.uri;
     var queryParams = [];
-    if (params && specification.template) {
-      uri = specification.template.render(params);
+    if (params) {
+      if (specification.template) {
+        uri = specification.template.render(params);
+      }
       queryParams = (params.args || []).map(function (value) {
         return {
           name: _CoapMessage2.default.Option.URI_QUERY,
@@ -369,33 +371,39 @@ function (_ref) {
   }
 
   switch (typeName) {
+    case 'uint8':
+      {
+        var buffer = Buffer.allocUnsafe(1);
+        buffer.writeUInt8(value, 0);
+        return buffer;
+      }
     case 'uint16':
       {
-        var buffer = Buffer.allocUnsafe(2);
-        buffer.writeUInt16BE(value, 0);
-        return buffer;
+        var _buffer = Buffer.allocUnsafe(2);
+        _buffer.writeUInt16BE(value, 0);
+        return _buffer;
       }
     case 'uint32':
     case 'crc':
       {
-        var _buffer = Buffer.allocUnsafe(4);
-        _buffer.writeUInt32BE(value, 0);
-        return _buffer;
+        var _buffer2 = Buffer.allocUnsafe(4);
+        _buffer2.writeUInt32BE(value, 0);
+        return _buffer2;
       }
 
     case 'int32':
       {
-        var _buffer2 = Buffer.allocUnsafe(4);
-        _buffer2.writeInt32BE(value, 0);
-        return _buffer2;
+        var _buffer3 = Buffer.allocUnsafe(4);
+        _buffer3.writeInt32BE(value, 0);
+        return _buffer3;
       }
 
     case 'number':
     case 'double':
       {
-        var _buffer3 = Buffer.allocUnsafe(4);
-        _buffer3.writeDoubleLE(value, 0);
-        return _buffer3;
+        var _buffer4 = Buffer.allocUnsafe(4);
+        _buffer4.writeDoubleLE(value, 0);
+        return _buffer4;
       }
 
     case 'buffer':

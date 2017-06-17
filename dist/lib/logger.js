@@ -20,9 +20,9 @@ var _chalk = require('chalk');
 
 var _chalk2 = _interopRequireDefault(_chalk);
 
-var _logger = require('../lib/logger');
+var _settings = require('../settings');
 
-var _logger2 = _interopRequireDefault(_logger);
+var _settings2 = _interopRequireDefault(_settings);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -71,7 +71,7 @@ var Logger = function () {
   (0, _createClass3.default)(Logger, null, [{
     key: 'log',
     value: function log() {
-      if (_logger2.default.SHOW_VERBOSE_DEVICE_LOGS) {
+      if (_settings2.default.SHOW_VERBOSE_DEVICE_LOGS) {
         console.log(_transform.apply(undefined, arguments));
       }
     }

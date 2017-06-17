@@ -181,8 +181,10 @@ class CoapMessages {
       // Format our url
       let uri = specification.uri;
       let queryParams = [];
-      if (params && specification.template) {
-        uri = specification.template.render(params);
+      if (params) {
+        if (specification.template) {
+          uri = specification.template.render(params);
+        }
         queryParams = (params.args || []).map(
           (value: any): CoapOption => ({
             name: CoapMessage.Option.URI_QUERY,
@@ -380,6 +382,11 @@ class CoapMessages {
     }
 
     switch (typeName) {
+      case 'uint8': {
+        const buffer = Buffer.allocUnsafe(1);
+        buffer.writeUInt8((value: any), 0);
+        return buffer;
+      }
       case 'uint16': {
         const buffer = Buffer.allocUnsafe(2);
         buffer.writeUInt16BE((value: any), 0);

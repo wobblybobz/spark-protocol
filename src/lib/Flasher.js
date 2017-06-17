@@ -320,6 +320,9 @@ class Flasher {
         null,
         messageToken,
       );
+
+      console.log(message);
+
       if (!CoapMessages.statusIsOkay(message)) {
         throw new Error('\'ChunkReceived\' failed.');
       }
@@ -400,7 +403,7 @@ class Flasher {
     );
 
     const args = [encodedCrc];
-    if (this._fastOtaEnabled || this._protocolVersion !== 0) {
+    if (this._fastOtaEnabled && this._protocolVersion > 0) {
       args.push(CoapMessages.toBinary(chunkIndex, 'uint16'));
     }
     return this._client.sendMessage(
