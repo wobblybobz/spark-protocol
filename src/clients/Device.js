@@ -37,9 +37,7 @@ import nullthrows from 'nullthrows';
 import settings from '../settings';
 
 type DeviceDescription = {|
-  firmwareVersion: number,
-  productID: number,
-  state: Object,
+  functionState: Object,
   systemInformation: Object,
 |};
 
@@ -125,15 +123,9 @@ export const DEVICE_MESSAGE_EVENTS_NAMES = {
   SUBSCRIBE: 'Subscribe',
 };
 
-// TODO we should make getDescription private method
-// and call it before fetching attributes from repo.
-// Right now doing this drops performance on ~1/3.
-// so change the order after fixing the perf bug.
-// `ready` state indicates that attributes are fulfilled
-// and consist of handshake info + existingAttributesFromRepo + describe info
 export const DEVICE_STATUS_MAP = {
+  GOT_DESCRIPTION: 3,
   GOT_HELLO: 2,
-  GOT_REPO_ATTRIBUTES: 3,
   INITIAL: 1,
   READY: 4,
 };
@@ -164,7 +156,6 @@ class Device extends EventEmitter {
   _connectionKey: ?string = null;
   _connectionStartTime: ?Date = null;
   _decipherStream: ?Duplex = null;
-  _deviceFunctionState: ?Object = null;
   _disconnectCounter: number = 0;
   _maxBinarySize: ?number = null;
   _otaChunkSize: ?number = null;
@@ -298,7 +289,7 @@ class Device extends EventEmitter {
     }
   };
 
-  completeProtocolInitialization = () => {
+  completeProtocolInitialization = async (): Promise<Object> => {
     try {
       const decipherStream = this._decipherStream;
       if (!decipherStream) {
@@ -327,14 +318,18 @@ class Device extends EventEmitter {
       });*/
 
       this._sendHello();
-
       this._connectionStartTime = new Date();
 
-      // We don't need to await this as other functions will await the response
-      this._getDescription();
+      const { functionState, systemInformation } = await this._getDescription();
+      this._systemInformation = systemInformation;
 
-      // todo if we don't do describe here,we don't have platforID etc info.
-      // so the log doesn't make sense right now.
+      this.updateAttributes({
+        functions: nullthrows(functionState).f,
+        variables: nullthrows(functionState).v,
+      });
+
+      this.setStatus(DEVICE_STATUS_MAP.GOT_DESCRIPTION);
+
       logger.log(
         'On device protocol initialization complete:\r\n',
         {
@@ -346,6 +341,8 @@ class Device extends EventEmitter {
           productID: this._attributes.particleProductId,
         },
       );
+
+      return systemInformation;
     } catch (error) {
       throw new Error(`completeProtocolInitialization: ${error}`);
     }
@@ -708,28 +705,6 @@ class Device extends EventEmitter {
     return CoapMessages.getResponseType(request);
   };
 
-  getDescription = async (): Promise<DeviceDescription> => {
-    const isBusy = !this._isSocketAvailable(null);
-    if (isBusy) {
-      throw new Error('This device is locked during the flashing process.');
-    }
-
-    try {
-      // todo _ensureWeHaveIntrospectionData work should be in this method
-      // since we call getDescription() only once on deviceConnection now.
-      await this._ensureWeHaveIntrospectionData();
-
-      return {
-        firmwareVersion: this._attributes.productFirmwareVersion,
-        productID: this._attributes.particleProductId,
-        state: nullthrows(this._deviceFunctionState),
-        systemInformation: nullthrows(this._systemInformation),
-      };
-    } catch (error) {
-      throw new Error('No device state!');
-    }
-  };
-
   getVariableValue = async (
     name: string,
   ): Promise<*> => {
@@ -767,6 +742,10 @@ class Device extends EventEmitter {
     }
 
     await this.hasStatus(DEVICE_STATUS_MAP.READY);
+
+    if (!this._hasSparkFunction(functionName)) {
+      throw new Error('Function not found');
+    }
 
     logger.log(
       'sending function call to the device',
@@ -949,86 +928,70 @@ class Device extends EventEmitter {
     return result;
   };
 
+  _getDescription = async (): Promise<DeviceDescription> => new Promise(
+    (
+      resolve: (deviceDescription: DeviceDescription) => void,
+      reject: (error: Error) => void,
+    ) => {
+      let systemInformation;
+      let functionState;
 
-  /**
-   * Checks our cache to see if we have the function state, otherwise requests
-   * it from the device, listens for it, and resolves our deferred on success
-   */
-  _ensureWeHaveIntrospectionData = async (): Promise<void> => {
-    if (this._hasFunctionState()) {
-      return Promise.resolve();
-    }
-
-    try {
-      return new Promise(
-        (resolve: () => void) => {
-          this.once('describe_complete', resolve);
+      const timeout = setTimeout(
+        () => {
+          cleanUpListeners();
+          reject(new Error('Request timed out - Describe'));
         },
+        KEEP_ALIVE_TIMEOUT,
       );
-    } catch (error) {
-      this.disconnect(`_ensureWeHaveIntrospectionData error: ${error}`);
-      throw error;
-    }
-  };
 
-  _getDescription = () => {
-    const timeout = setTimeout(
-      () => {
+      const handler = (packet: CoapPacket) => {
+        const payload = packet.payload;
+        if (!payload.length) {
+          throw new Error('Payload empty for Describe message');
+        }
+
+        const data = JSON.parse(payload.toString('utf8'));
+
+        if (!systemInformation && data.m) {
+          systemInformation = data;
+        }
+
+        if (data && data.v) {
+          functionState = data;
+          // 'v':{'temperature':2}
+          nullthrows(functionState).v =
+            CoapMessages.translateIntTypes(nullthrows(data.v));
+        }
+
+        if (!systemInformation || !functionState) {
+          return;
+        }
+
+        clearTimeout(timeout);
         cleanUpListeners();
-        throw new Error('Request timed out - Describe');
-      },
-      KEEP_ALIVE_TIMEOUT,
-    );
-    const handler = (packet: CoapPacket) => {
-      const payload = packet.payload;
-      if (!payload.length) {
-        throw new Error('Payload empty for Describe message');
-      }
 
-      const data = JSON.parse(payload.toString('utf8'));
+        resolve({ functionState, systemInformation });
+      };
 
-      if (!this._systemInformation && data.m) {
-        this._systemInformation = data;
-      }
+      const disconnectHandler = () => {
+        cleanUpListeners();
+      };
 
-      if (data && data.v) {
-        this._deviceFunctionState = data;
-        // 'v':{'temperature':2}
-        nullthrows(this._deviceFunctionState).v =
-          CoapMessages.translateIntTypes(nullthrows(data.v));
-      }
+      const cleanUpListeners = () => {
+        this.removeListener('DescribeReturn', handler);
+        this.removeListener('disconnect', disconnectHandler);
+      };
 
-      if (!this._systemInformation || !this._deviceFunctionState) {
-        return;
-      }
+      this.on('DescribeReturn', handler);
+      this.on('disconnect', disconnectHandler);
 
-      clearTimeout(timeout);
-      cleanUpListeners();
+      // Because some firmware versions do not send the app + system state
+      // in a single message, we cannot use `listenFor` and instead have to
+      // write some hacky code that duplicates a lot of the functionality
+      this.sendMessage('Describe');
+    },
+  );
 
-      this.updateAttributes({
-        functions: nullthrows(this._deviceFunctionState).f,
-        variables: nullthrows(this._deviceFunctionState).v,
-      });
-      this.emit('describe_complete');
-    };
-
-    const disconnectHandler = () => {
-      cleanUpListeners();
-    };
-
-    const cleanUpListeners = () => {
-      this.removeListener('DescribeReturn', handler);
-      this.removeListener('disconnect', disconnectHandler);
-    };
-
-    this.on('DescribeReturn', handler);
-    this.on('disconnect', disconnectHandler);
-
-    // Because some firmware versions do not send the app + system state
-    // in a single message, we cannot use `listenFor` and instead have to
-    // write some hacky code that duplicates a lot of the functionality
-    this.sendMessage('Describe');
-  }
 
   //-------------
   // Device Events / Spark.publish / Spark.subscribe
@@ -1056,28 +1019,15 @@ class Device extends EventEmitter {
     );
   };
 
-  _hasFunctionState = (): boolean =>
-    !!this._deviceFunctionState;
-
   _hasParticleVariable = (name: string): boolean =>
     !!(this._attributes.variables && this._attributes.variables[name]);
 
-  _hasSparkFunction = (name: string): boolean => {
-    // has state, and... the function is an object, or it's in the function array
-    const lowercaseName = name.toLowerCase();
-    return !!(
-      this._deviceFunctionState &&
-      (
-        this._deviceFunctionState[name] ||
-        (
-          this._deviceFunctionState.f &&
-          this._deviceFunctionState.f.some(
-            (fn: string): boolean => fn.toLowerCase() === lowercaseName,
-          )
-        )
-      )
-    );
-  };
+  _hasSparkFunction = (functionName: string): boolean => !!(
+    this._attributes.functions &&
+    this._attributes.functions.some(
+      (fn: string): boolean => fn.toLowerCase() === functionName.toLowerCase(),
+    )
+  );
 
   _toHexString = (value: number): string =>
     (value < 10 ? '0' : '') + value.toString(16);

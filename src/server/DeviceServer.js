@@ -295,19 +295,37 @@ class DeviceServer {
 
           this._devicesById.set(deviceID, device);
 
-          device.completeProtocolInitialization();
+          const systemInformation = await device.completeProtocolInitialization();
+          const { uuid: appHash } = FirmwareManager.getAppModule(systemInformation);
 
           const existingAttributes =
             await this._deviceAttributeRepository.getByID(deviceID);
-          const ownerID = existingAttributes && existingAttributes.ownerID;
 
-          // ip newer in the current device state, than in
-          // existing attributes from repo, so filter them,
-          // and update only what we need.
-          // eslint-disable-next-line no-unused-vars
-          const { ip, ...attributes } = existingAttributes || {};
-          device.updateAttributes(attributes);
-          device.setStatus(DEVICE_STATUS_MAP.GOT_REPO_ATTRIBUTES);
+          const {
+            claimCode,
+            currentBuildTarget,
+            imei,
+            isCellular,
+            last_iccid,
+            name,
+            ownerID,
+            registrar,
+          } = existingAttributes || {};
+
+          device.updateAttributes({
+            appHash,
+            claimCode,
+            currentBuildTarget,
+            imei,
+            isCellular,
+            last_iccid,
+            lastHeard: new Date(),
+            name: name || NAME_GENERATOR.choose(),
+            ownerID,
+            registrar,
+          });
+
+          device.setStatus(DEVICE_STATUS_MAP.READY);
 
           this.publishSpecialEvent(
             SYSTEM_EVENT_NAMES.SPARK_STATUS,
@@ -315,27 +333,6 @@ class DeviceServer {
             deviceID,
             ownerID,
           );
-
-          // TODO we should make getDescription private method
-          // and call it before fetching attributes from repo.
-          // inside completeProtocolInitialization()
-          // Right now if we do like this it drops performance on ~1/3.
-          // so change this after fixing the perf bug.
-          const description = await device.getDescription();
-
-          const { uuid: appHash } = FirmwareManager.getAppModule(
-            description.systemInformation,
-          );
-
-          device.updateAttributes({
-            appHash,
-            lastHeard: new Date(),
-            name: existingAttributes && existingAttributes.name ||
-            NAME_GENERATOR.choose(),
-            particleProductId: description.productID,
-            productFirmwareVersion: description.firmwareVersion,
-          });
-          device.setStatus(DEVICE_STATUS_MAP.READY);
 
           // TODO
           // we may update attributes only on disconnect, but currently
