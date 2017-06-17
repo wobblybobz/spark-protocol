@@ -165,7 +165,7 @@ var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _
             switch (_context4.prev = _context4.next) {
               case 0:
                 key = this._fileManager.getFile(deviceID + FILE_EXTENSION);
-                return _context4.abrupt('return', key ? { deviceID: deviceID, key: key } : null);
+                return _context4.abrupt('return', key ? { algorithm: 'rsa', deviceID: deviceID, key: key } : null);
 
               case 2:
               case 'end':
@@ -193,7 +193,7 @@ var DeviceKeyFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _
                 key = props.key;
 
                 this._fileManager.writeFile(deviceID + FILE_EXTENSION, key);
-                return _context5.abrupt('return', { deviceID: deviceID, key: key });
+                return _context5.abrupt('return', { algorithm: 'rsa', deviceID: deviceID, key: key });
 
               case 3:
               case 'end':

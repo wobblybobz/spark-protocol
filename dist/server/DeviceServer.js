@@ -186,15 +186,16 @@ var DeviceServer = function () {
               case 0:
                 _context7.prev = 0;
 
+                console.log('New Socket');
                 connectionIdCounter += 1;
                 counter = connectionIdCounter;
                 connectionKey = '_' + connectionIdCounter;
                 handshake = new _Handshake2.default(_this._cryptoManager);
                 device = new _Device2.default(socket, connectionKey, handshake);
-                _context7.next = 8;
+                _context7.next = 9;
                 return device.startProtocolInitialization();
 
-              case 8:
+              case 9:
                 deviceID = _context7.sent;
 
 
@@ -372,21 +373,21 @@ var DeviceServer = function () {
                     }
                   }, _callee6, _this, [[0, 27]]);
                 })));
-                _context7.next = 16;
+                _context7.next = 17;
                 break;
 
-              case 13:
-                _context7.prev = 13;
+              case 14:
+                _context7.prev = 14;
                 _context7.t0 = _context7['catch'](0);
 
                 _logger2.default.error('Device startup failed: ' + _context7.t0.message);
 
-              case 16:
+              case 17:
               case 'end':
                 return _context7.stop();
             }
           }
-        }, _callee7, _this, [[0, 13]]);
+        }, _callee7, _this, [[0, 14]]);
       }));
 
       return function (_x2) {

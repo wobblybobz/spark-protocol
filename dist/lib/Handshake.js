@@ -92,26 +92,27 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
  After the max uint32, the next message should set the counter to zero.
 */
 
-var NONCE_BYTES = 40; /*
-                      *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                      *
-                      *   This program is free software; you can redistribute it and/or
-                      *   modify it under the terms of the GNU Lesser General Public
-                      *   License as published by the Free Software Foundation, either
-                      *   version 3 of the License, or (at your option) any later version.
-                      *
-                      *   This program is distributed in the hope that it will be useful,
-                      *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                      *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                      *   Lesser General Public License for more details.
-                      *
-                      *   You should have received a copy of the GNU Lesser General Public
-                      *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                      *
-                      * 
-                      *
-                      */
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
 
+var NONCE_BYTES = 40;
 var ID_BYTES = 12;
 var SESSION_BYTES = 40;
 var GLOBAL_TIMEOUT = 10;
@@ -388,7 +389,7 @@ var Handshake = function Handshake(cryptoManager) {
 
             case 9:
 
-              if (!_this._cryptoManager.keysEqual(publicKey, deviceProvidedPem)) {
+              if (!publicKey.equals(deviceProvidedPem)) {
                 _logger2.default.error('\n        TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESN\'T MATCH SAVED\n        PUBLIC KEY');
               }
 
@@ -419,24 +420,24 @@ var Handshake = function Handshake(cryptoManager) {
 
             case 2:
               sessionKey = _context6.sent;
-              _context6.next = 5;
-              return _this._cryptoManager.encrypt(devicePublicKey, sessionKey);
 
-            case 5:
-              ciphertext = _context6.sent;
 
+              // Server RSA encrypts this 40-byte message using the Device's public key to
+              // create a 128-byte ciphertext.
+              ciphertext = devicePublicKey.encrypt(sessionKey);
 
               // Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
               // bytes generated in the previous step as the HMAC key.
+
               hash = _this._cryptoManager.createHmacDigest(ciphertext, sessionKey);
 
               // Server signs the HMAC with its RSA private key generating a 256-byte
               // signature.
 
-              _context6.next = 9;
+              _context6.next = 7;
               return _this._cryptoManager.sign(hash);
 
-            case 9:
+            case 7:
               signedhmac = _context6.sent;
 
 
@@ -469,7 +470,7 @@ var Handshake = function Handshake(cryptoManager) {
 
               return _context6.abrupt('return', { cipherStream: cipherStream, decipherStream: decipherStream });
 
-            case 16:
+            case 14:
             case 'end':
               return _context6.stop();
           }
