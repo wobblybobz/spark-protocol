@@ -378,7 +378,9 @@ class DeviceServer {
     this._devicesById.delete(deviceID);
     this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
-    await this._deviceAttributeRepository.updateByID(deviceID, attributes);
+    if (device.getStatus() === DEVICE_STATUS_MAP.READY) {
+      await this._deviceAttributeRepository.updateByID(deviceID, attributes);
+    }
 
     this.publishSpecialEvent(
       SYSTEM_EVENT_NAMES.SPARK_STATUS,
