@@ -418,15 +418,20 @@ var DeviceServer = function () {
                 _this._devicesById.delete(deviceID);
                 _this._eventPublisher.unsubscribeBySubscriberID(deviceID);
 
-                _context8.next = 10;
+                if (!(device.getStatus() === _Device.DEVICE_STATUS_MAP.READY)) {
+                  _context8.next = 11;
+                  break;
+                }
+
+                _context8.next = 11;
                 return _this._deviceAttributeRepository.updateByID(deviceID, attributes);
 
-              case 10:
+              case 11:
 
                 _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'offline', deviceID, ownerID);
                 _logger2.default.warn('Session ended for device with ID: ' + deviceID + ' with connectionKey: ' + ('' + (connectionKey || 'no connection key')));
 
-              case 12:
+              case 13:
               case 'end':
                 return _context8.stop();
             }

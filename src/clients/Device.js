@@ -185,6 +185,8 @@ class Device extends EventEmitter {
 
   getAttributes = (): DeviceAttributes => this._attributes;
 
+  getStatus = (): DeviceStatus => this._status;
+
   getSystemInformation = (): Object => nullthrows(this._systemInformation);
 
   updateAttributes = (attributes: $Shape<DeviceAttributes>): DeviceAttributes => {

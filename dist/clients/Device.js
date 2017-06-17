@@ -234,6 +234,10 @@ var Device = function (_EventEmitter) {
       return _this._attributes;
     };
 
+    _this.getStatus = function () {
+      return _this._status;
+    };
+
     _this.getSystemInformation = function () {
       return (0, _nullthrows2.default)(_this._systemInformation);
     };
