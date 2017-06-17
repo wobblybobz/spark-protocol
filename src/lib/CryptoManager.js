@@ -4,6 +4,7 @@ import type { IDeviceKeyRepository, ServerKeyRepository } from '../types';
 
 import crypto from 'crypto';
 import CryptoStream from './CryptoStream';
+import DeviceKey from './DeviceKey';
 import NodeRSA from 'node-rsa';
 
 const HASH_TYPE = 'sha1';
@@ -95,19 +96,17 @@ class CryptoManager {
   createDevicePublicKey = async (
     deviceID: string,
     publicKeyPem: string,
-  ): Promise<NodeRSA> => {
+  ): Promise<DeviceKey> => {
     await this._deviceKeyRepository.updateByID(
       deviceID,
       { deviceID, key: publicKeyPem },
     );
-    return new NodeRSA(
-      publicKeyPem,
-      'pkcs8-public-pem',
-      {
-        encryptionScheme: 'pkcs1',
-        signingScheme: 'pkcs1',
-      },
-    );
+
+    try {
+      return new DeviceKey('rsa', publicKeyPem);
+    } catch (ignore) {
+      return new DeviceKey('ecc', publicKeyPem);
+    }
   };
 
   decrypt = (data: Buffer): Buffer =>
@@ -115,26 +114,14 @@ class CryptoManager {
       data,
     );
 
-  encrypt = (publicKey: NodeRSA, data: Buffer): Buffer =>
-    publicKey.encrypt(
-      data,
-    );
-
-  getDevicePublicKey = async (deviceID: string): Promise<?Object> => {
+  getDevicePublicKey = async (deviceID: string): Promise<?DeviceKey> => {
     const publicKeyObject = await this._deviceKeyRepository.getByID(deviceID);
-    return publicKeyObject
-      ? new NodeRSA(
-        publicKeyObject.key,
-        'pkcs8-public-pem',
-        {
-          encryptionScheme: 'pkcs1',
-          signingScheme: 'pkcs1',
-        },
-      )
-      : null;
-  };
+    if (!publicKeyObject) {
+      return null;
+    }
 
-  keysEqual = (existingKey: NodeRSA, publicKeyPem: ? string): bool => existingKey.exportKey('pkcs8-public-pem') === publicKeyPem
+    return new DeviceKey(publicKeyObject.algorithm, publicKeyObject.key);
+  };
 
   getRandomBytes = (size: number): Promise<Buffer> =>
     new Promise((

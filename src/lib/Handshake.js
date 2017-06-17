@@ -19,6 +19,7 @@
 */
 
 import type Device from '../clients/Device';
+import type DeviceKey from './DeviceKey';
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
 import type CryptoStream from './CryptoStream';
@@ -315,7 +316,7 @@ class Handshake {
       throw new Error(`no public key found for device: ${deviceID}`);
     }
 
-    if (!this._cryptoManager.keysEqual(publicKey, deviceProvidedPem)) {
+    if (!publicKey.equals(deviceProvidedPem)) {
       logger.error(`
         TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESN'T MATCH SAVED
         PUBLIC KEY`,
@@ -326,7 +327,7 @@ class Handshake {
   };
 
   _sendSessionKey = async (
-    devicePublicKey: Object,
+    devicePublicKey: DeviceKey,
   ): Promise<{
     cipherStream: CryptoStream,
     decipherStream: CryptoStream,
@@ -335,10 +336,7 @@ class Handshake {
 
     // Server RSA encrypts this 40-byte message using the Device's public key to
     // create a 128-byte ciphertext.
-    const ciphertext = await this._cryptoManager.encrypt(
-      devicePublicKey,
-      sessionKey,
-    );
+    const ciphertext = devicePublicKey.encrypt(sessionKey);
 
     // Server creates a 20-byte HMAC of the ciphertext using SHA1 and the 40
     // bytes generated in the previous step as the HMAC key.
@@ -376,7 +374,7 @@ class Handshake {
       this._socket.pipe(decipherStream);
       cipherStream.pipe(this._socket);
     }
-    
+
     this._socket.write(message);
 
     return { cipherStream, decipherStream };

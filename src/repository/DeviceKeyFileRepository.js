@@ -35,7 +35,7 @@ class DeviceKeyFileRepository implements IDeviceKeyRepository {
   @memoizeGet(['deviceID'])
   async getByID(deviceID: string): Promise<?DeviceKeyObject> {
     const key = this._fileManager.getFile(deviceID + FILE_EXTENSION);
-    return key ? { deviceID, key } : null;
+    return key ? { algorithm: 'rsa', deviceID, key } : null;
   }
 
   @memoizeSet()
@@ -45,7 +45,7 @@ class DeviceKeyFileRepository implements IDeviceKeyRepository {
   ): Promise<DeviceKeyObject> {
     const { key } = props;
     this._fileManager.writeFile(deviceID + FILE_EXTENSION, key);
-    return { deviceID, key };
+    return { algorithm: 'rsa', deviceID, key };
   }
 }
 

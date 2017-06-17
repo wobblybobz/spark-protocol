@@ -133,7 +133,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
   };
 
   this.createDevicePublicKey = function () {
-    var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(deviceID, publicKeyPem) {
+    var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(deviceID, algorithm, publicKeyPem) {
       return _regenerator2.default.wrap(function _callee3$(_context3) {
         while (1) {
           switch (_context3.prev = _context3.next) {
@@ -155,7 +155,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
       }, _callee3, _this);
     }));
 
-    return function (_x, _x2) {
+    return function (_x, _x2, _x3) {
       return _ref3.apply(this, arguments);
     };
   }();
@@ -193,7 +193,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
       }, _callee4, _this);
     }));
 
-    return function (_x3) {
+    return function (_x4) {
       return _ref4.apply(this, arguments);
     };
   }();
@@ -231,7 +231,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
       }, _callee5, _this);
     }));
 
-    return function (_x4) {
+    return function (_x5) {
       return _ref5.apply(this, arguments);
     };
   }();
