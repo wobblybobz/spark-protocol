@@ -8,6 +8,7 @@ import EventPublisher from './lib/EventPublisher';
 import ClaimCodeManager from './lib/ClaimCodeManager';
 import CryptoManager from './lib/CryptoManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
+import logger from './lib/logger';
 import protocolSettings from './settings';
 
 type ServerSettings = {
@@ -28,6 +29,9 @@ const defaultBindings = (
   serverSettings: ServerSettings,
 ) => {
   const mergedSettings = { ...protocolSettings, ...serverSettings };
+
+  container.bindValue('LOGGING_FUNCTION', console.log);
+  logger.container = container;
 
   // Settings
   container.bindValue('DEVICE_DIRECTORY', mergedSettings.DEVICE_DIRECTORY);

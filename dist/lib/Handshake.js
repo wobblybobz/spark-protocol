@@ -268,9 +268,7 @@ var Handshake = function Handshake(cryptoManager) {
           case 2:
             nonce = _context3.sent;
 
-            process.nextTick(function () {
-              return _this._socket.write(nonce);
-            });
+            _this._socket.write(nonce);
 
             return _context3.abrupt('return', nonce);
 
@@ -444,12 +442,6 @@ var Handshake = function Handshake(cryptoManager) {
 
               // Server sends ~384 bytes to Device: the ciphertext then the signature.
               message = Buffer.concat([ciphertext, signedhmac], ciphertext.length + signedhmac.length);
-
-
-              process.nextTick(function () {
-                return _this._socket.write(message);
-              });
-
               decipherStream = _this._cryptoManager.createAESDecipherStream(sessionKey);
               cipherStream = _this._cryptoManager.createAESCipherStream(sessionKey);
 
@@ -472,6 +464,8 @@ var Handshake = function Handshake(cryptoManager) {
                 _this._socket.pipe(decipherStream);
                 cipherStream.pipe(_this._socket);
               }
+
+              _this._socket.write(message);
 
               return _context6.abrupt('return', { cipherStream: cipherStream, decipherStream: decipherStream });
 
