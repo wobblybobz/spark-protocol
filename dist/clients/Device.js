@@ -176,15 +176,9 @@ var DEVICE_MESSAGE_EVENTS_NAMES = exports.DEVICE_MESSAGE_EVENTS_NAMES = {
   SUBSCRIBE: 'Subscribe'
 };
 
-// TODO we should make getDescription private method
-// and call it before fetching attributes from repo.
-// Right now doing this drops performance on ~1/3.
-// so change the order after fixing the perf bug.
-// `ready` state indicates that attributes are fulfilled
-// and consist of handshake info + existingAttributesFromRepo + describe info
 var DEVICE_STATUS_MAP = exports.DEVICE_STATUS_MAP = {
+  GOT_DESCRIPTION: 3,
   GOT_HELLO: 2,
-  GOT_REPO_ATTRIBUTES: 3,
   INITIAL: 1,
   READY: 4
 };
@@ -225,7 +219,6 @@ var Device = function (_EventEmitter) {
     _this._connectionKey = null;
     _this._connectionStartTime = null;
     _this._decipherStream = null;
-    _this._deviceFunctionState = null;
     _this._disconnectCounter = 0;
     _this._maxBinarySize = null;
     _this._otaChunkSize = null;
@@ -386,54 +379,87 @@ var Device = function (_EventEmitter) {
         }
       }, _callee3, _this2, [[0, 15]]);
     }));
+    _this.completeProtocolInitialization = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
+      var decipherStream, _ref5, _functionState, _systemInformation;
 
-    _this.completeProtocolInitialization = function () {
-      try {
-        var decipherStream = _this._decipherStream;
-        if (!decipherStream) {
-          throw new Error('decipherStream not set.');
-        }
+      return _regenerator2.default.wrap(function _callee4$(_context4) {
+        while (1) {
+          switch (_context4.prev = _context4.next) {
+            case 0:
+              _context4.prev = 0;
+              decipherStream = _this._decipherStream;
 
-        decipherStream.on('readable', function () {
-          var read = function read() {
-            return decipherStream.read();
-          };
+              if (decipherStream) {
+                _context4.next = 4;
+                break;
+              }
 
-          var chunk = read();
-          while (chunk !== null) {
-            _this._clientHasWrittenToSocket();
-            _this.routeMessage(chunk);
-            chunk = read();
+              throw new Error('decipherStream not set.');
+
+            case 4:
+
+              decipherStream.on('readable', function () {
+                var read = function read() {
+                  return decipherStream.read();
+                };
+
+                var chunk = read();
+                while (chunk !== null) {
+                  _this._clientHasWrittenToSocket();
+                  _this.routeMessage(chunk);
+                  chunk = read();
+                }
+                _this._clientHasWrittenToSocket();
+              });
+
+              // Wait for this thing to be readable before sending any messages
+              /* await new Promise((resolve: () => void) => {
+                decipherStream.once('readable', resolve);
+              });*/
+
+              _this._sendHello();
+              _this._connectionStartTime = new Date();
+
+              _context4.next = 9;
+              return _this._getDescription();
+
+            case 9:
+              _ref5 = _context4.sent;
+              _functionState = _ref5.functionState;
+              _systemInformation = _ref5.systemInformation;
+
+              _this._systemInformation = _systemInformation;
+
+              _this.updateAttributes({
+                functions: (0, _nullthrows2.default)(_functionState).f,
+                variables: (0, _nullthrows2.default)(_functionState).v
+              });
+
+              _this.setStatus(DEVICE_STATUS_MAP.GOT_DESCRIPTION);
+
+              _logger2.default.log('On device protocol initialization complete:\r\n', {
+                cache_key: _this._connectionKey,
+                deviceID: _this.getDeviceID(),
+                firmwareVersion: _this._attributes.productFirmwareVersion,
+                ip: _this.getRemoteIPAddress(),
+                platformID: _this._attributes.platformId,
+                productID: _this._attributes.particleProductId
+              });
+
+              return _context4.abrupt('return', _systemInformation);
+
+            case 19:
+              _context4.prev = 19;
+              _context4.t0 = _context4['catch'](0);
+              throw new Error('completeProtocolInitialization: ' + _context4.t0);
+
+            case 22:
+            case 'end':
+              return _context4.stop();
           }
-          _this._clientHasWrittenToSocket();
-        });
-
-        // Wait for this thing to be readable before sending any messages
-        /* await new Promise((resolve: () => void) => {
-          decipherStream.once('readable', resolve);
-        });*/
-
-        _this._sendHello();
-
-        _this._connectionStartTime = new Date();
-
-        // We don't need to await this as other functions will await the response
-        _this._getDescription();
-
-        // todo if we don't do describe here,we don't have platforID etc info.
-        // so the log doesn't make sense right now.
-        _logger2.default.log('On device protocol initialization complete:\r\n', {
-          cache_key: _this._connectionKey,
-          deviceID: _this.getDeviceID(),
-          firmwareVersion: _this._attributes.productFirmwareVersion,
-          ip: _this.getRemoteIPAddress(),
-          platformID: _this._attributes.platformId,
-          productID: _this._attributes.particleProductId
-        });
-      } catch (error) {
-        throw new Error('completeProtocolInitialization: ' + error);
-      }
-    };
+        }
+      }, _callee4, _this2, [[0, 19]]);
+    }));
 
     _this._clientHasWrittenToSocket = function () {
       if (_this._socketTimeoutInterval) {
@@ -610,15 +636,15 @@ var Device = function (_EventEmitter) {
     };
 
     _this.listenFor = function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4(eventName, uri, token) {
+      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5(eventName, uri, token) {
         var tokenHex, beVerbose;
-        return _regenerator2.default.wrap(function _callee4$(_context4) {
+        return _regenerator2.default.wrap(function _callee5$(_context5) {
           while (1) {
-            switch (_context4.prev = _context4.next) {
+            switch (_context5.prev = _context5.next) {
               case 0:
                 tokenHex = token ? _this._toHexString(token) : null;
                 beVerbose = _settings2.default.SHOW_VERBOSE_DEVICE_LOGS;
-                return _context4.abrupt('return', new _promise2.default(function (resolve, reject) {
+                return _context5.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     cleanUpListeners();
                     reject(new Error('Request timed out', eventName));
@@ -663,14 +689,14 @@ var Device = function (_EventEmitter) {
 
               case 3:
               case 'end':
-                return _context4.stop();
+                return _context5.stop();
             }
           }
-        }, _callee4, _this2);
+        }, _callee5, _this2);
       }));
 
       return function (_x2, _x3, _x4) {
-        return _ref4.apply(this, arguments);
+        return _ref6.apply(this, arguments);
       };
     }();
 
@@ -721,49 +747,8 @@ var Device = function (_EventEmitter) {
       return _CoapMessages2.default.getResponseType(request);
     };
 
-    _this.getDescription = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5() {
-      var isBusy;
-      return _regenerator2.default.wrap(function _callee5$(_context5) {
-        while (1) {
-          switch (_context5.prev = _context5.next) {
-            case 0:
-              isBusy = !_this._isSocketAvailable(null);
-
-              if (!isBusy) {
-                _context5.next = 3;
-                break;
-              }
-
-              throw new Error('This device is locked during the flashing process.');
-
-            case 3:
-              _context5.prev = 3;
-              _context5.next = 6;
-              return _this._ensureWeHaveIntrospectionData();
-
-            case 6:
-              return _context5.abrupt('return', {
-                firmwareVersion: _this._attributes.productFirmwareVersion,
-                productID: _this._attributes.particleProductId,
-                state: (0, _nullthrows2.default)(_this._deviceFunctionState),
-                systemInformation: (0, _nullthrows2.default)(_this._systemInformation)
-              });
-
-            case 9:
-              _context5.prev = 9;
-              _context5.t0 = _context5['catch'](3);
-              throw new Error('No device state!');
-
-            case 12:
-            case 'end':
-              return _context5.stop();
-          }
-        }
-      }, _callee5, _this2, [[3, 9]]);
-    }));
-
     _this.getVariableValue = function () {
-      var _ref6 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(name) {
+      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6(name) {
         var isBusy, messageToken, message;
         return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
@@ -808,12 +793,12 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x5) {
-        return _ref6.apply(this, arguments);
+        return _ref7.apply(this, arguments);
       };
     }();
 
     _this.callFunction = function () {
-      var _ref7 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(functionName, functionArguments) {
+      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7(functionName, functionArguments) {
         var isBusy, token, message;
         return _regenerator2.default.wrap(function _callee7$(_context7) {
           while (1) {
@@ -833,6 +818,14 @@ var Device = function (_EventEmitter) {
                 return _this.hasStatus(DEVICE_STATUS_MAP.READY);
 
               case 5:
+                if (_this._hasSparkFunction(functionName)) {
+                  _context7.next = 7;
+                  break;
+                }
+
+                throw new Error('Function not found');
+
+              case 7:
 
                 _logger2.default.log('sending function call to the device', { deviceID: _this.getDeviceID(), functionName: functionName });
 
@@ -840,14 +833,14 @@ var Device = function (_EventEmitter) {
                   args: (0, _values2.default)(functionArguments),
                   name: functionName
                 });
-                _context7.next = 9;
+                _context7.next = 11;
                 return _this.listenFor('FunctionReturn', null, token);
 
-              case 9:
+              case 11:
                 message = _context7.sent;
                 return _context7.abrupt('return', _this._transformFunctionResult(functionName, message));
 
-              case 11:
+              case 13:
               case 'end':
                 return _context7.stop();
             }
@@ -856,12 +849,12 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x6, _x7) {
-        return _ref7.apply(this, arguments);
+        return _ref8.apply(this, arguments);
       };
     }();
 
     _this.raiseYourHand = function () {
-      var _ref8 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(shouldShowSignal) {
+      var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(shouldShowSignal) {
         var isBusy, buffer, token;
         return _regenerator2.default.wrap(function _callee8$(_context8) {
           while (1) {
@@ -905,12 +898,12 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x8) {
-        return _ref8.apply(this, arguments);
+        return _ref9.apply(this, arguments);
       };
     }();
 
     _this.flash = function () {
-      var _ref9 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(binary) {
+      var _ref10 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(binary) {
         var fileTransferStore = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _FileTransferStore2.default.FIRMWARE;
         var address = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '0x0';
         var isBusy, flasher;
@@ -964,7 +957,7 @@ var Device = function (_EventEmitter) {
       }));
 
       return function (_x9) {
-        return _ref9.apply(this, arguments);
+        return _ref10.apply(this, arguments);
       };
     }();
 
@@ -1035,93 +1028,73 @@ var Device = function (_EventEmitter) {
       return result;
     };
 
-    _this._ensureWeHaveIntrospectionData = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10() {
+    _this._getDescription = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10() {
       return _regenerator2.default.wrap(function _callee10$(_context10) {
         while (1) {
           switch (_context10.prev = _context10.next) {
             case 0:
-              if (!_this._hasFunctionState()) {
-                _context10.next = 2;
-                break;
-              }
+              return _context10.abrupt('return', new _promise2.default(function (resolve, reject) {
+                var systemInformation = void 0;
+                var functionState = void 0;
 
-              return _context10.abrupt('return', _promise2.default.resolve());
+                var timeout = setTimeout(function () {
+                  cleanUpListeners();
+                  reject(new Error('Request timed out - Describe'));
+                }, KEEP_ALIVE_TIMEOUT);
 
-            case 2:
-              _context10.prev = 2;
-              return _context10.abrupt('return', new _promise2.default(function (resolve) {
-                _this.once('describe_complete', resolve);
+                var handler = function handler(packet) {
+                  var payload = packet.payload;
+                  if (!payload.length) {
+                    throw new Error('Payload empty for Describe message');
+                  }
+
+                  var data = JSON.parse(payload.toString('utf8'));
+
+                  if (!systemInformation && data.m) {
+                    systemInformation = data;
+                  }
+
+                  if (data && data.v) {
+                    functionState = data;
+                    // 'v':{'temperature':2}
+                    (0, _nullthrows2.default)(functionState).v = _CoapMessages2.default.translateIntTypes((0, _nullthrows2.default)(data.v));
+                  }
+
+                  if (!systemInformation || !functionState) {
+                    return;
+                  }
+
+                  clearTimeout(timeout);
+                  cleanUpListeners();
+
+                  resolve({ functionState: functionState, systemInformation: systemInformation });
+                };
+
+                var disconnectHandler = function disconnectHandler() {
+                  cleanUpListeners();
+                };
+
+                var cleanUpListeners = function cleanUpListeners() {
+                  _this.removeListener('DescribeReturn', handler);
+                  _this.removeListener('disconnect', disconnectHandler);
+                };
+
+                _this.on('DescribeReturn', handler);
+                _this.on('disconnect', disconnectHandler);
+
+                // Because some firmware versions do not send the app + system state
+                // in a single message, we cannot use `listenFor` and instead have to
+                // write some hacky code that duplicates a lot of the functionality
+                _this.sendMessage('Describe');
               }));
 
-            case 6:
-              _context10.prev = 6;
-              _context10.t0 = _context10['catch'](2);
-
-              _this.disconnect('_ensureWeHaveIntrospectionData error: ' + _context10.t0);
-              throw _context10.t0;
-
-            case 10:
+            case 1:
             case 'end':
               return _context10.stop();
           }
         }
-      }, _callee10, _this2, [[2, 6]]);
+      }, _callee10, _this2);
     }));
-
-    _this._getDescription = function () {
-      var timeout = setTimeout(function () {
-        cleanUpListeners();
-        throw new Error('Request timed out - Describe');
-      }, KEEP_ALIVE_TIMEOUT);
-      var handler = function handler(packet) {
-        var payload = packet.payload;
-        if (!payload.length) {
-          throw new Error('Payload empty for Describe message');
-        }
-
-        var data = JSON.parse(payload.toString('utf8'));
-
-        if (!_this._systemInformation && data.m) {
-          _this._systemInformation = data;
-        }
-
-        if (data && data.v) {
-          _this._deviceFunctionState = data;
-          // 'v':{'temperature':2}
-          (0, _nullthrows2.default)(_this._deviceFunctionState).v = _CoapMessages2.default.translateIntTypes((0, _nullthrows2.default)(data.v));
-        }
-
-        if (!_this._systemInformation || !_this._deviceFunctionState) {
-          return;
-        }
-
-        clearTimeout(timeout);
-        cleanUpListeners();
-
-        _this.updateAttributes({
-          functions: (0, _nullthrows2.default)(_this._deviceFunctionState).f,
-          variables: (0, _nullthrows2.default)(_this._deviceFunctionState).v
-        });
-        _this.emit('describe_complete');
-      };
-
-      var disconnectHandler = function disconnectHandler() {
-        cleanUpListeners();
-      };
-
-      var cleanUpListeners = function cleanUpListeners() {
-        _this.removeListener('DescribeReturn', handler);
-        _this.removeListener('disconnect', disconnectHandler);
-      };
-
-      _this.on('DescribeReturn', handler);
-      _this.on('disconnect', disconnectHandler);
-
-      // Because some firmware versions do not send the app + system state
-      // in a single message, we cannot use `listenFor` and instead have to
-      // write some hacky code that duplicates a lot of the functionality
-      _this.sendMessage('Describe');
-    };
 
     _this.onDeviceEvent = function (event) {
       _this.sendDeviceEvent(event);
@@ -1143,20 +1116,14 @@ var Device = function (_EventEmitter) {
       }], data && new Buffer(data) || null);
     };
 
-    _this._hasFunctionState = function () {
-      return !!_this._deviceFunctionState;
-    };
-
     _this._hasParticleVariable = function (name) {
       return !!(_this._attributes.variables && _this._attributes.variables[name]);
     };
 
-    _this._hasSparkFunction = function (name) {
-      // has state, and... the function is an object, or it's in the function array
-      var lowercaseName = name.toLowerCase();
-      return !!(_this._deviceFunctionState && (_this._deviceFunctionState[name] || _this._deviceFunctionState.f && _this._deviceFunctionState.f.some(function (fn) {
-        return fn.toLowerCase() === lowercaseName;
-      })));
+    _this._hasSparkFunction = function (functionName) {
+      return !!(_this._attributes.functions && _this._attributes.functions.some(function (fn) {
+        return fn.toLowerCase() === functionName.toLowerCase();
+      }));
     };
 
     _this._toHexString = function (value) {
@@ -1283,12 +1250,6 @@ var Device = function (_EventEmitter) {
 
 
   // Transforms the result from a device function to the correct type.
-
-
-  /**
-   * Checks our cache to see if we have the function state, otherwise requests
-   * it from the device, listens for it, and resolves our deferred on success
-   */
 
 
   //-------------

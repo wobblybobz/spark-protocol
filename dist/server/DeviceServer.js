@@ -12,10 +12,6 @@ var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
 
-var _objectWithoutProperties2 = require('babel-runtime/helpers/objectWithoutProperties');
-
-var _objectWithoutProperties3 = _interopRequireDefault(_objectWithoutProperties2);
-
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
@@ -205,7 +201,7 @@ var DeviceServer = function () {
                 _logger2.default.info('Connection from: ' + device.getRemoteIPAddress() + ' - ' + ('Device ID: ' + deviceID), 'Connection ID: ' + counter);
 
                 process.nextTick((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6() {
-                  var existingConnection, existingAttributes, ownerID, _ref8, ip, attributes, description, _FirmwareManager$getA, appHash;
+                  var existingConnection, systemInformation, _FirmwareManager$getA, appHash, existingAttributes, _ref8, claimCode, currentBuildTarget, imei, isCellular, last_iccid, name, ownerID, registrar;
 
                   return _regenerator2.default.wrap(function _callee6$(_context6) {
                     while (1) {
@@ -316,77 +312,65 @@ var DeviceServer = function () {
 
                           _this._devicesById.set(deviceID, device);
 
-                          device.completeProtocolInitialization();
+                          _context6.next = 13;
+                          return device.completeProtocolInitialization();
 
-                          _context6.next = 14;
+                        case 13:
+                          systemInformation = _context6.sent;
+                          _FirmwareManager$getA = _FirmwareManager2.default.getAppModule(systemInformation), appHash = _FirmwareManager$getA.uuid;
+                          _context6.next = 17;
                           return _this._deviceAttributeRepository.getByID(deviceID);
 
-                        case 14:
+                        case 17:
                           existingAttributes = _context6.sent;
-                          ownerID = existingAttributes && existingAttributes.ownerID;
-
-                          // ip newer in the current device state, than in
-                          // existing attributes from repo, so filter them,
-                          // and update only what we need.
-                          // eslint-disable-next-line no-unused-vars
-
-                          _ref8 = existingAttributes || {}, ip = _ref8.ip, attributes = (0, _objectWithoutProperties3.default)(_ref8, ['ip']);
-
-                          device.updateAttributes(attributes);
-                          device.setStatus(_Device.DEVICE_STATUS_MAP.GOT_REPO_ATTRIBUTES);
-
-                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID);
-
-                          // TODO we should make getDescription private method
-                          // and call it before fetching attributes from repo.
-                          // inside completeProtocolInitialization()
-                          // Right now if we do like this it drops performance on ~1/3.
-                          // so change this after fixing the perf bug.
-                          _context6.next = 22;
-                          return device.getDescription();
-
-                        case 22:
-                          description = _context6.sent;
-                          _FirmwareManager$getA = _FirmwareManager2.default.getAppModule(description.systemInformation), appHash = _FirmwareManager$getA.uuid;
+                          _ref8 = existingAttributes || {}, claimCode = _ref8.claimCode, currentBuildTarget = _ref8.currentBuildTarget, imei = _ref8.imei, isCellular = _ref8.isCellular, last_iccid = _ref8.last_iccid, name = _ref8.name, ownerID = _ref8.ownerID, registrar = _ref8.registrar;
 
 
                           device.updateAttributes({
                             appHash: appHash,
+                            claimCode: claimCode,
+                            currentBuildTarget: currentBuildTarget,
+                            imei: imei,
+                            isCellular: isCellular,
+                            last_iccid: last_iccid,
                             lastHeard: new Date(),
-                            name: existingAttributes && existingAttributes.name || NAME_GENERATOR.choose(),
-                            particleProductId: description.productID,
-                            productFirmwareVersion: description.firmwareVersion
+                            name: name || NAME_GENERATOR.choose(),
+                            ownerID: ownerID,
+                            registrar: registrar
                           });
+
                           device.setStatus(_Device.DEVICE_STATUS_MAP.READY);
+
+                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID);
 
                           // TODO
                           // we may update attributes only on disconnect, but currently
                           // removing update here can break claim/provision flow
                           // so need to test carefully before doing this.
-                          _context6.next = 28;
+                          _context6.next = 24;
                           return _this._deviceAttributeRepository.updateByID(deviceID, device.getAttributes());
 
-                        case 28:
+                        case 24:
 
                           // Send app-hash if this is a new app firmware
                           if (!existingAttributes || appHash !== existingAttributes.appHash) {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, appHash, deviceID, ownerID);
                           }
-                          _context6.next = 34;
+                          _context6.next = 30;
                           break;
 
-                        case 31:
-                          _context6.prev = 31;
+                        case 27:
+                          _context6.prev = 27;
                           _context6.t0 = _context6['catch'](0);
 
                           device.disconnect('Error during connection: ' + _context6.t0);
 
-                        case 34:
+                        case 30:
                         case 'end':
                           return _context6.stop();
                       }
                     }
-                  }, _callee6, _this, [[0, 31]]);
+                  }, _callee6, _this, [[0, 27]]);
                 })));
                 _context7.next = 16;
                 break;
