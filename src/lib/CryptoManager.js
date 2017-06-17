@@ -120,7 +120,11 @@ class CryptoManager {
       return null;
     }
 
-    return new DeviceKey(publicKeyObject.algorithm, publicKeyObject.key);
+    return new DeviceKey(
+      // Default to rsa for devices that never set the algorithm
+      publicKeyObject.algorithm || 'rsa',
+      publicKeyObject.key,
+    );
   };
 
   getRandomBytes = (size: number): Promise<Buffer> =>

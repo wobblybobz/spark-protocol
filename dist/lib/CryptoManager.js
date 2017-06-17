@@ -192,7 +192,9 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
               return _context4.abrupt('return', null);
 
             case 5:
-              return _context4.abrupt('return', new _DeviceKey2.default(publicKeyObject.algorithm, publicKeyObject.key));
+              return _context4.abrupt('return', new _DeviceKey2.default(
+              // Default to rsa for devices that never set the algorithm
+              publicKeyObject.algorithm || 'rsa', publicKeyObject.key));
 
             case 6:
             case 'end':
