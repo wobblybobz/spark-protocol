@@ -152,6 +152,38 @@ test(
 );
 
 test(
+  'should filter broadcasted events',
+  t => {
+    const eventPublisher = new EventPublisher();
+    const handler = sinon.spy();
+    const ownerID = TestData.getID();
+    const deviceEvent = {
+      broadcasted: true,
+      deviceID: TestData.getID(),
+      isPublic: false,
+      name: TEST_EVENT_NAME,
+      userID: ownerID,
+    };
+
+    eventPublisher.subscribe(
+      deviceEvent.name,
+      handler,
+      {
+        filterOptions: {
+          listenToBroadcastedEvents: false,
+        },
+      },
+    );
+
+    eventPublisher.publish(deviceEvent);
+
+    process.nextTick(() => {
+      t.falsy(handler.called);
+    });
+  }
+);
+
+test(
   'should listen for mydevices events only',
   t => {
     const eventPublisher = new EventPublisher();

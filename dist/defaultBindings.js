@@ -26,6 +26,10 @@ var _EventPublisher = require('./lib/EventPublisher');
 
 var _EventPublisher2 = _interopRequireDefault(_EventPublisher);
 
+var _EventProvider = require('./lib/EventProvider');
+
+var _EventProvider2 = _interopRequireDefault(_EventProvider);
+
 var _ClaimCodeManager = require('./lib/ClaimCodeManager');
 
 var _ClaimCodeManager2 = _interopRequireDefault(_ClaimCodeManager);
@@ -69,11 +73,11 @@ var defaultBindings = function defaultBindings(container, serverSettings) {
 
   // Utils
   container.bindClass('EventPublisher', _EventPublisher2.default, []);
+  container.bindClass('EVENT_PROVIDER', _EventProvider2.default, ['EventPublisher']);
   container.bindClass('ClaimCodeManager', _ClaimCodeManager2.default, []);
   container.bindClass('CryptoManager', _CryptoManager2.default, ['DeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
 
   // Device server
   container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES']);
 };
-
 exports.default = defaultBindings;

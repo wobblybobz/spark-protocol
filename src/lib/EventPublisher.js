@@ -28,14 +28,14 @@ import settings from '../settings';
 export const getRequestEventName = (eventName: string): string =>
  `${eventName}/request`;
 
-const ALL_EVENTS = '*all*';
 const LISTEN_FOR_RESPONSE_TIMEOUT = 15000;
 
 type FilterOptions = {
   connectionID?: ?string,
   deviceID?: string,
+  listenToBroadcastedEvents?: boolean,
   mydevices?: boolean,
-  userID: string,
+  userID?: string,
 };
 
 type SubscriptionOptions = {
@@ -69,9 +69,10 @@ class EventPublisher extends EventEmitter {
       ttl,
     };
 
-    // TODO - this needs to be put on next tick.
-    this._emitWithPrefix(eventData.name, event);
-    this.emit(ALL_EVENTS, event);
+    setImmediate(() => {
+      this._emitWithPrefix(eventData.name, event);
+      this.emit('*', event);
+    });
   };
 
   publishAndListenForResponse = async (
@@ -115,7 +116,7 @@ class EventPublisher extends EventEmitter {
   };
 
   subscribe = (
-    eventNamePrefix: string = ALL_EVENTS,
+    eventNamePrefix: string = '*',
     eventHandler: (event: Event) => void | Promise<void>,
     options?: SubscriptionOptions = {},
   ): string => {
@@ -227,6 +228,14 @@ class EventPublisher extends EventEmitter {
       if (
         filterOptions.deviceID &&
         event.deviceID !== filterOptions.deviceID
+      ) {
+        return;
+      }
+
+      // filter broadcasted events
+      if (
+        filterOptions.listenToBroadcastedEvents === false &&
+        event.broadcasted
       ) {
         return;
       }

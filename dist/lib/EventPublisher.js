@@ -17,6 +17,10 @@ var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
+var _setImmediate2 = require('babel-runtime/core-js/set-immediate');
+
+var _setImmediate3 = _interopRequireDefault(_setImmediate2);
+
 var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
@@ -81,7 +85,6 @@ var getRequestEventName = exports.getRequestEventName = function getRequestEvent
    *
    */
 
-var ALL_EVENTS = '*all*';
 var LISTEN_FOR_RESPONSE_TIMEOUT = 15000;
 
 var EventPublisher = function (_EventEmitter) {
@@ -107,9 +110,10 @@ var EventPublisher = function (_EventEmitter) {
         ttl: ttl
       });
 
-      // TODO - this needs to be put on next tick.
-      _this._emitWithPrefix(eventData.name, event);
-      _this.emit(ALL_EVENTS, event);
+      (0, _setImmediate3.default)(function () {
+        _this._emitWithPrefix(eventData.name, event);
+        _this.emit('*', event);
+      });
     }, _this.publishAndListenForResponse = function () {
       var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(eventData) {
         var eventID, requestEventName, responseEventName;
@@ -154,7 +158,7 @@ var EventPublisher = function (_EventEmitter) {
         return _ref2.apply(this, arguments);
       };
     }(), _this.subscribe = function () {
-      var eventNamePrefix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : ALL_EVENTS;
+      var eventNamePrefix = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '*';
       var eventHandler = arguments[1];
       var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
       var filterOptions = options.filterOptions,
@@ -235,6 +239,11 @@ var EventPublisher = function (_EventEmitter) {
 
         // filter event by deviceID
         if (filterOptions.deviceID && event.deviceID !== filterOptions.deviceID) {
+          return;
+        }
+
+        // filter broadcasted events
+        if (filterOptions.listenToBroadcastedEvents === false && event.broadcasted) {
           return;
         }
 

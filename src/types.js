@@ -28,6 +28,7 @@ export type DeviceKeyObject = {
 };
 
 export type Event = EventData & {
+  broadcasted?: boolean,
   publishedAt: Date,
 };
 
