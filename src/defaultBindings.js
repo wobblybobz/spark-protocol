@@ -5,6 +5,7 @@ import DeviceAttributeFileRepository from './repository/DeviceAttributeFileRepos
 import DeviceKeyFileRepository from './repository/DeviceKeyFileRepository';
 import DeviceServer from './server/DeviceServer';
 import EventPublisher from './lib/EventPublisher';
+import EventProvider from './lib/EventProvider';
 import ClaimCodeManager from './lib/ClaimCodeManager';
 import CryptoManager from './lib/CryptoManager';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
@@ -60,6 +61,7 @@ const defaultBindings = (
 
   // Utils
   container.bindClass('EventPublisher', EventPublisher, []);
+  container.bindClass('EVENT_PROVIDER', EventProvider, ['EventPublisher']);
   container.bindClass('ClaimCodeManager', ClaimCodeManager, []);
   container.bindClass(
     'CryptoManager',
