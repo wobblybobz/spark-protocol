@@ -138,28 +138,36 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
 
   this.createDevicePublicKey = function () {
     var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(deviceID, publicKeyPem) {
+      var output, algorithm;
       return _regenerator2.default.wrap(function _callee3$(_context3) {
         while (1) {
           switch (_context3.prev = _context3.next) {
             case 0:
-              _context3.next = 2;
-              return _this._deviceKeyRepository.updateByID(deviceID, { deviceID: deviceID, key: publicKeyPem });
+              output = null;
+              algorithm = 'ecc';
 
-            case 2:
-              _context3.prev = 2;
-              return _context3.abrupt('return', new _DeviceKey2.default('rsa', publicKeyPem));
+              try {
+                algorithm = 'rsa';
+                output = new _DeviceKey2.default(algorithm, publicKeyPem);
+              } catch (ignore) {
+                output = new _DeviceKey2.default(algorithm, publicKeyPem);
+              }
+              _context3.next = 5;
+              return _this._deviceKeyRepository.updateByID(deviceID, {
+                algorithm: algorithm,
+                deviceID: deviceID,
+                key: publicKeyPem
+              });
+
+            case 5:
+              return _context3.abrupt('return', output);
 
             case 6:
-              _context3.prev = 6;
-              _context3.t0 = _context3['catch'](2);
-              return _context3.abrupt('return', new _DeviceKey2.default('ecc', publicKeyPem));
-
-            case 9:
             case 'end':
               return _context3.stop();
           }
         }
-      }, _callee3, _this, [[2, 6]]);
+      }, _callee3, _this);
     }));
 
     return function (_x, _x2) {

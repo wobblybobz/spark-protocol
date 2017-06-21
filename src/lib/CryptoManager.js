@@ -97,16 +97,24 @@ class CryptoManager {
     deviceID: string,
     publicKeyPem: string,
   ): Promise<DeviceKey> => {
+    let output = null;
+    let algorithm = 'ecc';
+    try {
+      algorithm = 'rsa';
+      output = new DeviceKey(algorithm, publicKeyPem);
+    } catch (ignore) {
+      output = new DeviceKey(algorithm, publicKeyPem);
+    }
     await this._deviceKeyRepository.updateByID(
       deviceID,
-      { deviceID, key: publicKeyPem },
+      {
+        algorithm,
+        deviceID,
+        key: publicKeyPem,
+      },
     );
 
-    try {
-      return new DeviceKey('rsa', publicKeyPem);
-    } catch (ignore) {
-      return new DeviceKey('ecc', publicKeyPem);
-    }
+    return output;
   };
 
   decrypt = (data: Buffer): Buffer =>
