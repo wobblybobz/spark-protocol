@@ -49,6 +49,7 @@ class DeviceKey {
 
     let otherKey;
 
+
     if (this._nodeRsa) {
       otherKey = new DeviceKey('rsa', publicKeyPem);
     } else if (this._ecKey) {
@@ -56,6 +57,8 @@ class DeviceKey {
     } else {
       return false;
     }
+    console.log(this.toPem())
+    console.log(otherKey.toPem())
 
     return this.toPem() === otherKey.toPem();
   }
