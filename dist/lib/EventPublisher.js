@@ -223,7 +223,7 @@ var EventPublisher = function (_EventEmitter) {
     }, _this._filterEvents = function (eventHandler, filterOptions) {
       return function (event) {
         // filter private events from another devices
-        if (!event.isPublic && filterOptions.userID !== event.userID) {
+        if (filterOptions.userID && !event.isPublic && filterOptions.userID !== event.userID) {
           return;
         }
 

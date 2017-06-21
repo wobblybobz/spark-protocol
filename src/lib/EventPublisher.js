@@ -206,7 +206,11 @@ class EventPublisher extends EventEmitter {
   ): (event: Event) => void =>
     (event: Event) => {
       // filter private events from another devices
-      if (!event.isPublic && filterOptions.userID !== event.userID) {
+      if (
+        filterOptions.userID &&
+        !event.isPublic &&
+        filterOptions.userID !== event.userID
+      ) {
         return;
       }
 
