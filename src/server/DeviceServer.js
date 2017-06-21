@@ -354,7 +354,7 @@ class DeviceServer {
           }
         } catch (error) {
           device.disconnect(
-            `Error during connection: ${error}`,
+            `Error during connection: ${error}: ${error.stack}`,
           );
         }
       });

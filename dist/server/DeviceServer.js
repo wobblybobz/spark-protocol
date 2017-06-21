@@ -363,7 +363,7 @@ var DeviceServer = function () {
                           _context6.prev = 27;
                           _context6.t0 = _context6['catch'](0);
 
-                          device.disconnect('Error during connection: ' + _context6.t0);
+                          device.disconnect('Error during connection: ' + _context6.t0 + ': ' + _context6.t0.stack);
 
                         case 30:
                         case 'end':

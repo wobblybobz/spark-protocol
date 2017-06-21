@@ -57,8 +57,6 @@ class DeviceKey {
     } else {
       return false;
     }
-    console.log(this.toPem())
-    console.log(otherKey.toPem())
 
     return this.toPem() === otherKey.toPem();
   }
