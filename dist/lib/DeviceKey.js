@@ -67,16 +67,28 @@ var DeviceKey = function () {
         return false;
       }
 
+      var otherKey = void 0;
+
       if (this._nodeRsa) {
-        console.log(this._nodeRsa.exportKey('pkcs1-public-pem'));
-        console.log(this._nodeRsa.exportKey('pkcs8-public-pem'));
-        console.log(publicKeyPem);
-        return this._nodeRsa.exportKey('pkcs8-public-pem') === publicKeyPem;
+        otherKey = new DeviceKey('rsa', publicKeyPem);
       } else if (this._ecKey) {
-        return this._ecKey.toString('pem') === publicKeyPem;
+        otherKey = new DeviceKey('ecc', publicKeyPem);
+      } else {
+        return false;
       }
 
-      return false;
+      return this.toPem() === otherKey.toPem();
+    }
+  }, {
+    key: 'toPem',
+    value: function toPem() {
+      if (this._nodeRsa) {
+        return this._nodeRsa.exportKey('pkcs8-public-pem');
+      } else if (this._ecKey) {
+        return this._ecKey.toString('pem');
+      }
+
+      return null;
     }
   }]);
   return DeviceKey;
