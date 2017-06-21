@@ -388,14 +388,23 @@ var Handshake = function Handshake(cryptoManager) {
               throw new Error('no public key found for device: ' + deviceID);
 
             case 9:
-
-              if (!publicKey.equals(deviceProvidedPem)) {
-                _logger2.default.error('\n        TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESN\'T MATCH SAVED\n        PUBLIC KEY');
+              if (publicKey.equals(deviceProvidedPem)) {
+                _context5.next = 14;
+                break;
               }
 
+              _logger2.default.error('\n        TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESN\'T MATCH SAVED\n        PUBLIC KEY');
+
+              _context5.next = 13;
+              return _this._cryptoManager.createDevicePublicKey(deviceID, deviceProvidedPem);
+
+            case 13:
+              return _context5.abrupt('return', _context5.sent);
+
+            case 14:
               return _context5.abrupt('return', publicKey);
 
-            case 11:
+            case 15:
             case 'end':
               return _context5.stop();
           }

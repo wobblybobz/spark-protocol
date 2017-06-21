@@ -321,6 +321,11 @@ class Handshake {
         TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESN'T MATCH SAVED
         PUBLIC KEY`,
       );
+
+      return await this._cryptoManager.createDevicePublicKey(
+        deviceID,
+        deviceProvidedPem,
+      );
     }
 
     return publicKey;
