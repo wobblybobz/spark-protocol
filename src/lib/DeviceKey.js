@@ -48,6 +48,9 @@ class DeviceKey {
     }
 
     if (this._nodeRsa) {
+      console.log(this._nodeRsa.exportKey('pkcs1-public-pem'))
+      console.log(this._nodeRsa.exportKey('pkcs8-public-pem'))
+      console.log(publicKeyPem)
       return this._nodeRsa.exportKey('pkcs8-public-pem') === publicKeyPem;
     } else if (this._ecKey) {
       return this._ecKey.toString('pem') === publicKeyPem;
