@@ -53,9 +53,7 @@ class DeviceAttributeFileRepository {
   };
 
   @memoizeGet(['deviceID'])
-  async getByID(
-    deviceID: string,
-  ): Promise<?DeviceAttributes> {
+  async getByID(deviceID: string): Promise<?DeviceAttributes> {
     return this._fileManager.getFile(`${deviceID}.json`);
   }
 

@@ -8,9 +8,7 @@ class JSONFileManager extends FileManager {
   }
 
   getAllData<TModel>(): Array<TModel> {
-    return super.getAllData().map(
-      (data: string): TModel => JSON.parse(data),
-    );
+    return super.getAllData().map((data: string): TModel => JSON.parse(data));
   }
 
   getFile<TModel>(fileName: string): ?TModel {

@@ -4,7 +4,7 @@
 const ProtocolErrors: Array<[number, string]> = [
   [0, 'NO_ERROR'],
   [1, 'PING_TIMEOUT'],
-  [2, 'IO_ERROR'],  // too generic, discontinue using this.  Perfer/add a specific one below
+  [2, 'IO_ERROR'], // too generic, discontinue using this.  Perfer/add a specific one below
   [3, 'INVALID_STATE'],
   [4, 'INSUFFICIENT_STORAGE'],
   [5, 'MALFORMED_MESSAGE'],
@@ -34,7 +34,7 @@ const ProtocolErrors: Array<[number, string]> = [
    * NOTE: when adding more ProtocolError codes,
    * be sure to update toSystemError() in protocol_defs.cpp
    */
-  [0x7FFFF, 'UNKNOWN'],
+  [0x7ffff, 'UNKNOWN'],
 ];
 
 export default new Map(ProtocolErrors);

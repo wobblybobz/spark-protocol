@@ -56,7 +56,6 @@ class Flasher {
   _startTime: ?Date;
   _missedChunks: Set<number> = new Set();
 
-
   // OTA tweaks
   _fastOtaEnabled: boolean = true;
   _ignoreMissedChunks: boolean = false;
@@ -73,19 +72,17 @@ class Flasher {
     address: string = '0x0',
   ): Promise<void> => {
     if (!buffer || buffer.length === 0) {
-      logger.log(
-        'flash failed! - file is empty! ',
-        { deviceID: this._client.getDeviceID() },
-      );
+      logger.log('flash failed! - file is empty! ', {
+        deviceID: this._client.getDeviceID(),
+      });
 
       throw new Error('Update failed - File was empty!');
     }
 
     if (buffer && buffer.length > this._maxBinarySize) {
-      logger.log(
-        `flash failed! - file is too BIG ${buffer.length}`,
-        { deviceID: this._client.getDeviceID() },
-      );
+      logger.log(`flash failed! - file is too BIG ${buffer.length}`, {
+        deviceID: this._client.getDeviceID(),
+      });
 
       throw new Error('Update failed - File was too big!');
     }
@@ -101,13 +98,12 @@ class Flasher {
       await this._beginUpdate(buffer, fileTransferStore, address);
       await Promise.race([
         // Fail after 60 of trying to flash
-        new Promise((
-          resolve: () => void,
-          reject: (error: Error) => void,
-        ): number => setTimeout(
-            (): void => reject(new Error('Update timed out')),
-            60 * 1000,
-          ),
+        new Promise(
+          (resolve: () => void, reject: (error: Error) => void): number =>
+            setTimeout(
+              (): void => reject(new Error('Update timed out')),
+              60 * 1000,
+            ),
         ),
         this._sendFile(),
       ]);
@@ -136,9 +132,8 @@ class Flasher {
     this._chunkIndex = -1;
 
     // start listening for missed chunks before the update fully begins
-    this._client.on(
-      'msg_chunkmissed',
-      (packet: CoapPacket): void => this._onChunkMissed(packet),
+    this._client.on('msg_chunkmissed', (packet: CoapPacket): void =>
+      this._onChunkMissed(packet),
     );
   };
 
@@ -181,41 +176,33 @@ class Flasher {
       // Wait for UpdateReady — sent by device to indicate readiness to receive
       // firmware chunks
       const packet = await Promise.race([
-        this._client.listenFor(
-          'UpdateReady',
-          /* uri */ null,
-          /* token */ null,
-        ),
-        this._client.listenFor(
-          'UpdateAbort',
-          /* uri */ null,
-          /* token */ null,
-        ).then((newPacket: ?CoapPacket): ?CoapPacket => {
-          let failReason = '';
-          if (newPacket && newPacket.payload.length) {
-            failReason = !!newPacket.payload.readUInt8(0);
-          }
+        this._client.listenFor('UpdateReady', /* uri */ null, /* token */ null),
+        this._client
+          .listenFor('UpdateAbort', /* uri */ null, /* token */ null)
+          .then((newPacket: ?CoapPacket): ?CoapPacket => {
+            let failReason = '';
+            if (newPacket && newPacket.payload.length) {
+              failReason = !!newPacket.payload.readUInt8(0);
+            }
 
-          failReason = !Number.isNaN(failReason)
-            ? ProtocolErrors.get(Number.parseInt(failReason, 10)) || failReason
-            : failReason;
+            failReason = !Number.isNaN(failReason)
+              ? ProtocolErrors.get(Number.parseInt(failReason, 10)) ||
+                  failReason
+              : failReason;
 
-          throw new Error(`aborted: ${failReason}`);
-        }),
+            throw new Error(`aborted: ${failReason}`);
+          }),
 
         // Try to update multiple times
         new Promise((resolve: () => void): number =>
-          setTimeout(
-            () => {
-              if (maxTries <= 0) {
-                return;
-              }
+          setTimeout(() => {
+            if (maxTries <= 0) {
+              return;
+            }
 
-              tryBeginUpdate();
-              resolve();
-            },
-            delay * 1000,
-          ),
+            tryBeginUpdate();
+            resolve();
+          }, delay * 1000),
         ),
       ]);
 
@@ -228,10 +215,7 @@ class Flasher {
       maxTries = 0;
 
       let version = 0;
-      if (
-        packet &&
-        packet.payload.length > 0
-      ) {
+      if (packet && packet.payload.length > 0) {
         version = packet.payload.readUInt8(0);
       }
       this._protocolVersion = version;
@@ -258,7 +242,7 @@ class Flasher {
     // u32 destination address (0 for firmware update, otherwise the address
     // of external flash or user memory.)
 
-    let flags = 0;  // fast ota available
+    let flags = 0; // fast ota available
     const chunkSize = this._chunkSize;
     const fileSize = fileBuffer.length;
     const destFlag = fileTransferStore;
@@ -300,10 +284,9 @@ class Flasher {
 
     const canUseFastOTA = this._fastOtaEnabled && this._protocolVersion > 0;
     if (canUseFastOTA) {
-      logger.log(
-        'Starting FastOTA update',
-        { deviceID: this._client.getDeviceID() },
-      );
+      logger.log('Starting FastOTA update', {
+        deviceID: this._client.getDeviceID(),
+      });
     }
 
     this._readNextChunk();
@@ -324,7 +307,7 @@ class Flasher {
       console.log(message);
 
       if (!CoapMessages.statusIsOkay(message)) {
-        throw new Error('\'ChunkReceived\' failed.');
+        throw new Error("'ChunkReceived' failed.");
       }
     }
 
@@ -368,7 +351,7 @@ class Flasher {
         );
 
         if (!CoapMessages.statusIsOkay(message)) {
-          throw new Error('\'ChunkReceived\' failed.');
+          throw new Error("'ChunkReceived' failed.");
         }
       }),
     );
@@ -379,9 +362,9 @@ class Flasher {
       logger.error('Asked to read a chunk after the update was finished');
     }
 
-    let chunk = this._chunk = this._fileStream
+    let chunk = (this._chunk = this._fileStream
       ? this._fileStream.read(this._chunkSize)
-      : null;
+      : null);
 
     // workaround for https://github.com/spark/core-firmware/issues/238
     if (chunk && chunk.length !== this._chunkSize) {
@@ -397,28 +380,17 @@ class Flasher {
   };
 
   _sendChunk = (chunkIndex: ?number = 0): number => {
-    const encodedCrc = CoapMessages.toBinary(
-      nullthrows(this._lastCrc),
-      'crc',
-    );
+    const encodedCrc = CoapMessages.toBinary(nullthrows(this._lastCrc), 'crc');
 
     const args = [encodedCrc];
     if (this._fastOtaEnabled && this._protocolVersion > 0) {
       args.push(CoapMessages.toBinary(chunkIndex, 'uint16'));
     }
-    return this._client.sendMessage(
-      'Chunk',
-      { args },
-      null,
-      this._chunk,
-      this,
-    );
+    return this._client.sendMessage('Chunk', { args }, null, this._chunk, this);
   };
 
   _onAllChunksDone = async (): Promise<void> => {
-    if (
-      !this._client.sendMessage('UpdateDone', null, null, null, this)
-    ) {
+    if (!this._client.sendMessage('UpdateDone', null, null, null, this)) {
       throw new Error('Flasher - failed sending updateDone message');
     }
   };
@@ -450,13 +422,10 @@ class Flasher {
     }
 
     return new Promise((resolve: () => void): number =>
-      setTimeout(
-        () => {
-          logger.log('finished waiting');
-          resolve();
-        },
-        3 * 1000,
-      ),
+      setTimeout(() => {
+        logger.log('finished waiting');
+        resolve();
+      }, 3 * 1000),
     );
   };
 
@@ -506,7 +475,7 @@ class Flasher {
         logger.error(`onChunkMissed error reading payload: ${error}`);
       }
     }
-  }
+  };
 }
 
 export default Flasher;

@@ -11,4 +11,3 @@ const SPARK_SERVER_EVENTS = {
 };
 
 export default SPARK_SERVER_EVENTS;
-
