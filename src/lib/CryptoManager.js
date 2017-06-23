@@ -62,20 +62,16 @@ class CryptoManager {
   };
 
   _getServerPrivateKey = async (): Promise<NodeRSA> => {
-    const privateKeyString =
-      await this._serverKeyRepository.getPrivateKey();
+    const privateKeyString = await this._serverKeyRepository.getPrivateKey();
 
     if (!privateKeyString) {
       return await this._createServerKeys();
     }
 
-    return new NodeRSA(
-      privateKeyString,
-      {
-        encryptionScheme: 'pkcs1',
-        signingScheme: 'pkcs1',
-      },
-    );
+    return new NodeRSA(privateKeyString, {
+      encryptionScheme: 'pkcs1',
+      signingScheme: 'pkcs1',
+    });
   };
 
   createAESCipherStream = (sessionKey: Buffer): CryptoStream =>
@@ -84,10 +80,7 @@ class CryptoManager {
   createAESDecipherStream = (sessionKey: Buffer): CryptoStream =>
     this._createCryptoStream(sessionKey, false);
 
-  createHmacDigest = (
-    ciphertext: Buffer,
-    sessionKey: Buffer,
-  ): Buffer => {
+  createHmacDigest = (ciphertext: Buffer, sessionKey: Buffer): Buffer => {
     const hmac = crypto.createHmac(HASH_TYPE, sessionKey);
     hmac.update(ciphertext);
     return hmac.digest();
@@ -105,22 +98,16 @@ class CryptoManager {
     } catch (ignore) {
       output = new DeviceKey(algorithm, publicKeyPem);
     }
-    await this._deviceKeyRepository.updateByID(
+    await this._deviceKeyRepository.updateByID(deviceID, {
+      algorithm,
       deviceID,
-      {
-        algorithm,
-        deviceID,
-        key: publicKeyPem,
-      },
-    );
+      key: publicKeyPem,
+    });
 
     return output;
   };
 
-  decrypt = (data: Buffer): Buffer =>
-    this._serverPrivateKey.decrypt(
-      data,
-    );
+  decrypt = (data: Buffer): Buffer => this._serverPrivateKey.decrypt(data);
 
   getDevicePublicKey = async (deviceID: string): Promise<?DeviceKey> => {
     const publicKeyObject = await this._deviceKeyRepository.getByID(deviceID);
@@ -136,27 +123,23 @@ class CryptoManager {
   };
 
   getRandomBytes = (size: number): Promise<Buffer> =>
-    new Promise((
-      resolve: (buffer: Buffer) => void,
-      reject: (error: Error) => void,
-    ) => {
-      crypto.randomBytes(
-        size,
-        (error: ?Error, buffer: Buffer) => {
+    new Promise(
+      (resolve: (buffer: Buffer) => void, reject: (error: Error) => void) => {
+        crypto.randomBytes(size, (error: ?Error, buffer: Buffer) => {
           if (error) {
             reject(error);
             return;
           }
 
           resolve(buffer);
-        },
-      );
-    });
+        });
+      },
+    );
 
   static getRandomUINT16 = (): number => {
     // ** - the same as Math.pow()
     const uintMax = 2 ** 16 - 1; // 65535
-    return Math.floor((Math.random() * uintMax) + 1);
+    return Math.floor(Math.random() * uintMax + 1);
   };
 
   sign = async (hash: Buffer): Promise<Buffer> =>

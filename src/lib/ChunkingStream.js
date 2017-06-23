@@ -73,7 +73,7 @@ class ChunkingStream extends Transform {
       // if we don't have a buffer, make one as big as we will need.
       this._incomingBuffer = new Buffer(this._expectedLength);
       this._incomingIndex = 0;
-      startIndex = 2;   // skip the first two.
+      startIndex = 2; // skip the first two.
     }
 
     const bytesLeft = this._expectedLength - this._incomingIndex;
@@ -84,7 +84,7 @@ class ChunkingStream extends Transform {
 
     if (startIndex < endIndex && this._incomingBuffer) {
       if (this._incomingIndex >= this._incomingBuffer.length) {
-        logger.log('hmm, shouldn\'t end up here.');
+        logger.log("hmm, shouldn't end up here.");
       }
 
       chunk.copy(
@@ -142,7 +142,7 @@ class ChunkingStream extends Transform {
         logger.error(`ChunkingStream error!: ${error}`);
       }
     }
-  }
+  };
 }
 
 export default ChunkingStream;

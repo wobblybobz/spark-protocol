@@ -15,14 +15,10 @@ class DeviceKey {
       }
 
       case 'rsa': {
-        this._nodeRsa = new NodeRSA(
-          pemString,
-          'pkcs8-public-pem',
-          {
-            encryptionScheme: 'pkcs1',
-            signingScheme: 'pkcs1',
-          },
-        );
+        this._nodeRsa = new NodeRSA(pemString, 'pkcs8-public-pem', {
+          encryptionScheme: 'pkcs1',
+          signingScheme: 'pkcs1',
+        });
         break;
       }
 
@@ -48,7 +44,6 @@ class DeviceKey {
     }
 
     let otherKey;
-
 
     if (this._nodeRsa) {
       otherKey = new DeviceKey('rsa', publicKeyPem);

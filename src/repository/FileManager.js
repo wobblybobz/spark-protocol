@@ -34,13 +34,11 @@ class FileManager {
   }
 
   getAllData(): Array<string> {
-    return fs.readdirSync(this._directoryPath)
+    return fs
+      .readdirSync(this._directoryPath)
       .filter((fileName: string): boolean => fileName.endsWith('.json'))
-      .map(
-        (fileName: string): string => fs.readFileSync(
-          path.join(this._directoryPath, fileName),
-          'utf8',
-        ),
+      .map((fileName: string): string =>
+        fs.readFileSync(path.join(this._directoryPath, fileName), 'utf8'),
       );
   }
 
@@ -62,17 +60,13 @@ class FileManager {
     return fs.readFileSync(filePath);
   }
 
-
   hasFile(fileName: string): boolean {
     const filePath = path.join(this._directoryPath, fileName);
     return fs.existsSync(filePath);
   }
 
   writeFile(fileName: string, data: string | Buffer) {
-    fs.writeFileSync(
-      path.join(this._directoryPath, fileName),
-      data,
-    );
+    fs.writeFileSync(path.join(this._directoryPath, fileName), data);
   }
 }
 

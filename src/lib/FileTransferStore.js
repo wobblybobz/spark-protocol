@@ -1,9 +1,6 @@
 // @flow
 
-export type FileTransferStoreType =
-  0 |
-  1 |
-  128;
+export type FileTransferStoreType = 0 | 1 | 128;
 
 export default {
   APPLICATION: 128,

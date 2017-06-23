@@ -41,7 +41,7 @@ function _transform(...params: Array<any>): Array<any> {
 }
 
 function getDate(): string {
-  return (new Date()).toISOString();
+  return new Date().toISOString();
 }
 
 class Logger {
@@ -54,24 +54,15 @@ class Logger {
   }
 
   static info(...params: Array<any>) {
-    Logger._log(
-      `[${getDate()}]`,
-      chalk.cyan(_transform(...params)),
-    );
+    Logger._log(`[${getDate()}]`, chalk.cyan(_transform(...params)));
   }
 
   static warn(...params: Array<any>) {
-    Logger._log(
-      `[${getDate()}]`,
-      chalk.yellow(_transform(...params)),
-    );
+    Logger._log(`[${getDate()}]`, chalk.yellow(_transform(...params)));
   }
 
   static error(...params: Array<any>) {
-    Logger._log(
-      `[${getDate()}]`,
-      chalk.red(_transform(...params)),
-    );
+    Logger._log(`[${getDate()}]`, chalk.red(_transform(...params)));
   }
 
   static _log(...params: Array<any>): Function {

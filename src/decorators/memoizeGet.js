@@ -19,47 +19,41 @@ const DEFAULT_PARAMETERS = {
 export default <TType: Object>(
   keys?: Array<string> = [],
   config: ?MemoizeConfig = null,
-): Decorator<TType> =>
-  (
-    target: TType,
-    name: $Keys<TType>,
-    descriptor: Descriptor,
-  ): Descriptor => {
-    const formattedKeys = keys.map(
-      (key: string): string => key.replace('?', ''),
-    );
+): Decorator<TType> => (
+  target: TType,
+  name: $Keys<TType>,
+  descriptor: Descriptor,
+): Descriptor => {
+  const formattedKeys = keys.map((key: string): string => key.replace('?', ''));
 
-    const keySets = keys
-      .map((key: string, index: number): ?Array<string> => {
-        if (!key.startsWith('?')) {
-          return null;
-        }
+  const keySets = keys
+    .map((key: string, index: number): ?Array<string> => {
+      if (!key.startsWith('?')) {
+        return null;
+      }
 
-        return formattedKeys.slice(0, index);
-      })
-      .filter((item: ?Array<string>): boolean => !!item)
-      .concat([formattedKeys]);
+      return formattedKeys.slice(0, index);
+    })
+    .filter((item: ?Array<string>): boolean => !!item)
+    .concat([formattedKeys]);
 
-    const descriptorFunction = descriptor.value;
-    const memoized = memoize(
-      descriptorFunction,
-      {
-        ...DEFAULT_PARAMETERS,
-        ...config,
-      },
-    );
+  const descriptorFunction = descriptor.value;
+  const memoized = memoize(descriptorFunction, {
+    ...DEFAULT_PARAMETERS,
+    ...config,
+  });
 
-    descriptor.value = memoized;
+  descriptor.value = memoized;
 
-    if (!target._caches) {
-      target._caches = [];
-    }
+  if (!target._caches) {
+    target._caches = [];
+  }
 
-    target._caches.push({
-      fnName: descriptorFunction.name,
-      keySets,
-      memoized,
-    });
+  target._caches.push({
+    fnName: descriptorFunction.name,
+    keySets,
+    memoized,
+  });
 
-    return descriptor;
-  };
+  return descriptor;
+};
