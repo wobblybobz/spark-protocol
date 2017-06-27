@@ -11,26 +11,23 @@ class EventProvider {
   }
 
   onNewEvent = (callback: (event: Event) => void) => {
-    this._eventPublisher.subscribe(
-      '*',
-      this._onNewEvent(callback),
-      {
-        filterOptions: {
-          listenToBroadcastedEvents: false,
-        },
+    this._eventPublisher.subscribe('*', this._onNewEvent(callback), {
+      filterOptions: {
+        listenToBroadcastedEvents: false,
       },
-    );
+    });
   };
 
-  _onNewEvent = (callback: (event: Event) => void): (event: Event) => void =>
-    (event: Event) => {
-      const eventToBroadcast: Event = ({
-        ...event,
-        broadcasted: true,
-      }: any);
+  _onNewEvent = (
+    callback: (event: Event) => void,
+  ): ((event: Event) => void) => (event: Event) => {
+    const eventToBroadcast: Event = ({
+      ...event,
+      broadcasted: true,
+    }: any);
 
-      callback(eventToBroadcast);
-    };
+    callback(eventToBroadcast);
+  };
 }
 
 export default EventProvider;

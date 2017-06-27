@@ -44,7 +44,7 @@ const _getRouteKey = (code: number, path: string): string => {
 };
 const _messageTypeToPacketProps = (
   type: CoapMessageTypes,
-): {ack: boolean, confirmable: boolean, reset: boolean} => {
+): { ack: boolean, confirmable: boolean, reset: boolean } => {
   const output = {
     ack: false,
     confirmable: false,
@@ -72,7 +72,7 @@ const _decodeNumericValue = (buffer: Buffer): number => {
     return buffer.readUInt16BE(0);
   } else if (length === 3) {
     /* eslint-disable no-bitwise*/
-    return (buffer[1] << 8) | buffer[2] + (buffer[0] << 16 >>> 0);
+    return (buffer[1] << 8) | (buffer[2] + (buffer[0] << 16 >>> 0));
     /* eslint-enable no-bitwise*/
   }
 
@@ -80,28 +80,26 @@ const _decodeNumericValue = (buffer: Buffer): number => {
 };
 
 class CoapMessages {
-  static _specifications: Map<MessageType, MessageSpecificationType> =
-    new Map(MessageSpecifications);
+  static _specifications: Map<MessageType, MessageSpecificationType> = new Map(
+    MessageSpecifications,
+  );
 
   // Maps CODE + URL to MessageNames as they appear in 'Spec'
   static _routes: Map<string, MessageType> = new Map(
-    MessageSpecifications
-      .filter(
-        // eslint-disable-next-line no-unused-vars
-        ([name, value]: [MessageType, MessageSpecificationType]): boolean =>
-          !!value.uri,
-      )
-      .map(
-        (
-          [name, value]: [MessageType, MessageSpecificationType],
-        ): [string, MessageType] => {
-          // see what it looks like without params
-          const uri = value.template ? value.template.render({}) : value.uri;
-          const routeKey = _getRouteKey(value.code, `/${(uri || '')}`);
+    MessageSpecifications.filter(
+      // eslint-disable-next-line no-unused-vars
+      ([name, value]: [MessageType, MessageSpecificationType]): boolean =>
+        !!value.uri,
+    ).map(([name, value]: [MessageType, MessageSpecificationType]): [
+      string,
+      MessageType,
+    ] => {
+      // see what it looks like without params
+      const uri = value.template ? value.template.render({}) : value.uri;
+      const routeKey = _getRouteKey(value.code, `/${uri || ''}`);
 
-          return [routeKey, name];
-        },
-      ),
+      return [routeKey, name];
+    }),
   );
 
   static getUriPath = (packet: CoapPacket): string => {
@@ -118,12 +116,14 @@ class CoapMessages {
       .join('/')}`;
   };
 
-  static getUriQuery = (packet: CoapPacket): string => packet.options
-    .filter(
-      (item: CoapOption): boolean => item.name === CoapMessage.Option.URI_QUERY,
-    )
-    .map((item: CoapOption): string => item.value.toString('utf8'))
-    .join('&');
+  static getUriQuery = (packet: CoapPacket): string =>
+    packet.options
+      .filter(
+        (item: CoapOption): boolean =>
+          item.name === CoapMessage.Option.URI_QUERY,
+      )
+      .map((item: CoapOption): string => item.value.toString('utf8'))
+      .join('&');
 
   static getMaxAge = (packet: CoapPacket): number => {
     const option = packet.options.find(
@@ -138,10 +138,7 @@ class CoapMessages {
   };
 
   static getRequestType = (packet: CoapPacket): ?string => {
-    const uri = _getRouteKey(
-      packet.code,
-      CoapMessages.getUriPath(packet),
-    );
+    const uri = _getRouteKey(packet.code, CoapMessages.getUriPath(packet));
 
     return CoapMessages._routes.get(uri);
   };
@@ -166,7 +163,7 @@ class CoapMessages {
   static wrap = (
     messageName: MessageType,
     messageId: number,
-    params: ?{args?: Array<any>, name?: string},
+    params: ?{ args?: Array<any>, name?: string },
     options: ?Array<CoapOption>,
     data: ?Buffer,
     token: ?number,
@@ -185,24 +182,22 @@ class CoapMessages {
         if (specification.template) {
           uri = specification.template.render(params);
         }
-        queryParams = (params.args || []).map(
-          (value: any): CoapOption => ({
-            name: CoapMessage.Option.URI_QUERY,
-            value: Buffer.isBuffer(value)
-              ? value
-              : new Buffer(value),
-          }),
-        );
+        queryParams = (params.args || []).map((value: any): CoapOption => ({
+          name: CoapMessage.Option.URI_QUERY,
+          value: Buffer.isBuffer(value) ? value : new Buffer(value),
+        }));
       }
 
       let uriOptions = [];
-      const hasExistingUri = (options || []).some(
-        (item: CoapOption): boolean =>
-          item.name === CoapMessage.Option.URI_PATH,
-      );
+      const hasExistingUri = (options || [])
+        .some(
+          (item: CoapOption): boolean =>
+            item.name === CoapMessage.Option.URI_PATH,
+        );
 
       if (uri && !hasExistingUri) {
-        uriOptions = uri.split('/')
+        uriOptions = uri
+          .split('/')
           .filter((segment: string): boolean => !!segment)
           .map((segment: string): CoapOption => ({
             name: CoapMessage.Option.URI_PATH,
@@ -242,7 +237,6 @@ class CoapMessages {
     return null;
   };
 
-
   // http://en.wikipedia.org/wiki/X.690
   // === TYPES: SUBSET OF ASN.1 TAGS ===
   //
@@ -258,20 +252,16 @@ class CoapMessages {
     }
     const translatedVarState = {};
 
-    Object
-      .getOwnPropertyNames(varState)
-      .forEach(
-        (varName: string) => {
-          const intType = varState && varState[varName];
-          if (typeof intType === 'number') {
-            const str = CoapMessages.getNameFromTypeInt(intType);
+    Object.getOwnPropertyNames(varState).forEach((varName: string) => {
+      const intType = varState && varState[varName];
+      if (typeof intType === 'number') {
+        const str = CoapMessages.getNameFromTypeInt(intType);
 
-            if (str !== null) {
-              translatedVarState[varName] = str;
-            }
-          }
-        },
-      );
+        if (str !== null) {
+          translatedVarState[varName] = str;
+        }
+      }
+    });
 
     return { ...varState, ...translatedVarState };
   };
@@ -306,10 +296,7 @@ class CoapMessages {
   };
 
   // eslint-disable-next-line func-names
-  static tryFromBinary = (
-    buffer: Buffer,
-    typeName: string,
-  ): * => {
+  static tryFromBinary = (buffer: Buffer, typeName: string): * => {
     let result = null;
     try {
       result = CoapMessages.fromBinary(buffer, typeName);
@@ -375,7 +362,7 @@ class CoapMessages {
     typeName?: string,
   ): Buffer => {
     // eslint-disable-next-line no-param-reassign
-    typeName = typeName || (typeof value);
+    typeName = typeName || typeof value;
 
     if (value === null) {
       return new Buffer(0);
@@ -413,9 +400,7 @@ class CoapMessages {
       }
 
       case 'buffer': {
-        return Buffer.concat([
-          (value: any),
-        ]);
+        return Buffer.concat([(value: any)]);
       }
 
       case 'string':

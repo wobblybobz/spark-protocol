@@ -26,7 +26,7 @@ import uuid from 'uuid';
 import settings from '../settings';
 
 export const getRequestEventName = (eventName: string): string =>
- `${eventName}/request`;
+  `${eventName}/request`;
 
 const LISTEN_FOR_RESPONSE_TIMEOUT = 15000;
 
@@ -44,7 +44,7 @@ type SubscriptionOptions = {
   subscriberID?: string,
   subscriptionTimeout?: number,
   timeoutHandler?: () => void,
-}
+};
 
 type Subscription = {
   eventNamePrefix: string,
@@ -56,10 +56,8 @@ type Subscription = {
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
 
-  publish = (
-    eventData: EventData,
-  ) => {
-    const ttl = (eventData.ttl && eventData.ttl > 0)
+  publish = (eventData: EventData) => {
+    const ttl = eventData.ttl && eventData.ttl > 0
       ? eventData.ttl
       : settings.DEFAULT_EVENT_TTL;
 
@@ -83,24 +81,16 @@ class EventPublisher extends EventEmitter {
     const responseEventName = `${eventData.name}/response/${eventID}`;
 
     return new Promise(
-      (
-        resolve: (event: Event) => void,
-        reject: (error: Error) => void,
-      ) => {
+      (resolve: (event: Event) => void, reject: (error: Error) => void) => {
         const responseListener = (event: Event): void =>
           resolve(nullthrows(event.context));
 
-        this.subscribe(
-          responseEventName,
-          responseListener,
-          {
-            once: true,
-            subscriptionTimeout: LISTEN_FOR_RESPONSE_TIMEOUT,
-            timeoutHandler: (): void => reject(
-              new Error(`Response timeout for event: ${eventData.name}`),
-            ),
-          },
-        );
+        this.subscribe(responseEventName, responseListener, {
+          once: true,
+          subscriptionTimeout: LISTEN_FOR_RESPONSE_TIMEOUT,
+          timeoutHandler: (): void =>
+            reject(new Error(`Response timeout for event: ${eventData.name}`)),
+        });
 
         this.publish({
           ...eventData,
@@ -136,26 +126,20 @@ class EventPublisher extends EventEmitter {
       ? this._filterEvents(eventHandler, filterOptions)
       : eventHandler;
 
-    this._subscriptionsByID.set(
-      subscriptionID,
-      {
-        eventNamePrefix,
-        id: subscriptionID,
-        listener,
-        options,
-      },
-    );
+    this._subscriptionsByID.set(subscriptionID, {
+      eventNamePrefix,
+      id: subscriptionID,
+      listener,
+      options,
+    });
 
     if (subscriptionTimeout) {
-      const timeout = setTimeout(
-        () => {
-          this.unsubscribe(subscriptionID);
-          if (timeoutHandler) {
-            timeoutHandler();
-          }
-        },
-        subscriptionTimeout,
-      );
+      const timeout = setTimeout(() => {
+        this.unsubscribe(subscriptionID);
+        if (timeoutHandler) {
+          timeoutHandler();
+        }
+      }, subscriptionTimeout);
 
       this.once(eventNamePrefix, (): void => clearTimeout(timeout));
     }
@@ -170,82 +154,74 @@ class EventPublisher extends EventEmitter {
   };
 
   unsubscribe = (subscriptionID: string) => {
-    const {
-      eventNamePrefix,
-      listener,
-    } = nullthrows(this._subscriptionsByID.get(subscriptionID));
+    const { eventNamePrefix, listener } = nullthrows(
+      this._subscriptionsByID.get(subscriptionID),
+    );
 
     this.removeListener(eventNamePrefix, listener);
     this._subscriptionsByID.delete(subscriptionID);
   };
 
   unsubscribeBySubscriberID = (subscriberID: string) => {
-    this._subscriptionsByID
-      .forEach((subscription: Subscription) => {
-        if (subscription.options.subscriberID === subscriberID) {
-          this.unsubscribe(subscription.id);
-        }
-      });
+    this._subscriptionsByID.forEach((subscription: Subscription) => {
+      if (subscription.options.subscriberID === subscriberID) {
+        this.unsubscribe(subscription.id);
+      }
+    });
   };
 
   _emitWithPrefix = (eventName: string, event: Event) => {
     this.eventNames()
-      .filter(
-        (eventNamePrefix: string): boolean =>
-          eventName.startsWith(eventNamePrefix),
+      .filter((eventNamePrefix: string): boolean =>
+        eventName.startsWith(eventNamePrefix),
       )
-      .forEach(
-        (eventNamePrefix: string): boolean =>
-          this.emit(eventNamePrefix, event),
+      .forEach((eventNamePrefix: string): boolean =>
+        this.emit(eventNamePrefix, event),
       );
   };
 
   _filterEvents = (
     eventHandler: (event: Event) => void | Promise<void>,
     filterOptions: FilterOptions,
-  ): (event: Event) => void =>
-    (event: Event) => {
-      // filter private events from another devices
-      if (
-        filterOptions.userID &&
-        !event.isPublic &&
-        filterOptions.userID !== event.userID
-      ) {
-        return;
-      }
+  ): ((event: Event) => void) => (event: Event) => {
+    // filter private events from another devices
+    if (
+      filterOptions.userID &&
+      !event.isPublic &&
+      filterOptions.userID !== event.userID
+    ) {
+      return;
+    }
 
-      // filter private events with wrong connectionID
-      if (
-        !event.isPublic &&
-        filterOptions.connectionID &&
-        event.connectionID !== filterOptions.connectionID
-      ) {
-        return;
-      }
+    // filter private events with wrong connectionID
+    if (
+      !event.isPublic &&
+      filterOptions.connectionID &&
+      event.connectionID !== filterOptions.connectionID
+    ) {
+      return;
+    }
 
-      // filter mydevices events
-      if (filterOptions.mydevices && filterOptions.userID !== event.userID) {
-        return;
-      }
+    // filter mydevices events
+    if (filterOptions.mydevices && filterOptions.userID !== event.userID) {
+      return;
+    }
 
-      // filter event by deviceID
-      if (
-        filterOptions.deviceID &&
-        event.deviceID !== filterOptions.deviceID
-      ) {
-        return;
-      }
+    // filter event by deviceID
+    if (filterOptions.deviceID && event.deviceID !== filterOptions.deviceID) {
+      return;
+    }
 
-      // filter broadcasted events
-      if (
-        filterOptions.listenToBroadcastedEvents === false &&
-        event.broadcasted
-      ) {
-        return;
-      }
+    // filter broadcasted events
+    if (
+      filterOptions.listenToBroadcastedEvents === false &&
+      event.broadcasted
+    ) {
+      return;
+    }
 
-      process.nextTick((): void | Promise<void> => eventHandler(event));
-    };
+    process.nextTick((): void | Promise<void> => eventHandler(event));
+  };
 }
 
 export default EventPublisher;

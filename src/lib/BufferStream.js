@@ -43,7 +43,7 @@ class BufferStream {
     }
 
     let result = null;
-    if ((endIndex - index) > 0) {
+    if (endIndex - index > 0) {
       result = this._buffer.slice(index, endIndex);
       this._index = endIndex;
     }
@@ -53,7 +53,7 @@ class BufferStream {
 
   close = () => {
     this._buffer = null;
-  }
+  };
 }
 
 export default BufferStream;
