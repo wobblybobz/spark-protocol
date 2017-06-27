@@ -10,12 +10,20 @@ class EventProvider {
     this._eventPublisher = eventPublisher;
   }
 
-  onNewEvent = (callback: (event: Event) => void) => {
-    this._eventPublisher.subscribe('*', this._onNewEvent(callback), {
-      filterOptions: {
-        listenToBroadcastedEvents: false,
+  onNewEvent = (
+    callback: (event: Event) => void,
+    eventNamePrefix: string = '*',
+  ) => {
+    this._eventPublisher.subscribe(
+      eventNamePrefix,
+      this._onNewEvent(callback),
+      {
+        filterOptions: {
+          listenToBroadcastedEvents: false,
+          listenToInternalEvents: false,
+        },
       },
-    });
+    );
   };
 
   _onNewEvent = (
@@ -23,7 +31,6 @@ class EventProvider {
   ): ((event: Event) => void) => (event: Event) => {
     const eventToBroadcast: Event = ({
       ...event,
-      broadcasted: true,
     }: any);
 
     callback(eventToBroadcast);

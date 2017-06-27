@@ -30,6 +30,8 @@ export type DeviceKeyObject = {
 export type Event = EventData & {
   broadcasted?: boolean,
   publishedAt: Date,
+  isPublic: boolean,
+  isInternal: boolean,
 };
 
 export type EventData = {
@@ -37,28 +39,37 @@ export type EventData = {
   context?: ?Object,
   data?: string,
   deviceID?: ?string,
-  isPublic: boolean,
   name: string,
   ttl?: number,
   userID?: string,
 };
 
 export type ServerKeyRepository = {
-  createKeys: (privateKeyPem: Buffer, publicKeyPem: Buffer)=> Promise<{
+  createKeys: (
+    privateKeyPem: Buffer,
+    publicKeyPem: Buffer,
+  ) => Promise<{
     privateKeyPem: Buffer,
     publicKeyPem: Buffer,
   }>,
   getPrivateKey: () => Promise<?string>,
 };
 
+export type PublishOptions = {
+  isInternal: boolean,
+  isPublic: boolean,
+};
+
 export interface IBaseRepository<TModel> {
-  create(model: TModel | $Shape<TModel>): Promise<TModel>;
-  deleteByID(id: string): Promise<void>;
-  getAll(): Promise<Array<TModel>>;
-  getByID(id: string): Promise<?TModel>;
-  updateByID(id: string, props: $Shape<TModel>): Promise<TModel>;
+  create(model: TModel | $Shape<TModel>): Promise<TModel>,
+  deleteByID(id: string): Promise<void>,
+  getAll(): Promise<Array<TModel>>,
+  getByID(id: string): Promise<?TModel>,
+  updateByID(id: string, props: $Shape<TModel>): Promise<TModel>,
 }
 
-export interface IDeviceAttributeRepository extends IBaseRepository<DeviceAttributes> {}
+export interface IDeviceAttributeRepository
+  extends IBaseRepository<DeviceAttributes> {}
 
-export interface IDeviceKeyRepository extends IBaseRepository<DeviceKeyObject> {}
+export interface IDeviceKeyRepository
+  extends IBaseRepository<DeviceKeyObject> {}
