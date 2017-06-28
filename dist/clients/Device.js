@@ -1060,6 +1060,14 @@ var Device = function (_EventEmitter) {
         while (1) {
           switch (_context10.prev = _context10.next) {
             case 0:
+              _context10.next = 2;
+              return new _promise2.default(function (resolve) {
+                return setTimeout(function () {
+                  return resolve();
+                }, 50);
+              });
+
+            case 2:
               return _context10.abrupt('return', new _promise2.default(function (resolve, reject) {
                 var systemInformation = void 0;
                 var functionState = void 0;
@@ -1115,7 +1123,7 @@ var Device = function (_EventEmitter) {
                 _this.sendMessage('Describe');
               }));
 
-            case 1:
+            case 3:
             case 'end':
               return _context10.stop();
           }
