@@ -23,7 +23,7 @@ class DeviceKey {
       }
 
       default: {
-        throw new Error('Key not implemented', algorithm);
+        throw new Error(`Key not implemented ${algorithm}`);
       }
     }
   }
@@ -35,7 +35,7 @@ class DeviceKey {
       return this._ecKey.createSign('SHA256').update(data).sign();
     }
 
-    throw new Error('Key not implemented', data);
+    throw new Error(`Key not implemented ${data.toString()}`);
   }
 
   equals(publicKeyPem: ?string): boolean {

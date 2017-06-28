@@ -573,7 +573,7 @@ class Device extends EventEmitter {
       ) => {
         const timeout = setTimeout(() => {
           cleanUpListeners();
-          reject(new Error('Request timed out', eventName));
+          reject(new Error(`Request timed out ${eventName}`));
         }, KEEP_ALIVE_TIMEOUT);
 
         // adds a one time event
