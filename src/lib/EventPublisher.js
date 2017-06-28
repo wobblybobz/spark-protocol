@@ -18,7 +18,7 @@
 *
 */
 
-import type { Event, EventData } from '../types';
+import type { Event, EventData, PublishOptions } from '../types';
 
 import EventEmitter from 'events';
 import nullthrows from 'nullthrows';
@@ -34,6 +34,7 @@ type FilterOptions = {
   connectionID?: ?string,
   deviceID?: string,
   listenToBroadcastedEvents?: boolean,
+  listenToInternalEvents?: boolean,
   mydevices?: boolean,
   userID?: string,
 };
@@ -56,13 +57,17 @@ type Subscription = {
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
 
-  publish = (eventData: EventData) => {
-    const ttl = eventData.ttl && eventData.ttl > 0
-      ? eventData.ttl
-      : settings.DEFAULT_EVENT_TTL;
+  publish = (eventData: EventData, options: PublishOptions) => {
+    const { isInternal, isPublic } = options || {};
+    const ttl =
+      eventData.ttl && eventData.ttl > 0
+        ? eventData.ttl
+        : settings.DEFAULT_EVENT_TTL;
 
     const event: Event = {
       ...eventData,
+      isInternal,
+      isPublic,
       publishedAt: new Date(),
       ttl,
     };
@@ -77,7 +82,9 @@ class EventPublisher extends EventEmitter {
     eventData: EventData,
   ): Promise<Object> => {
     const eventID = uuid();
-    const requestEventName = `${getRequestEventName(eventData.name)}/${eventID}`;
+    const requestEventName = `${getRequestEventName(
+      eventData.name,
+    )}/${eventID}`;
     const responseEventName = `${eventData.name}/response/${eventID}`;
 
     return new Promise(
@@ -92,15 +99,20 @@ class EventPublisher extends EventEmitter {
             reject(new Error(`Response timeout for event: ${eventData.name}`)),
         });
 
-        this.publish({
-          ...eventData,
-          context: {
-            ...eventData.context,
-            responseEventName,
+        this.publish(
+          {
+            ...eventData,
+            context: {
+              ...eventData.context,
+              responseEventName,
+            },
+            name: requestEventName,
           },
-          isPublic: false,
-          name: requestEventName,
-        });
+          {
+            isInternal: true,
+            isPublic: false,
+          },
+        );
       },
     );
   };
@@ -140,25 +152,28 @@ class EventPublisher extends EventEmitter {
           timeoutHandler();
         }
       }, subscriptionTimeout);
-
       this.once(eventNamePrefix, (): void => clearTimeout(timeout));
     }
 
     if (once) {
-      this.once(eventNamePrefix, listener);
+      this.once(eventNamePrefix, (event: Event) => {
+        this._subscriptionsByID.delete(subscriptionID);
+        listener(event);
+      });
     } else {
       this.on(eventNamePrefix, listener);
     }
-
     return subscriptionID;
   };
 
   unsubscribe = (subscriptionID: string) => {
-    const { eventNamePrefix, listener } = nullthrows(
-      this._subscriptionsByID.get(subscriptionID),
+    const subscription: ?Subscription = this._subscriptionsByID.get(
+      subscriptionID,
     );
-
-    this.removeListener(eventNamePrefix, listener);
+    if (!subscription) {
+      return;
+    }
+    this.removeListener(subscription.eventNamePrefix, subscription.listener);
     this._subscriptionsByID.delete(subscriptionID);
   };
 
@@ -184,6 +199,9 @@ class EventPublisher extends EventEmitter {
     eventHandler: (event: Event) => void | Promise<void>,
     filterOptions: FilterOptions,
   ): ((event: Event) => void) => (event: Event) => {
+    if (event.isInternal && filterOptions.listenToInternalEvents === false) {
+      return;
+    }
     // filter private events from another devices
     if (
       filterOptions.userID &&

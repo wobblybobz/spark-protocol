@@ -573,7 +573,7 @@ class Device extends EventEmitter {
       ) => {
         const timeout = setTimeout(() => {
           cleanUpListeners();
-          reject(new Error('Request timed out', eventName));
+          reject(new Error(`Request timed out ${eventName}`));
         }, KEEP_ALIVE_TIMEOUT);
 
         // adds a one time event
@@ -965,11 +965,13 @@ class Device extends EventEmitter {
     !!(this._attributes.variables && this._attributes.variables[name]);
 
   _hasSparkFunction = (functionName: string): boolean =>
-    !!(this._attributes.functions &&
+    !!(
+      this._attributes.functions &&
       this._attributes.functions.some(
         (fn: string): boolean =>
           fn.toLowerCase() === functionName.toLowerCase(),
-      ));
+      )
+    );
 
   _toHexString = (value: number): string =>
     (value < 10 ? '0' : '') + value.toString(16);

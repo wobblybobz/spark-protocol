@@ -15,7 +15,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var CoapMessage = (_temp = _class = function CoapMessage() {
   (0, _classCallCheck3.default)(this, CoapMessage);
 }, _class.Code = {
-  EMPTY: 0.00,
+  EMPTY: 0.0,
   GET: 0.01,
   POST: 0.02,
   PUT: 0.03,

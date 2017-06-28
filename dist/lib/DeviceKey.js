@@ -44,7 +44,7 @@ var DeviceKey = function () {
 
       default:
         {
-          throw new Error('Key not implemented', algorithm);
+          throw new Error('Key not implemented ' + algorithm);
         }
     }
   }
@@ -58,7 +58,7 @@ var DeviceKey = function () {
         return this._ecKey.createSign('SHA256').update(data).sign();
       }
 
-      throw new Error('Key not implemented', data);
+      throw new Error('Key not implemented ' + data.toString());
     }
   }, {
     key: 'equals',

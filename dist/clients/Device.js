@@ -660,7 +660,7 @@ var Device = function (_EventEmitter) {
                 return _context5.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     cleanUpListeners();
-                    reject(new Error('Request timed out', eventName));
+                    reject(new Error('Request timed out ' + eventName));
                   }, KEEP_ALIVE_TIMEOUT);
 
                   // adds a one time event

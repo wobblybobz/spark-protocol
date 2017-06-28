@@ -5,7 +5,7 @@ export type CoapMessageTypes = 0 | 1 | 2 | 3;
 class CoapMessage {
   /* eslint-disable sorting/sort-object-props*/
   static Code = {
-    EMPTY: 0.00,
+    EMPTY: 0.0,
     GET: 0.01,
     POST: 0.02,
     PUT: 0.03,
