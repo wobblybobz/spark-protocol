@@ -197,14 +197,14 @@ var EventPublisher = function (_EventEmitter) {
           }
         }, subscriptionTimeout);
         _this.once(eventNamePrefix, function () {
-          clearTimeout(timeout);
+          return clearTimeout(timeout);
         });
       }
 
       if (once) {
-        _this.once(eventNamePrefix, listener);
-        _this.once(eventNamePrefix, function () {
+        _this.once(eventNamePrefix, function (event) {
           _this._subscriptionsByID.delete(subscriptionID);
+          listener(event);
         });
       } else {
         _this.on(eventNamePrefix, listener);
