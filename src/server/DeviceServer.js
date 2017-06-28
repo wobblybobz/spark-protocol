@@ -31,7 +31,6 @@ import type EventPublisher from '../lib/EventPublisher';
 
 import Handshake from '../lib/Handshake';
 
-import chalk from 'chalk';
 import net from 'net';
 import crypto from 'crypto';
 import nullthrows from 'nullthrows';

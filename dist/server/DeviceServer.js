@@ -36,10 +36,6 @@ var _Handshake = require('../lib/Handshake');
 
 var _Handshake2 = _interopRequireDefault(_Handshake);
 
-var _chalk = require('chalk');
-
-var _chalk2 = _interopRequireDefault(_chalk);
-
 var _net = require('net');
 
 var _net2 = _interopRequireDefault(_net);
@@ -84,25 +80,27 @@ var _logger2 = _interopRequireDefault(_logger);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var logger = _logger2.default.createModuleLogger(module); /*
-                                                          *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-                                                          *
-                                                          *   This program is free software; you can redistribute it and/or
-                                                          *   modify it under the terms of the GNU Lesser General Public
-                                                          *   License as published by the Free Software Foundation, either
-                                                          *   version 3 of the License, or (at your option) any later version.
-                                                          *
-                                                          *   This program is distributed in the hope that it will be useful,
-                                                          *   but WITHOUT ANY WARRANTY; without even the implied warranty of
-                                                          *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-                                                          *   Lesser General Public License for more details.
-                                                          *
-                                                          *   You should have received a copy of the GNU Lesser General Public
-                                                          *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-                                                          *
-                                                          * 
-                                                          *
-                                                          */
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
+
+var logger = _logger2.default.createModuleLogger(module);
 
 var NAME_GENERATOR = _moniker2.default.generator([_moniker2.default.adjective, _moniker2.default.noun]);
 
