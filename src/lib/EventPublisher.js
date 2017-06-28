@@ -168,7 +168,7 @@ class EventPublisher extends EventEmitter {
   };
 
   unsubscribe = (subscriptionID: string) => {
-    const subscription: Subscription = this._subscriptionsByID.get(
+    const subscription: ?Subscription = this._subscriptionsByID.get(
       subscriptionID,
     );
     if (!subscription) {

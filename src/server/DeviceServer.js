@@ -40,7 +40,6 @@ import Moniker from 'moniker';
 import Device from '../clients/Device';
 
 import FirmwareManager from '../lib/FirmwareManager';
-import logger from '../lib/logger';
 import CoapMessages from '../lib/CoapMessages';
 import { getRequestEventName } from '../lib/EventPublisher';
 import SPARK_SERVER_EVENTS from '../lib/SparkServerEvents';
@@ -50,6 +49,8 @@ import {
   DEVICE_STATUS_MAP,
   SYSTEM_EVENT_NAMES,
 } from '../clients/Device';
+import Logger from '../lib/logger';
+const logger = Logger.createModuleLogger(module);
 
 type DeviceServerConfig = {|
   HOST: string,
@@ -138,21 +139,18 @@ class DeviceServer {
     setInterval(
       (): void =>
         server.getConnections((error: Error, count: number) => {
-          logger.info(
-            `Connected Devices ${chalk.green(this._devicesById.size)}`,
-            ` - Sockets ${chalk.green(count)} `,
-          );
+          logger.info({ devices: this._devicesById.size, sockets: count }, 'Connected Devices');
         }),
       10000,
     );
 
     server.on('error', (error: Error): void =>
-      logger.error(`something blew up ${error.message}`),
+      logger.error({ err: error }, 'something blew up'),
     );
 
     const serverPort = this._config.PORT.toString();
     server.listen(serverPort, (): void =>
-      logger.log(`Server started on port: ${serverPort}`),
+      logger.info({ serverPort }, 'Server started'),
     );
   }
 
@@ -192,10 +190,12 @@ class DeviceServer {
 
       const deviceID = await device.startProtocolInitialization();
 
-      logger.info(
-        `Connection from: ${device.getRemoteIPAddress()} - ` +
-          `Device ID: ${deviceID}`,
-        `Connection ID: ${counter}`,
+      logger.info({
+        connectionID: counter,
+        deviceID,
+        remoteIPAddress : device.getRemoteIPAddress(),
+      },
+        'Connection',
       );
 
       process.nextTick(async (): Promise<void> => {
@@ -352,7 +352,7 @@ class DeviceServer {
         }
       });
     } catch (error) {
-      logger.error(`Device startup failed: ${error.message}`);
+      logger.error({ err: error }, 'Device startup failed');
     }
   };
 
@@ -380,9 +380,11 @@ class DeviceServer {
       ownerID,
       false,
     );
-    logger.warn(
-      `Session ended for device with ID: ${deviceID} with connectionKey: ` +
-        `${connectionKey || 'no connection key'}`,
+    logger.warn({
+      connectionKey,
+      deviceID,
+    },
+      'Session ended for Device',
     );
   };
 
@@ -532,7 +534,7 @@ class DeviceServer {
         // if device version is old, do OTA update with patch
       }
     } catch (error) {
-      logger.error(error);
+      logger.error({ err: error }, 'Error' );
     }
   };
 
@@ -594,19 +596,21 @@ class DeviceServer {
       return;
     }
 
-    logger.log('Subscribe Request:\r\n', {
+    logger.info({
       deviceID,
       isFromMyDevices,
       messageName,
-    });
+    }, 'Subscribe Request');
 
     device.sendReply('SubscribeAck', packet.messageId);
 
     process.nextTick(() => {
       if (!ownerID) {
-        logger.log(
-          `device with ID ${deviceID} wasn't subscribed to ` +
-            `${messageName} event: the device is unclaimed.`,
+        logger.info({
+          deviceID,
+          messageName,
+        },
+          'device wasnt subscribed to event: the device is unclaimed.',
         );
         ownerID = '--unclaimed--';
       }

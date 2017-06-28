@@ -20,8 +20,9 @@
 
 import { Transform } from 'stream';
 import crypto from 'crypto';
-import logger from '../lib/logger';
 import settings from '../settings';
+import Logger from '../lib/logger';
+const logger = Logger.createModuleLogger(module);
 
 export type CryptoStreamType = 'decrypt' | 'encrypt';
 
@@ -50,8 +51,8 @@ class CryptoStream extends Transform {
     callback: () => void,
   ) => {
     if (!chunk.length) {
-      logger.error(
-        "CryptoStream transform error: Chunk didn't have any length",
+      logger.error({ length: chunk.length },
+        'CryptoStream transform error: Chunk didn\'t have any length'
       );
       callback();
       return;
@@ -77,7 +78,7 @@ class CryptoStream extends Transform {
 
       this.push(output);
     } catch (error) {
-      logger.error(`CryptoStream transform error: ${error}`);
+      logger.error({ err: error }, 'CryptoStream transform error');
     }
     callback();
   };

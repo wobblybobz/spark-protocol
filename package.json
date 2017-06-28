@@ -21,7 +21,7 @@
     "postinstall": "npm run update-firmware",
     "prettify": "prettier --single-quote --trailing-comma all --write src/*/**.js test/*/**.js",
     "start": "babel ./src --out-dir ./dist --watch",
-    "test": "ava",
+    "test": "ava --no-cache",
     "test:watch": "ava --watch",
     "update-firmware": "node ./dist/scripts/update-firmware-binaries"
   },
@@ -55,6 +55,7 @@
     "babel-plugin-transform-decorators": "^6.24.1",
     "binary-version-reader": "^0.5.0",
     "buffer-crc32": "~0.2.3",
+    "bunyan": "^1.8.10",
     "chalk": "^1.1.3",
     "coap-packet": "^0.1.14",
     "compact-array": "0.0.1",
