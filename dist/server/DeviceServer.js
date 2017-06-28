@@ -218,13 +218,11 @@ var DeviceServer = function () {
                           });
 
                           device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.PRIVATE_EVENT, function (packet) {
-                            return _this._onDeviceSentMessage(packet,
-                            /* isPublic*/false, device);
+                            return _this._onDeviceSentMessage(packet, /* isPublic*/false, device);
                           });
 
                           device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT, function (packet) {
-                            return _this._onDeviceSentMessage(packet,
-                            /* isPublic*/true, device);
+                            return _this._onDeviceSentMessage(packet, /* isPublic*/true, device);
                           });
 
                           device.on(_Device.DEVICE_MESSAGE_EVENTS_NAMES.GET_TIME, function (packet) {

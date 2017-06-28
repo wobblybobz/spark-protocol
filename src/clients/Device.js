@@ -865,8 +865,12 @@ class Device extends EventEmitter {
     return result;
   };
 
-  _getDescription = async (): Promise<DeviceDescription> =>
-    new Promise(
+  _getDescription = async (): Promise<DeviceDescription> => {
+    await new Promise((resolve: () => void): number =>
+      setTimeout((): void => resolve(), 10),
+    );
+
+    return new Promise(
       (
         resolve: (deviceDescription: DeviceDescription) => void,
         reject: (error: Error) => void,
@@ -927,6 +931,7 @@ class Device extends EventEmitter {
         this.sendMessage('Describe');
       },
     );
+  };
 
   //-------------
   // Device Events / Spark.publish / Spark.subscribe
@@ -974,9 +979,9 @@ class Device extends EventEmitter {
   getConnectionKey = (): ?string => this._connectionKey;
 
   getRemoteIPAddress = (): string =>
-    (this._socket.remoteAddress
+    this._socket.remoteAddress
       ? this._socket.remoteAddress.toString()
-      : 'unknown');
+      : 'unknown';
 
   disconnect = (message: ?string = '') => {
     this._disconnectCounter += 1;
