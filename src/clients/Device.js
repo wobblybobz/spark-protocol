@@ -867,7 +867,7 @@ class Device extends EventEmitter {
 
   _getDescription = async (): Promise<DeviceDescription> => {
     await new Promise((resolve: () => void): number =>
-      setTimeout((): void => resolve(), 10),
+      setTimeout((): void => resolve(), 50),
     );
 
     return new Promise(

@@ -226,7 +226,7 @@ class DeviceServer {
           // i guess we'll remove these subscription soon anyways
           // so I keep it like this for now.
           device.on(DEVICE_EVENT_NAMES.FLASH_STARTED, async (): Promise<
-            void
+            void,
           > => {
             await device.hasStatus(DEVICE_STATUS_MAP.READY);
             const { ownerID } = device.getAttributes();
@@ -239,7 +239,7 @@ class DeviceServer {
           });
 
           device.on(DEVICE_EVENT_NAMES.FLASH_SUCCESS, async (): Promise<
-            void
+            void,
           > => {
             await device.hasStatus(DEVICE_STATUS_MAP.READY);
             const { ownerID } = device.getAttributes();
@@ -252,7 +252,7 @@ class DeviceServer {
           });
 
           device.on(DEVICE_EVENT_NAMES.FLASH_FAILED, async (): Promise<
-            void
+            void,
           > => {
             await device.hasStatus(DEVICE_STATUS_MAP.READY);
             const { ownerID } = device.getAttributes();

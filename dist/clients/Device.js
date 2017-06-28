@@ -1064,7 +1064,7 @@ var Device = function (_EventEmitter) {
               return new _promise2.default(function (resolve) {
                 return setTimeout(function () {
                   return resolve();
-                }, 10);
+                }, 50);
               });
 
             case 2:
