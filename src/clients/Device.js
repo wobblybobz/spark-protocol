@@ -320,14 +320,17 @@ class Device extends EventEmitter {
 
       this.setStatus(DEVICE_STATUS_MAP.GOT_DESCRIPTION);
 
-      logger.info({
-        cache_key: this._connectionKey,
-        deviceID: this.getDeviceID(),
-        firmwareVersion: this._attributes.productFirmwareVersion,
-        ip: this.getRemoteIPAddress(),
-        platformID: this._attributes.platformId,
-        productID: this._attributes.particleProductId,
-      },'On device protocol initialization complete:\r\n');
+      logger.info(
+        {
+          cache_key: this._connectionKey,
+          deviceID: this.getDeviceID(),
+          firmwareVersion: this._attributes.productFirmwareVersion,
+          ip: this.getRemoteIPAddress(),
+          platformID: this._attributes.platformId,
+          productID: this._attributes.particleProductId,
+        },
+        'On device protocol initialization complete',
+      );
 
       return systemInformation;
     } catch (error) {
@@ -403,9 +406,12 @@ class Device extends EventEmitter {
     const packet = CoapMessages.unwrap(data);
 
     if (!packet) {
-      logger.error({
-        deviceID: this.getDeviceID(),
-      },' routeMessage got a NULL coap message ');
+      logger.error(
+        {
+          deviceID: this.getDeviceID(),
+        },
+        ' routeMessage got a NULL coap message ',
+      );
       return;
     }
 
@@ -449,8 +455,12 @@ class Device extends EventEmitter {
 
     if (!packet || packet.messageId !== this._receiveCounter) {
       logger.warn(
-        { deviceID: this.getDeviceID(), expect: this._receiveCounter, got: packet.messageId },
-        'MessageId other than expected'
+        {
+          deviceID: this.getDeviceID(),
+          expect: this._receiveCounter,
+          got: packet.messageId,
+        },
+        'MessageId other than expected',
       );
 
       if (requestType === 'Ignored') {
@@ -475,7 +485,7 @@ class Device extends EventEmitter {
     requester: ?Object,
   ) => {
     if (!this._isSocketAvailable(requester || null, messageName)) {
-      logger.error({ messageName },'This client has an exclusive lock.');
+      logger.error({ messageName }, 'This client has an exclusive lock.');
       return;
     }
 
@@ -490,16 +500,22 @@ class Device extends EventEmitter {
 
     const message = CoapMessages.wrap(messageName, id, null, null, data, token);
     if (!message) {
-      logger.error({
-        deviceID: this.getDeviceID(),
-      }, 'Device - could not unwrap message');
+      logger.error(
+        {
+          deviceID: this.getDeviceID(),
+        },
+        'Device - could not unwrap message',
+      );
       return;
     }
 
     if (!this._cipherStream) {
-      logger.error({
-        deviceID: this.getDeviceID(),
-      }, 'Device - sendReply before READY' );
+      logger.error(
+        {
+          deviceID: this.getDeviceID(),
+        },
+        'Device - sendReply before READY',
+      );
       return;
     }
     this._cipherStream.write(message);
@@ -542,10 +558,13 @@ class Device extends EventEmitter {
     }
 
     if (!this._cipherStream) {
-      logger.error({
-        deviceID: this.getDeviceID(),
-        messageName,
-      }, 'Client - sendMessage before READY');
+      logger.error(
+        {
+          deviceID: this.getDeviceID(),
+          messageName,
+        },
+        'Client - sendMessage before READY',
+      );
     }
 
     process.nextTick(
@@ -580,11 +599,14 @@ class Device extends EventEmitter {
           const packetUri = CoapMessages.getUriPath(packet);
           if (uri && packetUri.indexOf(uri) !== 0) {
             if (beVerbose) {
-              logger.warn({
-                deviceID: this.getDeviceID(),
-                packetUri,
-                uri,
-              }, 'URI filter did not match');
+              logger.warn(
+                {
+                  deviceID: this.getDeviceID(),
+                  packetUri,
+                  uri,
+                },
+                'URI filter did not match',
+              );
             }
             return;
           }
@@ -592,11 +614,14 @@ class Device extends EventEmitter {
           const packetTokenHex = packet.token.toString('hex');
           if (tokenHex && tokenHex !== packetTokenHex) {
             if (beVerbose) {
-              logger.warn({
-                deviceID: this.getDeviceID(),
-                packetTokenHex,
-                tokenHex,
-              }, 'Tokens did not match');
+              logger.warn(
+                {
+                  deviceID: this.getDeviceID(),
+                  packetTokenHex,
+                  tokenHex,
+                },
+                'Tokens did not match',
+              );
             }
             return;
           }
@@ -709,10 +734,13 @@ class Device extends EventEmitter {
       throw new Error('Function not found');
     }
 
-    logger.info({
-      deviceID: this.getDeviceID(),
-      functionName,
-    },'sending function call to the device');
+    logger.info(
+      {
+        deviceID: this.getDeviceID(),
+        functionName,
+      },
+      'sending function call to the device',
+    );
 
     const token = this.sendMessage('FunctionCall', {
       args: Object.values(functionArguments),
@@ -762,26 +790,35 @@ class Device extends EventEmitter {
 
     const flasher = new Flasher(this, this._maxBinarySize, this._otaChunkSize);
     try {
-      logger.info({
-        deviceID: this.getDeviceID(),
-      }, 'flash device started! - sending api event');
+      logger.info(
+        {
+          deviceID: this.getDeviceID(),
+        },
+        'flash device started! - sending api event',
+      );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
       await flasher.startFlashBuffer(binary, fileTransferStore, address);
 
-      logger.info({
-        deviceID: this.getDeviceID(),
-      }, 'flash device finished! - sending api event');
+      logger.info(
+        {
+          deviceID: this.getDeviceID(),
+        },
+        'flash device finished! - sending api event',
+      );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
 
       return { status: 'Update finished' };
     } catch (error) {
-      logger.info({
-        deviceID: this.getDeviceID(),
-        error,
-      }, 'flash device failed! - sending api event');
+      logger.info(
+        {
+          deviceID: this.getDeviceID(),
+          error,
+        },
+        'flash device failed! - sending api event',
+      );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
       throw new Error(`Update failed: ${error.message}`);
@@ -793,11 +830,14 @@ class Device extends EventEmitter {
       return true;
     }
 
-    logger.error({
-      cache_key: this._connectionKey,
-      deviceID: this.getDeviceID(),
-      messageName,
-    }, 'This client has an exclusive lock');
+    logger.error(
+      {
+        cache_key: this._connectionKey,
+        deviceID: this.getDeviceID(),
+        messageName,
+      },
+      'This client has an exclusive lock',
+    );
 
     return false;
   };
@@ -819,7 +859,7 @@ class Device extends EventEmitter {
     } else if (this._owningFlasher) {
       logger.error(
         { deviceID: this.getDeviceID(), flasher },
-        'cannot releaseOwnership, isn\'t  current owner'
+        "cannot releaseOwnership, isn't  current owner",
       );
     }
   };
@@ -1015,7 +1055,7 @@ class Device extends EventEmitter {
           logInfo,
           message,
         },
-        'Device disconnected'
+        'Device disconnected',
       );
     } catch (error) {
       logger.error({ err: error }, 'Disconnect log error');

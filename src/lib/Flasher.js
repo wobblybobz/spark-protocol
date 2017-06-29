@@ -72,18 +72,24 @@ class Flasher {
     address: string = '0x0',
   ): Promise<void> => {
     if (!buffer || buffer.length === 0) {
-      logger.error({
-        deviceID: this._client.getDeviceID(),
-      }, 'flash failed! - file is empty! ');
+      logger.error(
+        {
+          deviceID: this._client.getDeviceID(),
+        },
+        'flash failed! - file is empty! ',
+      );
 
       throw new Error('Update failed - File was empty!');
     }
 
     if (buffer && buffer.length > this._maxBinarySize) {
-      logger.error({
-        deviceID: this._client.getDeviceID(),
-        length: buffer.length,
-      }, 'flash failed! - file is too BIG', );
+      logger.error(
+        {
+          deviceID: this._client.getDeviceID(),
+          length: buffer.length,
+        },
+        'flash failed! - file is too BIG',
+      );
 
       throw new Error('Update failed - File was too big!');
     }
@@ -188,7 +194,7 @@ class Flasher {
 
             failReason = !Number.isNaN(failReason)
               ? ProtocolErrors.get(Number.parseInt(failReason, 10)) ||
-                failReason
+                  failReason
               : failReason;
 
             throw new Error(`aborted: ${failReason}`);
@@ -285,9 +291,12 @@ class Flasher {
 
     const canUseFastOTA = this._fastOtaEnabled && this._protocolVersion > 0;
     if (canUseFastOTA) {
-      logger.info({
-        deviceID: this._client.getDeviceID(),
-      }, 'Starting FastOTA update');
+      logger.info(
+        {
+          deviceID: this._client.getDeviceID(),
+        },
+        'Starting FastOTA update',
+      );
     }
 
     this._readNextChunk();
@@ -305,7 +314,7 @@ class Flasher {
         messageToken,
       );
 
-      console.log(message);
+      logger.info({ message }, 'ChunkReceived');
 
       if (!CoapMessages.statusIsOkay(message)) {
         throw new Error("'ChunkReceived' failed.");
@@ -456,7 +465,10 @@ class Flasher {
       return;
     }
 
-    logger.warn({ logInfo: this._getLogInfo() }, 'flasher - chunk missed - recovering ');
+    logger.warn(
+      { logInfo: this._getLogInfo() },
+      'flasher - chunk missed - recovering ',
+    );
 
     // kosher if I ack before I've read the payload?
     this._client.sendReply(

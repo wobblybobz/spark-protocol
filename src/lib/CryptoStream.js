@@ -51,8 +51,9 @@ class CryptoStream extends Transform {
     callback: () => void,
   ) => {
     if (!chunk.length) {
-      logger.error({ length: chunk.length },
-        'CryptoStream transform error: Chunk didn\'t have any length'
+      logger.error(
+        { length: chunk.length },
+        "CryptoStream transform error: Chunk didn't have any length",
       );
       callback();
       return;
@@ -61,10 +62,9 @@ class CryptoStream extends Transform {
     try {
       const data = ((chunk: any): Buffer);
       const cipherParams = [settings.CRYPTO_ALGORITHM, this._key, this._iv];
-      const cipher =
-        this._streamType === 'encrypt'
-          ? crypto.createCipheriv(...cipherParams)
-          : crypto.createDecipheriv(...cipherParams);
+      const cipher = this._streamType === 'encrypt'
+        ? crypto.createCipheriv(...cipherParams)
+        : crypto.createDecipheriv(...cipherParams);
 
       const transformedData = cipher.update(data);
       const extraData = cipher.final();

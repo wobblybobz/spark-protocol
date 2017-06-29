@@ -138,7 +138,10 @@ class DeviceServer {
     setInterval(
       (): void =>
         server.getConnections((error: Error, count: number) => {
-          logger.info({ devices: this._devicesById.size, sockets: count }, 'Connected Devices');
+          logger.info(
+            { devices: this._devicesById.size, sockets: count },
+            'Connected Devices',
+          );
         }),
       10000,
     );
@@ -189,11 +192,12 @@ class DeviceServer {
 
       const deviceID = await device.startProtocolInitialization();
 
-      logger.info({
-        connectionID: counter,
-        deviceID,
-        remoteIPAddress : device.getRemoteIPAddress(),
-      },
+      logger.info(
+        {
+          connectionID: counter,
+          deviceID,
+          remoteIPAddress: device.getRemoteIPAddress(),
+        },
         'Connection',
       );
 
@@ -275,7 +279,7 @@ class DeviceServer {
           if (this._devicesById.has(deviceID)) {
             const existingConnection = this._devicesById.get(deviceID);
             nullthrows(existingConnection).disconnect(
-              'Device was already connected. Reconnecting.\r\n',
+              'Device was already connected. Reconnecting.',
             );
           }
 
@@ -379,10 +383,11 @@ class DeviceServer {
       ownerID,
       false,
     );
-    logger.warn({
-      connectionKey,
-      deviceID,
-    },
+    logger.warn(
+      {
+        connectionKey,
+        deviceID,
+      },
       'Session ended for Device',
     );
   };
@@ -533,7 +538,7 @@ class DeviceServer {
         // if device version is old, do OTA update with patch
       }
     } catch (error) {
-      logger.error({ err: error }, 'Error' );
+      logger.error({ err: error }, 'Error');
     }
   };
 
@@ -595,20 +600,24 @@ class DeviceServer {
       return;
     }
 
-    logger.info({
-      deviceID,
-      isFromMyDevices,
-      messageName,
-    }, 'Subscribe Request');
+    logger.info(
+      {
+        deviceID,
+        isFromMyDevices,
+        messageName,
+      },
+      'Subscribe Request',
+    );
 
     device.sendReply('SubscribeAck', packet.messageId);
 
     process.nextTick(() => {
       if (!ownerID) {
-        logger.info({
-          deviceID,
-          messageName,
-        },
+        logger.info(
+          {
+            deviceID,
+            messageName,
+          },
           'device wasnt subscribed to event: the device is unclaimed.',
         );
         ownerID = '--unclaimed--';

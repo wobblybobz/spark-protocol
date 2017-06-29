@@ -85,7 +85,13 @@ class ChunkingStream extends Transform {
 
     if (startIndex < endIndex && this._incomingBuffer) {
       if (this._incomingIndex >= this._incomingBuffer.length) {
-        logger.error({ incomingBuffer: this._incomingBuffer.length, incomingIndex: this._incomingBuffer.length }, 'hmm, shouldn\'t end up here.');
+        logger.error(
+          {
+            incomingBuffer: this._incomingBuffer.length,
+            incomingIndex: this._incomingBuffer.length,
+          },
+          "hmm, shouldn't end up here.",
+        );
       }
 
       chunk.copy(
@@ -140,7 +146,7 @@ class ChunkingStream extends Transform {
       try {
         process.nextTick((): void => this.process(buffer, callback));
       } catch (error) {
-        logger.error({ err: error }, 'ChunkingStream error!' );
+        logger.error({ err: error }, 'ChunkingStream error!');
       }
     }
   };

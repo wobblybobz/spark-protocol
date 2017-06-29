@@ -219,7 +219,7 @@ class CoapMessages {
         token: token && Buffer.from([token]),
       });
     } catch (error) {
-      console.error(error);
+      logger.error({ err: error }, 'Coap Error');
     }
     return null;
   };
@@ -232,7 +232,7 @@ class CoapMessages {
     try {
       return CoapPacket.parse(data);
     } catch (error) {
-      logger.error({ err: error }, 'Coap Error' );
+      logger.error({ err: error }, 'Coap Error');
     }
 
     return null;
@@ -290,7 +290,7 @@ class CoapMessages {
       }
 
       default: {
-        logger.error({ typeInt }, 'asked for unknown type' );
+        logger.error({ typeInt }, 'asked for unknown type');
         throw new Error(`error getNameFromTypeInt: ${typeInt}`);
       }
     }
@@ -303,7 +303,7 @@ class CoapMessages {
       result = CoapMessages.fromBinary(buffer, typeName);
     } catch (error) {
       logger.error(
-        { buffer: buffer.toString(), err: error, typeName, },
+        { buffer: buffer.toString(), err: error, typeName },
         'Could not parse type',
       );
     }
