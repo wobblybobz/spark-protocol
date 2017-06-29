@@ -108,7 +108,10 @@ var ChunkingStream = function (_Transform) {
 
       if (startIndex < endIndex && _this._incomingBuffer) {
         if (_this._incomingIndex >= _this._incomingBuffer.length) {
-          logger.error({ incomingBuffer: _this._incomingBuffer.length, incomingIndex: _this._incomingBuffer.length }, 'hmm, shouldn\'t end up here.');
+          logger.error({
+            incomingBuffer: _this._incomingBuffer.length,
+            incomingIndex: _this._incomingBuffer.length
+          }, "hmm, shouldn't end up here.");
         }
 
         chunk.copy(_this._incomingBuffer, _this._incomingIndex, startIndex, endIndex);

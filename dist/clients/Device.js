@@ -450,7 +450,7 @@ var Device = function (_EventEmitter) {
                 ip: _this.getRemoteIPAddress(),
                 platformID: _this._attributes.platformId,
                 productID: _this._attributes.particleProductId
-              }, 'On device protocol initialization complete:\r\n');
+              }, 'On device protocol initialization complete');
 
               return _context4.abrupt('return', _systemInformation);
 
@@ -565,7 +565,11 @@ var Device = function (_EventEmitter) {
       }
 
       if (!packet || packet.messageId !== _this._receiveCounter) {
-        logger.warn({ deviceID: _this.getDeviceID(), expect: _this._receiveCounter, got: packet.messageId }, 'MessageId other than expected');
+        logger.warn({
+          deviceID: _this.getDeviceID(),
+          expect: _this._receiveCounter,
+          got: packet.messageId
+        }, 'MessageId other than expected');
 
         if (requestType === 'Ignored') {
           // don't ignore an ignore...
@@ -1023,7 +1027,7 @@ var Device = function (_EventEmitter) {
       if (_this._owningFlasher === flasher) {
         _this._owningFlasher = null;
       } else if (_this._owningFlasher) {
-        logger.error({ deviceID: _this.getDeviceID(), flasher: flasher }, 'cannot releaseOwnership, isn\'t  current owner');
+        logger.error({ deviceID: _this.getDeviceID(), flasher: flasher }, "cannot releaseOwnership, isn't  current owner");
       }
     };
 

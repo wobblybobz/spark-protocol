@@ -309,7 +309,7 @@ var DeviceServer = function () {
                           if (_this._devicesById.has(deviceID)) {
                             existingConnection = _this._devicesById.get(deviceID);
 
-                            (0, _nullthrows9.default)(existingConnection).disconnect('Device was already connected. Reconnecting.\r\n');
+                            (0, _nullthrows9.default)(existingConnection).disconnect('Device was already connected. Reconnecting.');
                           }
 
                           _this._devicesById.set(deviceID, device);

@@ -234,7 +234,7 @@ function (_ref) {
       token: token && Buffer.from([token])
     }));
   } catch (error) {
-    console.error(error);
+    logger.error({ err: error }, 'Coap Error');
   }
   return null;
 }, _class.unwrap = function (data) {

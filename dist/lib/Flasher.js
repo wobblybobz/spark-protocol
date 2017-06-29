@@ -447,7 +447,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
             message = _context4.sent;
 
 
-            console.log(message);
+            logger.info({ message: message }, 'ChunkReceived');
 
             if (_CoapMessages2.default.statusIsOkay(message)) {
               _context4.next = 16;
