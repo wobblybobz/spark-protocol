@@ -518,6 +518,7 @@ class Device extends EventEmitter {
       );
       return;
     }
+
     this._cipherStream.write(message);
   };
 
@@ -1014,16 +1015,16 @@ class Device extends EventEmitter {
       ));
 
   _toHexString = (value: number): string =>
-    (value < 10 ? '0' : '') + value.toString(16);
+    Buffer.from([value]).toString('hex');
 
   getDeviceID = (): string => this._attributes.deviceID;
 
   getConnectionKey = (): ?string => this._connectionKey;
 
   getRemoteIPAddress = (): string =>
-    (this._socket.remoteAddress
+    this._socket.remoteAddress
       ? this._socket.remoteAddress.toString()
-      : 'unknown');
+      : 'unknown';
 
   disconnect = (message: ?string = '') => {
     this._disconnectCounter += 1;
