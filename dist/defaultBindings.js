@@ -60,18 +60,18 @@ var defaultBindings = function defaultBindings(container, serverSettings) {
   container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
 
   // Repository
-  container.bindClass('DeviceAttributeRepository', _DeviceAttributeFileRepository2.default, ['DEVICE_DIRECTORY']);
-  container.bindClass('DeviceKeyRepository', _DeviceKeyFileRepository2.default, ['DEVICE_DIRECTORY']);
+  container.bindClass('IDeviceAttributeRepository', _DeviceAttributeFileRepository2.default, ['DEVICE_DIRECTORY']);
+  container.bindClass('IDeviceKeyRepository', _DeviceKeyFileRepository2.default, ['DEVICE_DIRECTORY']);
   container.bindClass('ServerKeyRepository', _ServerKeyFileRepository2.default, ['SERVER_KEYS_DIRECTORY', 'SERVER_KEY_FILENAME']);
 
   // Utils
   container.bindClass('EventPublisher', _EventPublisher2.default, []);
   container.bindClass('EVENT_PROVIDER', _EventProvider2.default, ['EventPublisher']);
   container.bindClass('ClaimCodeManager', _ClaimCodeManager2.default, []);
-  container.bindClass('CryptoManager', _CryptoManager2.default, ['DeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
+  container.bindClass('CryptoManager', _CryptoManager2.default, ['IDeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
 
   // Device server
-  container.bindClass('DeviceServer', _DeviceServer2.default, ['DeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES']);
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['IDeviceAttributeRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES']);
 };
 
 exports.default = defaultBindings;

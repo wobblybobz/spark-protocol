@@ -32,56 +32,60 @@ const defaultBindings = (
 
   // Settings
   container.bindValue('DEVICE_DIRECTORY', mergedSettings.DEVICE_DIRECTORY);
-  container.bindValue('ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES', mergedSettings.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES);
-  container.bindValue('SERVER_KEY_FILENAME', mergedSettings.SERVER_KEY_FILENAME);
-  container.bindValue('SERVER_KEY_PASSWORD', mergedSettings.SERVER_KEY_PASSWORD);
-  container.bindValue('SERVER_KEYS_DIRECTORY', mergedSettings.SERVER_KEYS_DIRECTORY);
-  container.bindValue('TCP_DEVICE_SERVER_CONFIG', mergedSettings.TCP_DEVICE_SERVER_CONFIG);
+  container.bindValue(
+    'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES',
+    mergedSettings.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES,
+  );
+  container.bindValue(
+    'SERVER_KEY_FILENAME',
+    mergedSettings.SERVER_KEY_FILENAME,
+  );
+  container.bindValue(
+    'SERVER_KEY_PASSWORD',
+    mergedSettings.SERVER_KEY_PASSWORD,
+  );
+  container.bindValue(
+    'SERVER_KEYS_DIRECTORY',
+    mergedSettings.SERVER_KEYS_DIRECTORY,
+  );
+  container.bindValue(
+    'TCP_DEVICE_SERVER_CONFIG',
+    mergedSettings.TCP_DEVICE_SERVER_CONFIG,
+  );
 
   // Repository
   container.bindClass(
-    'DeviceAttributeRepository',
+    'IDeviceAttributeRepository',
     DeviceAttributeFileRepository,
     ['DEVICE_DIRECTORY'],
   );
-  container.bindClass(
-    'DeviceKeyRepository',
-    DeviceKeyFileRepository,
-    ['DEVICE_DIRECTORY'],
-  );
-  container.bindClass(
-    'ServerKeyRepository',
-    ServerKeyFileRepository,
-    ['SERVER_KEYS_DIRECTORY', 'SERVER_KEY_FILENAME'],
-  );
+  container.bindClass('IDeviceKeyRepository', DeviceKeyFileRepository, [
+    'DEVICE_DIRECTORY',
+  ]);
+  container.bindClass('ServerKeyRepository', ServerKeyFileRepository, [
+    'SERVER_KEYS_DIRECTORY',
+    'SERVER_KEY_FILENAME',
+  ]);
 
   // Utils
   container.bindClass('EventPublisher', EventPublisher, []);
   container.bindClass('EVENT_PROVIDER', EventProvider, ['EventPublisher']);
   container.bindClass('ClaimCodeManager', ClaimCodeManager, []);
-  container.bindClass(
-    'CryptoManager',
-    CryptoManager,
-    [
-      'DeviceKeyRepository',
-      'ServerKeyRepository',
-      'SERVER_KEY_PASSWORD',
-    ],
-  );
+  container.bindClass('CryptoManager', CryptoManager, [
+    'IDeviceKeyRepository',
+    'ServerKeyRepository',
+    'SERVER_KEY_PASSWORD',
+  ]);
 
   // Device server
-  container.bindClass(
-    'DeviceServer',
-    DeviceServer,
-    [
-      'DeviceAttributeRepository',
-      'ClaimCodeManager',
-      'CryptoManager',
-      'EventPublisher',
-      'TCP_DEVICE_SERVER_CONFIG',
-      'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES',
-    ],
-  );
+  container.bindClass('DeviceServer', DeviceServer, [
+    'IDeviceAttributeRepository',
+    'ClaimCodeManager',
+    'CryptoManager',
+    'EventPublisher',
+    'TCP_DEVICE_SERVER_CONFIG',
+    'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES',
+  ]);
 };
 
 export default defaultBindings;

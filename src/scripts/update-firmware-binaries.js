@@ -79,7 +79,9 @@ const downloadFile = (url: string): Promise<*> =>
       `${settings.BINARIES_DIRECTORY}/${filename}`,
     );
 
-    file.on('finish', (): void => file.close((): void => resolve(filename)));
+    file.on('finish', () => {
+      resolve(filename);
+    });
     request(url).pipe(file).on('error', exitWithJSON);
   });
 

@@ -116,9 +116,7 @@ var downloadFile = function downloadFile(url) {
     var file = _fs2.default.createWriteStream(_settings2.default.BINARIES_DIRECTORY + '/' + filename);
 
     file.on('finish', function () {
-      return file.close(function () {
-        return resolve(filename);
-      });
+      resolve(filename);
     });
     (0, _request2.default)(url).pipe(file).on('error', exitWithJSON);
   });
