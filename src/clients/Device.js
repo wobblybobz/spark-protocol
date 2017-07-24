@@ -1008,11 +1008,13 @@ class Device extends EventEmitter {
     !!(this._attributes.variables && this._attributes.variables[name]);
 
   _hasSparkFunction = (functionName: string): boolean =>
-    !!(this._attributes.functions &&
+    !!(
+      this._attributes.functions &&
       this._attributes.functions.some(
         (fn: string): boolean =>
           fn.toLowerCase() === functionName.toLowerCase(),
-      ));
+      )
+    );
 
   _toHexString = (value: number): string =>
     Buffer.from([value]).toString('hex');
