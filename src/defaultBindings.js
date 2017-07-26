@@ -8,6 +8,8 @@ import EventPublisher from './lib/EventPublisher';
 import EventProvider from './lib/EventProvider';
 import ClaimCodeManager from './lib/ClaimCodeManager';
 import CryptoManager from './lib/CryptoManager';
+import MockProductDeviceRepository from './repository/MockProductDeviceRepository';
+import MockProductFirmwareRepository from './repository/MockProductFirmwareRepository';
 import ServerKeyFileRepository from './repository/ServerKeyFileRepository';
 import protocolSettings from './settings';
 
@@ -62,6 +64,11 @@ const defaultBindings = (
   container.bindClass('IDeviceKeyRepository', DeviceKeyFileRepository, [
     'DEVICE_DIRECTORY',
   ]);
+  container.bindClass('IProductDeviceRepository', MockProductDeviceRepository);
+  container.bindClass(
+    'IProductFirmwareRepository',
+    MockProductFirmwareRepository,
+  );
   container.bindClass('ServerKeyRepository', ServerKeyFileRepository, [
     'SERVER_KEYS_DIRECTORY',
     'SERVER_KEY_FILENAME',
@@ -80,6 +87,8 @@ const defaultBindings = (
   // Device server
   container.bindClass('DeviceServer', DeviceServer, [
     'IDeviceAttributeRepository',
+    'IProductDeviceRepository',
+    'IProductFirmwareRepository',
     'ClaimCodeManager',
     'CryptoManager',
     'EventPublisher',

@@ -23,6 +23,8 @@ import type {
   Event,
   EventData,
   IDeviceAttributeRepository,
+  IProductDeviceRepository,
+  IProductFirmwareRepository,
   PublishOptions,
 } from '../types';
 import type ClaimCodeManager from '../lib/ClaimCodeManager';
@@ -69,28 +71,34 @@ const SPECIAL_EVENTS = [
 
 let connectionIdCounter = 0;
 class DeviceServer {
+  _areSystemFirmwareAutoupdatesEnabled: boolean;
   _claimCodeManager: ClaimCodeManager;
   _config: DeviceServerConfig;
   _cryptoManager: CryptoManager;
   _deviceAttributeRepository: IDeviceAttributeRepository;
   _devicesById: Map<string, Device> = new Map();
-  _areSystemFirmwareAutoupdatesEnabled: boolean;
   _eventPublisher: EventPublisher;
+  _productDeviceRepository: IProductDeviceRepository;
+  _productFirmwareRepository: IProductFirmwareRepository;
 
   constructor(
     deviceAttributeRepository: IDeviceAttributeRepository,
+    productDeviceRepository: IProductDeviceRepository,
+    productFirmwareRepository: IProductFirmwareRepository,
     claimCodeManager: ClaimCodeManager,
     cryptoManager: CryptoManager,
     eventPublisher: EventPublisher,
     deviceServerConfig: DeviceServerConfig,
     areSystemFirmwareAutoupdatesEnabled: boolean,
   ) {
+    this._areSystemFirmwareAutoupdatesEnabled = areSystemFirmwareAutoupdatesEnabled;
     this._config = deviceServerConfig;
-    this._deviceAttributeRepository = deviceAttributeRepository;
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
+    this._deviceAttributeRepository = deviceAttributeRepository;
     this._eventPublisher = eventPublisher;
-    this._areSystemFirmwareAutoupdatesEnabled = areSystemFirmwareAutoupdatesEnabled;
+    this._productDeviceRepository = productDeviceRepository;
+    this._productFirmwareRepository = productFirmwareRepository;
   }
 
   start() {
@@ -127,6 +135,11 @@ class DeviceServer {
     this._eventPublisher.subscribe(
       getRequestEventName(SPARK_SERVER_EVENTS.UPDATE_DEVICE_ATTRIBUTES),
       this._onSparkServerUpdateDeviceAttributesRequest,
+    );
+
+    this._eventPublisher.subscribe(
+      SPARK_SERVER_EVENTS.FLASH_PRODUCT_FIRMWARE,
+      this._onFlashProductFirmware,
     );
 
     const server = net.createServer((socket: Socket): void =>
@@ -180,6 +193,74 @@ class DeviceServer {
 
       await device.flash(config.systemFile);
     }, 1000);
+  };
+
+  _checkProductFirmwareForUpdate = async (
+    device: Device,
+    /*appModule: Object,*/
+  ): Promise<void> => {
+    const productDevice = await this._productDeviceRepository.getFromDeviceID(
+      device.getDeviceID(),
+    );
+
+    if (
+      !productDevice ||
+      productDevice.denied ||
+      productDevice.development ||
+      productDevice.quarantined
+    ) {
+      return;
+    }
+
+    let productFirmware = null;
+
+    const lockedFirmwareVersion = productDevice.lockedFirmwareVersion;
+    const deviceAttributes = device.getAttributes();
+    const existingProductFirmwareVersion =
+      deviceAttributes.productFirmwareVersion;
+    if (lockedFirmwareVersion === existingProductFirmwareVersion) {
+      return;
+    }
+
+    if (lockedFirmwareVersion !== null) {
+      productFirmware = await this._productFirmwareRepository.getByVersionForProduct(
+        productDevice.productID,
+        nullthrows(lockedFirmwareVersion),
+      );
+    } else {
+      productFirmware = await this._productFirmwareRepository.getCurrentForProduct(
+        productDevice.productID,
+      );
+    }
+
+    if (!productFirmware) {
+      return;
+    }
+
+    // TODO - check appHash as well.  We should be saving this alongside the firmware
+    if (productFirmware.version === deviceAttributes.productFirmwareVersion) {
+      return;
+    }
+
+    await device.flash(productFirmware.data);
+    const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
+      productDevice.productID,
+      existingProductFirmwareVersion,
+    );
+
+    // Update the number of devices on the firmware versions
+    if (oldProductFirmware) {
+      oldProductFirmware.device_count -= 1;
+      await this._productFirmwareRepository.updateByID(
+        oldProductFirmware.id,
+        oldProductFirmware,
+      );
+    }
+    productFirmware.device_count += 1;
+    await this._productFirmwareRepository.updateByID(
+      productFirmware.id,
+      productFirmware,
+    );
   };
 
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
@@ -286,9 +367,11 @@ class DeviceServer {
           this._devicesById.set(deviceID, device);
 
           const systemInformation = await device.completeProtocolInitialization();
-          const { uuid: appHash } = FirmwareManager.getAppModule(
-            systemInformation,
-          );
+          const appModule = FirmwareManager.getAppModule(systemInformation);
+
+          const { uuid: appHash } = appModule;
+
+          await this._checkProductFirmwareForUpdate(device /* appModule*/);
 
           const existingAttributes = await this._deviceAttributeRepository.getByID(
             deviceID,
@@ -877,6 +960,36 @@ class DeviceServer {
           isPublic: false,
         },
       );
+    }
+  };
+
+  _onFlashProductFirmware = async (event: Event): Promise<void> => {
+    const { productID, fileBuffer } = nullthrows(event.context);
+
+    // NOTE - In a giant system, this is probably a bad idea but
+    // we can worry about scaling this later. It will also be
+    // inefficient if there is any horizontal scaling :/
+    const productDevices = await this._productDeviceRepository.getAllByProductID(
+      productID,
+      0,
+      Number.MAX_VALUE,
+    );
+
+    // TODO - FIgure out if this breaks things for large amounts
+    // of devices. We will probably need to test with
+    // particle-collider. I used setImmediate and only flash
+    // one device at a time in hopes of limiting the server load
+    while (productDevices.length) {
+      const productDevice = productDevices.pop();
+      const device = this._devicesById.get(productDevice.deviceID);
+      if (device) {
+        await new Promise((resolve: () => void) => {
+          setImmediate(async (): Promise<void> => {
+            await device.flash(fileBuffer);
+            resolve();
+          });
+        });
+      }
     }
   };
 

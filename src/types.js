@@ -57,6 +57,31 @@ export type ServerKeyRepository = {
   getPrivateKey: () => Promise<?string>,
 };
 
+export type ProductFirmware = {|
+  current: boolean,
+  data: Buffer,
+  description: string,
+  device_count: number,
+  id: string,
+  name: string,
+  product_id: string,
+  size: number,
+  title: string,
+  updated_at: Date,
+  version: number,
+|};
+
+export type ProductDevice = {|
+  denied: boolean,
+  development: boolean,
+  deviceID: string,
+  id: string,
+  lockedFirmwareVersion: ?number,
+  notes: string,
+  productID: string,
+  quarantined: boolean,
+|};
+
 export type PublishOptions = {
   isInternal?: boolean,
   isPublic?: boolean,
@@ -73,7 +98,27 @@ export interface IBaseRepository<TModel> {
 export interface IDeviceAttributeRepository
   extends IBaseRepository<DeviceAttributes> {}
 
-export interface IDeviceKeyRepository extends IBaseRepository<DeviceKeyObject> {
+export interface IDeviceKeyRepository
+  extends IBaseRepository<DeviceKeyObject> {}
+
+export interface IProductDeviceRepository
+  extends IBaseRepository<ProductDevice> {
+  getAllByProductID(
+    productID: string,
+    page: number,
+    perPage: number,
+  ): Promise<Array<ProductDevice>>,
+  getFromDeviceID(deviceID: string): Promise<?ProductDevice>,
+}
+
+export interface IProductFirmwareRepository
+  extends IBaseRepository<ProductFirmware> {
+  getAllByProductID(productID: string): Promise<Array<ProductFirmware>>,
+  getByVersionForProduct(
+    productID: string,
+    version: number,
+  ): Promise<?ProductFirmware>,
+  getCurrentForProduct(productID: string): Promise<?ProductFirmware>,
 }
 
 export interface ILoggerCreate {
