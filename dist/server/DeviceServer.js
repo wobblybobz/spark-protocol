@@ -762,8 +762,9 @@ var DeviceServer = function () {
               case 12:
 
                 _this._claimCodeManager.removeClaimCode(claimCode);
+                device.disconnect();
 
-              case 13:
+              case 14:
               case 'end':
                 return _context11.stop();
             }

@@ -658,6 +658,7 @@ class DeviceServer {
     });
 
     this._claimCodeManager.removeClaimCode(claimCode);
+    device.disconnect();
   };
 
   _onDeviceSubscribe = async (
