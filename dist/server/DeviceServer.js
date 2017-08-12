@@ -762,9 +762,8 @@ var DeviceServer = function () {
               case 12:
 
                 _this._claimCodeManager.removeClaimCode(claimCode);
-                device.disconnect();
 
-              case 14:
+              case 13:
               case 'end':
                 return _context11.stop();
             }
@@ -779,7 +778,6 @@ var DeviceServer = function () {
 
     this._onDeviceSubscribe = function () {
       var _ref13 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee12(packet, device) {
-        var deviceAttributes, deviceID, ownerID, messageName, query, isFromMyDevices;
         return _regenerator2.default.wrap(function _callee12$(_context12) {
           while (1) {
             switch (_context12.prev = _context12.next) {
@@ -788,39 +786,33 @@ var DeviceServer = function () {
                 return device.hasStatus(_Device.DEVICE_STATUS_MAP.READY);
 
               case 2:
-                deviceAttributes = device.getAttributes();
-                deviceID = deviceAttributes.deviceID;
-                ownerID = deviceAttributes.ownerID;
-
-                // uri -> /e/?u    --> firehose for all my devices
-                // uri -> /e/ (deviceid in body)   --> allowed
-                // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-                // uri -> /e/event_name?u    --> all my devices
-                // uri -> /e/event_name?u (deviceid)    --> deviceid?
-
-                messageName = _CoapMessages2.default.getUriPath(packet).substr(3);
-                query = _CoapMessages2.default.getUriQuery(packet);
-                isFromMyDevices = !!query.match('u');
-
-                if (messageName) {
-                  _context12.next = 11;
-                  break;
-                }
-
-                device.sendReply('SubscribeFail', packet.messageId);
-                return _context12.abrupt('return');
-
-              case 11:
-
-                logger.info({
-                  deviceID: deviceID,
-                  isFromMyDevices: isFromMyDevices,
-                  messageName: messageName
-                }, 'Subscribe Request');
-
-                device.sendReply('SubscribeAck', packet.messageId);
-
                 process.nextTick(function () {
+                  var deviceAttributes = device.getAttributes();
+                  var deviceID = deviceAttributes.deviceID;
+                  var ownerID = deviceAttributes.ownerID;
+
+                  // uri -> /e/?u    --> firehose for all my devices
+                  // uri -> /e/ (deviceid in body)   --> allowed
+                  // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+                  // uri -> /e/event_name?u    --> all my devices
+                  // uri -> /e/event_name?u (deviceid)    --> deviceid?
+                  var messageName = _CoapMessages2.default.getUriPath(packet).substr(3);
+                  var query = _CoapMessages2.default.getUriQuery(packet);
+                  var isFromMyDevices = !!query.match('u');
+
+                  if (!messageName) {
+                    device.sendReply('SubscribeFail', packet.messageId);
+                    return;
+                  }
+
+                  logger.info({
+                    deviceID: deviceID,
+                    isFromMyDevices: isFromMyDevices,
+                    messageName: messageName
+                  }, 'Subscribe Request');
+
+                  device.sendReply('SubscribeAck', packet.messageId);
+
                   if (!ownerID) {
                     logger.info({
                       deviceID: deviceID,
@@ -841,7 +833,7 @@ var DeviceServer = function () {
                   });
                 });
 
-              case 14:
+              case 3:
               case 'end':
                 return _context12.stop();
             }

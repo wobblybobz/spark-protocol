@@ -658,7 +658,6 @@ class DeviceServer {
     });
 
     this._claimCodeManager.removeClaimCode(claimCode);
-    device.disconnect();
   };
 
   _onDeviceSubscribe = async (
@@ -666,36 +665,36 @@ class DeviceServer {
     device: Device,
   ): Promise<void> => {
     await device.hasStatus(DEVICE_STATUS_MAP.READY);
-    const deviceAttributes = device.getAttributes();
-    const deviceID = deviceAttributes.deviceID;
-    let ownerID = deviceAttributes.ownerID;
-
-    // uri -> /e/?u    --> firehose for all my devices
-    // uri -> /e/ (deviceid in body)   --> allowed
-    // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-    // uri -> /e/event_name?u    --> all my devices
-    // uri -> /e/event_name?u (deviceid)    --> deviceid?
-    const messageName = CoapMessages.getUriPath(packet).substr(3);
-    const query = CoapMessages.getUriQuery(packet);
-    const isFromMyDevices = !!query.match('u');
-
-    if (!messageName) {
-      device.sendReply('SubscribeFail', packet.messageId);
-      return;
-    }
-
-    logger.info(
-      {
-        deviceID,
-        isFromMyDevices,
-        messageName,
-      },
-      'Subscribe Request',
-    );
-
-    device.sendReply('SubscribeAck', packet.messageId);
-
     process.nextTick(() => {
+      const deviceAttributes = device.getAttributes();
+      const deviceID = deviceAttributes.deviceID;
+      let ownerID = deviceAttributes.ownerID;
+
+      // uri -> /e/?u    --> firehose for all my devices
+      // uri -> /e/ (deviceid in body)   --> allowed
+      // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+      // uri -> /e/event_name?u    --> all my devices
+      // uri -> /e/event_name?u (deviceid)    --> deviceid?
+      const messageName = CoapMessages.getUriPath(packet).substr(3);
+      const query = CoapMessages.getUriQuery(packet);
+      const isFromMyDevices = !!query.match('u');
+
+      if (!messageName) {
+        device.sendReply('SubscribeFail', packet.messageId);
+        return;
+      }
+
+      logger.info(
+        {
+          deviceID,
+          isFromMyDevices,
+          messageName,
+        },
+        'Subscribe Request',
+      );
+
+      device.sendReply('SubscribeAck', packet.messageId);
+
       if (!ownerID) {
         logger.info(
           {
