@@ -307,13 +307,6 @@ class Handshake {
     const publicKey = await this._cryptoManager.getDevicePublicKey(deviceID);
 
     if (!publicKey) {
-      if (deviceProvidedPem) {
-        return await this._cryptoManager.createDevicePublicKey(
-          deviceID,
-          deviceProvidedPem,
-        );
-      }
-
       throw new Error(`no public key found for device: ${deviceID}`);
     }
 
