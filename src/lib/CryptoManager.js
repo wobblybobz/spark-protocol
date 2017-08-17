@@ -51,7 +51,7 @@ class CryptoManager {
   };
 
   _createServerKeys = async (): Promise<NodeRSA> => {
-    const privateKey = new NodeRSA({ b: 1024 });
+    const privateKey = new NodeRSA({ b: 2048 });
 
     await this._serverKeyRepository.createKeys(
       privateKey.exportKey('pkcs1-private-pem'),

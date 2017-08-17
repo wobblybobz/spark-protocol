@@ -32,11 +32,27 @@ var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
-var _nullthrows = require('nullthrows');
-
-var _nullthrows2 = _interopRequireDefault(_nullthrows);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/*
+*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+*
+*   This program is free software; you can redistribute it and/or
+*   modify it under the terms of the GNU Lesser General Public
+*   License as published by the Free Software Foundation, either
+*   version 3 of the License, or (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+*   Lesser General Public License for more details.
+*
+*   You should have received a copy of the GNU Lesser General Public
+*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+*
+* 
+*
+*/
 
 var logger = _logger2.default.createModuleLogger(module);
 /*
@@ -95,26 +111,6 @@ var logger = _logger2.default.createModuleLogger(module);
  Device reads protobufs Hello from socket, taking note of counter.
  Each subsequent message received from Server must have the counter incremented by 1.
  After the max uint32, the next message should set the counter to zero.
-*/
-
-/*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* 
-*
 */
 
 var NONCE_BYTES = 40;
@@ -381,22 +377,16 @@ var Handshake = function Handshake(cryptoManager) {
 
             case 5:
               if (publicKey.equals(deviceProvidedPem)) {
-                _context5.next = 10;
+                _context5.next = 7;
                 break;
               }
 
-              logger.error('TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESNT MATCH SAVED PUBLIC KEY');
+              throw new Error('key passed to device during handshake doesn\'t' + ('match saved public key: ' + deviceID));
 
-              _context5.next = 9;
-              return _this._cryptoManager.createDevicePublicKey(deviceID, (0, _nullthrows2.default)(deviceProvidedPem));
-
-            case 9:
-              return _context5.abrupt('return', _context5.sent);
-
-            case 10:
+            case 7:
               return _context5.abrupt('return', publicKey);
 
-            case 11:
+            case 8:
             case 'end':
               return _context5.stop();
           }

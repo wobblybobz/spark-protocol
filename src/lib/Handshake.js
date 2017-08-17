@@ -27,7 +27,6 @@ import type CryptoManager from './CryptoManager';
 
 import ChunkingStream from './ChunkingStream';
 import Logger from '../lib/logger';
-import nullthrows from 'nullthrows';
 const logger = Logger.createModuleLogger(module);
 /*
  Handshake protocol v1
@@ -311,13 +310,9 @@ class Handshake {
     }
 
     if (!publicKey.equals(deviceProvidedPem)) {
-      logger.error(
-        'TODO: KEY PASSED TO DEVICE DURING HANDSHAKE DOESNT MATCH SAVED PUBLIC KEY',
-      );
-
-      return await this._cryptoManager.createDevicePublicKey(
-        deviceID,
-        nullthrows(deviceProvidedPem),
+      throw new Error(
+        "key passed to device during handshake doesn't" +
+          `match saved public key: ${deviceID}`,
       );
     }
 
