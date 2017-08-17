@@ -227,7 +227,10 @@ class Handshake {
     const decryptedHandshakeData = this._cryptoManager.decrypt(data);
 
     if (!decryptedHandshakeData) {
-      throw new Error('handshake data decryption failed');
+      throw new Error(
+        'handshake data decryption failed. ' +
+          'You probably have incorrect server key for device',
+      );
     }
 
     if (decryptedHandshakeData.length < NONCE_BYTES + ID_BYTES) {

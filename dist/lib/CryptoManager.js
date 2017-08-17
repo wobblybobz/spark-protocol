@@ -176,7 +176,11 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
   }();
 
   this.decrypt = function (data) {
-    return _this._serverPrivateKey.decrypt(data);
+    try {
+      return _this._serverPrivateKey.decrypt(data);
+    } catch (error) {
+      return null;
+    }
   };
 
   this.getDevicePublicKey = function () {

@@ -295,7 +295,7 @@ var Handshake = function Handshake(cryptoManager) {
                 break;
               }
 
-              throw new Error('handshake data decryption failed');
+              throw new Error('handshake data decryption failed. ' + 'You probably have incorrect server key for device');
 
             case 3:
               if (!(decryptedHandshakeData.length < NONCE_BYTES + ID_BYTES)) {
@@ -381,7 +381,7 @@ var Handshake = function Handshake(cryptoManager) {
                 break;
               }
 
-              throw new Error('key passed to device during handshake doesn\'t' + ('match saved public key: ' + deviceID));
+              throw new Error("key passed to device during handshake doesn't" + ('match saved public key: ' + deviceID));
 
             case 7:
               return _context5.abrupt('return', publicKey);
