@@ -64,7 +64,7 @@ export type ProductFirmware = {|
   device_count: number,
   id: string,
   name: string,
-  product_id: string,
+  product_id: number,
   size: number,
   title: string,
   updated_at: Date,
@@ -78,7 +78,7 @@ export type ProductDevice = {|
   id: string,
   lockedFirmwareVersion: ?number,
   notes: string,
-  productID: string,
+  productID: number,
   quarantined: boolean,
 |};
 
@@ -98,13 +98,13 @@ export interface IBaseRepository<TModel> {
 export interface IDeviceAttributeRepository
   extends IBaseRepository<DeviceAttributes> {}
 
-export interface IDeviceKeyRepository
-  extends IBaseRepository<DeviceKeyObject> {}
+export interface IDeviceKeyRepository extends IBaseRepository<DeviceKeyObject> {
+}
 
 export interface IProductDeviceRepository
   extends IBaseRepository<ProductDevice> {
   getAllByProductID(
-    productID: string,
+    productID: number,
     page: number,
     perPage: number,
   ): Promise<Array<ProductDevice>>,
@@ -113,12 +113,12 @@ export interface IProductDeviceRepository
 
 export interface IProductFirmwareRepository
   extends IBaseRepository<ProductFirmware> {
-  getAllByProductID(productID: string): Promise<Array<ProductFirmware>>,
+  getAllByProductID(productID: number): Promise<Array<ProductFirmware>>,
   getByVersionForProduct(
-    productID: string,
+    productID: number,
     version: number,
   ): Promise<?ProductFirmware>,
-  getCurrentForProduct(productID: string): Promise<?ProductFirmware>,
+  getCurrentForProduct(productID: number): Promise<?ProductFirmware>,
 }
 
 export interface ILoggerCreate {

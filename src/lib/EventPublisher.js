@@ -64,10 +64,9 @@ class EventPublisher extends EventEmitter {
       isPublic: false,
     },
   ) => {
-    const ttl =
-      eventData.ttl && eventData.ttl > 0
-        ? eventData.ttl
-        : settings.DEFAULT_EVENT_TTL;
+    const ttl = eventData.ttl && eventData.ttl > 0
+      ? eventData.ttl
+      : settings.DEFAULT_EVENT_TTL;
 
     const event: Event = {
       ...eventData,
@@ -86,9 +85,7 @@ class EventPublisher extends EventEmitter {
     eventData: EventData,
   ): Promise<Object> => {
     const eventID = uuid();
-    const requestEventName = `${getRequestEventName(
-      eventData.name,
-    )}/${eventID}`;
+    const requestEventName = `${getRequestEventName(eventData.name)}/${eventID}`;
     const responseEventName = `${eventData.name}/response/${eventID}`;
 
     return new Promise(
