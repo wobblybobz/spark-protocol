@@ -38,6 +38,7 @@ class FirmwareManager {
   ): Promise<*> => {
     const parser = new HalDescribeParser();
     const platformID = systemInformation.p;
+
     const modules = parser
       .getModules(systemInformation)
       // Filter so we only have the system modules
@@ -80,6 +81,11 @@ class FirmwareManager {
   static getOtaUpdateConfig(platformID: number): ?Array<OtaUpdate> {
     const platform = settings.knownPlatforms[platformID.toString()];
     const key = SPECIFICATION_KEY_BY_PLATFORM.get(platform);
+
+    // GCC Platform skip OTA Update Config
+    if (platformID === 3) {
+      return null;
+    }
 
     if (!key) {
       return null;

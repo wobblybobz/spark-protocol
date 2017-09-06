@@ -316,7 +316,7 @@ class DeviceServer {
           // i guess we'll remove these subscription soon anyways
           // so I keep it like this for now.
           device.on(DEVICE_EVENT_NAMES.FLASH_STARTED, async (): Promise<
-            void
+            void,
           > => {
             await device.hasStatus(DEVICE_STATUS_MAP.READY);
             const { ownerID } = device.getAttributes();
@@ -330,7 +330,7 @@ class DeviceServer {
           });
 
           device.on(DEVICE_EVENT_NAMES.FLASH_SUCCESS, async (): Promise<
-            void
+            void,
           > => {
             await device.hasStatus(DEVICE_STATUS_MAP.READY);
             const { ownerID } = device.getAttributes();
@@ -344,7 +344,7 @@ class DeviceServer {
           });
 
           device.on(DEVICE_EVENT_NAMES.FLASH_FAILED, async (): Promise<
-            void
+            void,
           > => {
             await device.hasStatus(DEVICE_STATUS_MAP.READY);
             const { ownerID } = device.getAttributes();
@@ -367,9 +367,15 @@ class DeviceServer {
           this._devicesById.set(deviceID, device);
 
           const systemInformation = await device.completeProtocolInitialization();
-          const appModule = FirmwareManager.getAppModule(systemInformation);
 
-          const { uuid: appHash } = appModule;
+          let appModules;
+          try {
+            appModules = FirmwareManager.getAppModule(systemInformation);
+          } catch (ignore) {
+            appModules = { uuid: 'none' };
+          }
+
+          const { uuid: appHash } = appModules;
 
           await this._checkProductFirmwareForUpdate(device /* appModule*/);
 
@@ -386,7 +392,8 @@ class DeviceServer {
             name,
             ownerID,
             registrar,
-          } = existingAttributes || {};
+          } =
+            existingAttributes || {};
 
           device.updateAttributes({
             appHash,
@@ -475,7 +482,9 @@ class DeviceServer {
   };
 
   _onDeviceGetTime = (packet: CoapPacket, device: Device) => {
-    const timeStamp = moment().utc().unix();
+    const timeStamp = moment()
+      .utc()
+      .unix();
     const binaryValue = CoapMessages.toBinary(timeStamp, 'uint32');
 
     device.sendReply(

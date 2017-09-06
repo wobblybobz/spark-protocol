@@ -98,8 +98,8 @@ export interface IBaseRepository<TModel> {
 export interface IDeviceAttributeRepository
   extends IBaseRepository<DeviceAttributes> {}
 
-export interface IDeviceKeyRepository extends IBaseRepository<DeviceKeyObject> {
-}
+export interface IDeviceKeyRepository
+  extends IBaseRepository<DeviceKeyObject> {}
 
 export interface IProductDeviceRepository
   extends IBaseRepository<ProductDevice> {

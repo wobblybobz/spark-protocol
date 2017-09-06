@@ -109,6 +109,11 @@ var FirmwareManager = (_temp = _class = function () {
       var platform = _settings4.default.knownPlatforms[platformID.toString()];
       var key = SPECIFICATION_KEY_BY_PLATFORM.get(platform);
 
+      // GCC Platform skip OTA Update Config
+      if (platformID === 3) {
+        return null;
+      }
+
       if (!key) {
         return null;
       }

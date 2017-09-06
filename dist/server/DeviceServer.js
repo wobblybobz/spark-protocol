@@ -321,7 +321,7 @@ var DeviceServer = function () {
                 }, 'Connection');
 
                 process.nextTick((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {
-                  var existingConnection, systemInformation, appModule, appHash, existingAttributes, _ref9, claimCode, currentBuildTarget, imei, isCellular, last_iccid, name, ownerID, registrar;
+                  var existingConnection, systemInformation, appModules, _appModules, appHash, existingAttributes, _ref9, claimCode, currentBuildTarget, imei, isCellular, last_iccid, name, ownerID, registrar;
 
                   return _regenerator2.default.wrap(function _callee7$(_context7) {
                     while (1) {
@@ -435,16 +435,31 @@ var DeviceServer = function () {
 
                         case 13:
                           systemInformation = _context7.sent;
-                          appModule = _FirmwareManager2.default.getAppModule(systemInformation);
-                          appHash = appModule.uuid;
-                          _context7.next = 18;
+
+                          //<<<<<<< HEAD
+
+                          appModules = void 0;
+
+                          try {
+                            appModules = _FirmwareManager2.default.getAppModule(systemInformation);
+                          } catch (ignore) {
+                            appModules = { uuid: 'none' };
+                          }
+
+                          _appModules = appModules, appHash = _appModules.uuid;
+                          //=======
+                          //           const appModule = FirmwareManager.getAppModule(systemInformation);
+                          //
+                          //           const { uuid: appHash } = appModule;
+
+                          _context7.next = 19;
                           return _this._checkProductFirmwareForUpdate(device /* appModule*/);
 
-                        case 18:
-                          _context7.next = 20;
+                        case 19:
+                          _context7.next = 21;
                           return _this._deviceAttributeRepository.getByID(deviceID);
 
-                        case 20:
+                        case 21:
                           existingAttributes = _context7.sent;
                           _ref9 = existingAttributes || {}, claimCode = _ref9.claimCode, currentBuildTarget = _ref9.currentBuildTarget, imei = _ref9.imei, isCellular = _ref9.isCellular, last_iccid = _ref9.last_iccid, name = _ref9.name, ownerID = _ref9.ownerID, registrar = _ref9.registrar;
 
@@ -470,30 +485,30 @@ var DeviceServer = function () {
                           // we may update attributes only on disconnect, but currently
                           // removing update here can break claim/provision flow
                           // so need to test carefully before doing this.
-                          _context7.next = 27;
+                          _context7.next = 28;
                           return _this._deviceAttributeRepository.updateByID(deviceID, device.getAttributes());
 
-                        case 27:
+                        case 28:
 
                           // Send app-hash if this is a new app firmware
                           if (!existingAttributes || appHash !== existingAttributes.appHash) {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, appHash, deviceID, ownerID, false);
                           }
-                          _context7.next = 33;
+                          _context7.next = 34;
                           break;
 
-                        case 30:
-                          _context7.prev = 30;
+                        case 31:
+                          _context7.prev = 31;
                           _context7.t0 = _context7['catch'](0);
 
                           device.disconnect('Error during connection: ' + _context7.t0 + ': ' + _context7.t0.stack);
 
-                        case 33:
+                        case 34:
                         case 'end':
                           return _context7.stop();
                       }
                     }
-                  }, _callee7, _this, [[0, 30]]);
+                  }, _callee7, _this, [[0, 31]]);
                 })));
                 _context8.next = 16;
                 break;

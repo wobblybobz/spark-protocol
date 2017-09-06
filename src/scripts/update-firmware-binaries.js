@@ -82,7 +82,9 @@ const downloadFile = (url: string): Promise<*> =>
     file.on('finish', () => {
       resolve(filename);
     });
-    request(url).pipe(file).on('error', exitWithJSON);
+    request(url)
+      .pipe(file)
+      .on('error', exitWithJSON);
   });
 
 const downloadFirmwareBinaries = async (
