@@ -69,37 +69,21 @@ var defaultBindings = function defaultBindings(container, serverSettings) {
 
   // Repository
   container.bindClass('IDeviceAttributeRepository', _DeviceAttributeFileRepository2.default, ['DEVICE_DIRECTORY']);
-  //<<<<<<< HEAD
-  //   container.bindClass('DeviceKeyRepository', DeviceKeyFileRepository, [
-  //     'DEVICE_DIRECTORY',
-  //   ]);
-  //=======
+
   container.bindClass('IDeviceKeyRepository', _DeviceKeyFileRepository2.default, ['DEVICE_DIRECTORY']);
   container.bindClass('IProductDeviceRepository', _MockProductDeviceRepository2.default);
   container.bindClass('IProductFirmwareRepository', _MockProductFirmwareRepository2.default);
-  //>>>>>>> upstream/dev
+
   container.bindClass('ServerKeyRepository', _ServerKeyFileRepository2.default, ['SERVER_KEYS_DIRECTORY', 'SERVER_KEY_FILENAME']);
 
   // Utils
   container.bindClass('EventPublisher', _EventPublisher2.default, []);
   container.bindClass('EVENT_PROVIDER', _EventProvider2.default, ['EventPublisher']);
   container.bindClass('ClaimCodeManager', _ClaimCodeManager2.default, []);
-  container.bindClass('CryptoManager', _CryptoManager2.default, [
-  //<<<<<<< HEAD
-  //     'DeviceKeyRepository',
-  //=======
-  'IDeviceKeyRepository',
-  //>>>>>>> upstream/dev
-  'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
+  container.bindClass('CryptoManager', _CryptoManager2.default, ['IDeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
 
   // Device server
-  container.bindClass('DeviceServer', _DeviceServer2.default, [
-  //<<<<<<< HEAD
-  //     'DeviceAttributeRepository',
-  // =======
-  'IDeviceAttributeRepository', 'IProductDeviceRepository', 'IProductFirmwareRepository',
-  // >>>>>>> upstream/dev
-  'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES']);
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['IDeviceAttributeRepository', 'IProductDeviceRepository', 'IProductFirmwareRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES']);
 };
 
 exports.default = defaultBindings;

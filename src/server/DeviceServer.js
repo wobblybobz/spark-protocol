@@ -265,6 +265,7 @@ class DeviceServer {
 
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
     try {
+      logger.info('New Connection');
       connectionIdCounter += 1;
       const counter = connectionIdCounter;
       const connectionKey = `_${connectionIdCounter}`;

@@ -302,15 +302,16 @@ var DeviceServer = function () {
               case 0:
                 _context8.prev = 0;
 
+                logger.info('New Connection');
                 connectionIdCounter += 1;
                 counter = connectionIdCounter;
                 connectionKey = '_' + connectionIdCounter;
                 handshake = new _Handshake2.default(_this._cryptoManager);
                 device = new _Device2.default(socket, connectionKey, handshake);
-                _context8.next = 8;
+                _context8.next = 9;
                 return device.startProtocolInitialization();
 
-              case 8:
+              case 9:
                 deviceID = _context8.sent;
 
 
@@ -435,9 +436,6 @@ var DeviceServer = function () {
 
                         case 13:
                           systemInformation = _context7.sent;
-
-                          //<<<<<<< HEAD
-
                           appModules = void 0;
 
                           try {
@@ -447,11 +445,6 @@ var DeviceServer = function () {
                           }
 
                           _appModules = appModules, appHash = _appModules.uuid;
-                          //=======
-                          //           const appModule = FirmwareManager.getAppModule(systemInformation);
-                          //
-                          //           const { uuid: appHash } = appModule;
-
                           _context7.next = 19;
                           return _this._checkProductFirmwareForUpdate(device /* appModule*/);
 
@@ -510,21 +503,21 @@ var DeviceServer = function () {
                     }
                   }, _callee7, _this, [[0, 31]]);
                 })));
-                _context8.next = 16;
+                _context8.next = 17;
                 break;
 
-              case 13:
-                _context8.prev = 13;
+              case 14:
+                _context8.prev = 14;
                 _context8.t0 = _context8['catch'](0);
 
                 logger.error({ err: _context8.t0 }, 'Device startup failed');
 
-              case 16:
+              case 17:
               case 'end':
                 return _context8.stop();
             }
           }
-        }, _callee8, _this, [[0, 13]]);
+        }, _callee8, _this, [[0, 14]]);
       }));
 
       return function (_x3) {
