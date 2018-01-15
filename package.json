@@ -18,7 +18,6 @@
     "build": "babel ./src --out-dir ./dist",
     "lint": "eslint --fix --max-warnings 0 -- .",
     "lint-staged": "lint-staged",
-    "postinstall": "npm update-firmware",
     "prettify":
       "prettier --single-quote --trailing-comma all --write src/*/**.js test/*/**.js",
     "start": "babel ./src --out-dir ./dist --watch",
