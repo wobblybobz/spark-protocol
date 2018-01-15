@@ -20,11 +20,12 @@
 
 import type { Socket } from 'net';
 import type {
-  Event,
   EventData,
   IDeviceAttributeRepository,
   IProductDeviceRepository,
   IProductFirmwareRepository,
+  ProductDevice,
+  ProtocolEvent,
   PublishOptions,
 } from '../types';
 import type ClaimCodeManager from '../lib/ClaimCodeManager';
@@ -203,64 +204,7 @@ class DeviceServer {
       device.getDeviceID(),
     );
 
-    if (
-      !productDevice ||
-      productDevice.denied ||
-      productDevice.development ||
-      productDevice.quarantined
-    ) {
-      return;
-    }
-
-    let productFirmware = null;
-
-    const lockedFirmwareVersion = productDevice.lockedFirmwareVersion;
-    const deviceAttributes = device.getAttributes();
-    const existingProductFirmwareVersion =
-      deviceAttributes.productFirmwareVersion;
-    if (lockedFirmwareVersion === existingProductFirmwareVersion) {
-      return;
-    }
-
-    if (lockedFirmwareVersion !== null) {
-      productFirmware = await this._productFirmwareRepository.getByVersionForProduct(
-        productDevice.productID,
-        nullthrows(lockedFirmwareVersion),
-      );
-    } else {
-      productFirmware = await this._productFirmwareRepository.getCurrentForProduct(
-        productDevice.productID,
-      );
-    }
-
-    if (!productFirmware) {
-      return;
-    }
-
-    // TODO - check appHash as well.  We should be saving this alongside the firmware
-    if (productFirmware.version === deviceAttributes.productFirmwareVersion) {
-      return;
-    }
-
-    await device.flash(productFirmware.data);
-    const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
-      productDevice.productID,
-      existingProductFirmwareVersion,
-    );
-
-    // Update the number of devices on the firmware versions
-    if (oldProductFirmware) {
-      oldProductFirmware.device_count -= 1;
-      await this._productFirmwareRepository.updateByID(
-        oldProductFirmware.id,
-        oldProductFirmware,
-      );
-    }
-    productFirmware.device_count += 1;
-    await this._productFirmwareRepository.updateByID(
-      productFirmware.id,
-      productFirmware,
-    );
+    await this._flashDevice(productDevice);
   };
 
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
@@ -729,7 +673,7 @@ class DeviceServer {
   };
 
   _onSparkServerCallDeviceFunctionRequest = async (
-    event: Event,
+    event: ProtocolEvent,
   ): Promise<void> => {
     const {
       deviceID,
@@ -767,7 +711,9 @@ class DeviceServer {
     }
   };
 
-  _onSparkServerFlashDeviceRequest = async (event: Event): Promise<void> => {
+  _onSparkServerFlashDeviceRequest = async (
+    event: ProtocolEvent,
+  ): Promise<void> => {
     const { deviceID, fileBuffer, responseEventName } = nullthrows(
       event.context,
     );
@@ -801,7 +747,9 @@ class DeviceServer {
     }
   };
 
-  _onSparkServerGetDeviceAttributes = async (event: Event): Promise<void> => {
+  _onSparkServerGetDeviceAttributes = async (
+    event: ProtocolEvent,
+  ): Promise<void> => {
     const { deviceID, responseEventName } = nullthrows(event.context);
 
     try {
@@ -836,7 +784,7 @@ class DeviceServer {
   };
 
   _onSparkServerGetDeviceVariableValueRequest = async (
-    event: Event,
+    event: ProtocolEvent,
   ): Promise<void> => {
     const { deviceID, responseEventName, variableName } = nullthrows(
       event.context,
@@ -872,7 +820,9 @@ class DeviceServer {
     }
   };
 
-  _onSparkServerPingDeviceRequest = async (event: Event): Promise<void> => {
+  _onSparkServerPingDeviceRequest = async (
+    event: ProtocolEvent,
+  ): Promise<void> => {
     const { deviceID, responseEventName } = nullthrows(event.context);
 
     const device = this.getDevice(deviceID);
@@ -895,7 +845,9 @@ class DeviceServer {
     );
   };
 
-  _onSparkServerRaiseYourHandRequest = async (event: Event): Promise<void> => {
+  _onSparkServerRaiseYourHandRequest = async (
+    event: ProtocolEvent,
+  ): Promise<void> => {
     const { deviceID, responseEventName, shouldShowSignal } = nullthrows(
       event.context,
     );
@@ -933,7 +885,7 @@ class DeviceServer {
   };
 
   _onSparkServerUpdateDeviceAttributesRequest = async (
-    event: Event,
+    event: ProtocolEvent,
   ): Promise<void> => {
     const { attributes, deviceID, responseEventName } = nullthrows(
       event.context,
@@ -972,8 +924,25 @@ class DeviceServer {
     }
   };
 
-  _onFlashProductFirmware = async (event: Event): Promise<void> => {
-    const { productID, fileBuffer } = nullthrows(event.context);
+  _onFlashProductFirmware = async (event: ProtocolEvent): Promise<void> => {
+    const { deviceID, productID } = nullthrows(event.context);
+
+    // Handle case where a new device is added to an existing product
+    if (deviceID) {
+      const productDevice = await this._productDeviceRepository.getFromDeviceID(
+        deviceID,
+      );
+
+      if (!productDevice || productDevice.productID !== productID) {
+        throw new Error(
+          `Device ${deviceID} does not belong to product ${productID}`,
+        );
+      }
+
+      await this._flashDevice(productDevice);
+
+      return;
+    }
 
     // NOTE - In a giant system, this is probably a bad idea but
     // we can worry about scaling this later. It will also be
@@ -990,16 +959,83 @@ class DeviceServer {
     // one device at a time in hopes of limiting the server load
     while (productDevices.length) {
       const productDevice = productDevices.pop();
-      const device = this._devicesById.get(productDevice.deviceID);
-      if (device) {
-        await new Promise((resolve: () => void) => {
-          setImmediate(async (): Promise<void> => {
-            await device.flash(fileBuffer);
-            resolve();
-          });
+      await new Promise((resolve: () => void) => {
+        setImmediate(async (): Promise<void> => {
+          await this._flashDevice(productDevice);
+          resolve();
         });
-      }
+      });
     }
+  };
+
+  _flashDevice = async (productDevice: ?ProductDevice): Promise<void> => {
+    if (
+      !productDevice ||
+      productDevice.denied ||
+      productDevice.development ||
+      productDevice.quarantined
+    ) {
+      return;
+    }
+
+    const device = this._devicesById.get(productDevice.deviceID);
+    if (!device) {
+      return;
+    }
+
+    let productFirmware = null;
+
+    const lockedFirmwareVersion = productDevice.lockedFirmwareVersion;
+    const {
+      productFirmwareVersion,
+      particleProductId,
+    } = device.getAttributes();
+    if (
+      particleProductId === productDevice.productID &&
+      lockedFirmwareVersion === productFirmwareVersion
+    ) {
+      return;
+    }
+
+    if (lockedFirmwareVersion !== null) {
+      productFirmware = await this._productFirmwareRepository.getByVersionForProduct(
+        productDevice.productID,
+        nullthrows(lockedFirmwareVersion),
+      );
+    } else {
+      productFirmware = await this._productFirmwareRepository.getCurrentForProduct(
+        productDevice.productID,
+      );
+    }
+
+    if (!productFirmware) {
+      return;
+    }
+
+    // TODO - check appHash as well.  We should be saving this alongside the firmware
+    if (productFirmware.version === productFirmwareVersion) {
+      return;
+    }
+
+    await device.flash(productFirmware.data);
+    const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
+      productDevice.productID,
+      productFirmwareVersion,
+    );
+
+    // Update the number of devices on the firmware versions
+    if (oldProductFirmware) {
+      oldProductFirmware.device_count -= 1;
+      await this._productFirmwareRepository.updateByID(
+        oldProductFirmware.id,
+        oldProductFirmware,
+      );
+    }
+    productFirmware.device_count += 1;
+    await this._productFirmwareRepository.updateByID(
+      productFirmware.id,
+      productFirmware,
+    );
   };
 
   getDevice = (deviceID: string): ?Device => this._devicesById.get(deviceID);

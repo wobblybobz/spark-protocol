@@ -20,7 +20,7 @@
 
 import type { Socket } from 'net';
 import type { Duplex } from 'stream';
-import type { DeviceAttributes, Event } from '../types';
+import type { DeviceAttributes, ProtocolEvent } from '../types';
 import type Handshake from '../lib/Handshake';
 import type { MessageType } from '../lib/MessageSpecifications';
 import type { FileTransferStoreType } from '../lib/FileTransferStore';
@@ -979,11 +979,11 @@ class Device extends EventEmitter {
   //-------------
   // Device Events / Spark.publish / Spark.subscribe
   //-------------
-  onDeviceEvent = (event: Event) => {
+  onDeviceEvent = (event: ProtocolEvent) => {
     this.sendDeviceEvent(event);
   };
 
-  sendDeviceEvent = (event: Event) => {
+  sendDeviceEvent = (event: ProtocolEvent) => {
     const { data, isPublic, name, ttl } = event;
     const messageName = isPublic
       ? DEVICE_MESSAGE_EVENTS_NAMES.PUBLIC_EVENT

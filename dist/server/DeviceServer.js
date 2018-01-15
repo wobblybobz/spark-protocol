@@ -187,7 +187,7 @@ var DeviceServer = function () {
 
     this._checkProductFirmwareForUpdate = function () {
       var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(device) {
-        var productDevice, productFirmware, lockedFirmwareVersion, deviceAttributes, existingProductFirmwareVersion, oldProductFirmware;
+        var productDevice;
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
@@ -197,90 +197,10 @@ var DeviceServer = function () {
 
               case 2:
                 productDevice = _context3.sent;
-
-                if (!(!productDevice || productDevice.denied || productDevice.development || productDevice.quarantined)) {
-                  _context3.next = 5;
-                  break;
-                }
-
-                return _context3.abrupt('return');
+                _context3.next = 5;
+                return _this._flashDevice(productDevice);
 
               case 5:
-                productFirmware = null;
-                lockedFirmwareVersion = productDevice.lockedFirmwareVersion;
-                deviceAttributes = device.getAttributes();
-                existingProductFirmwareVersion = deviceAttributes.productFirmwareVersion;
-
-                if (!(lockedFirmwareVersion === existingProductFirmwareVersion)) {
-                  _context3.next = 11;
-                  break;
-                }
-
-                return _context3.abrupt('return');
-
-              case 11:
-                if (!(lockedFirmwareVersion !== null)) {
-                  _context3.next = 17;
-                  break;
-                }
-
-                _context3.next = 14;
-                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, (0, _nullthrows10.default)(lockedFirmwareVersion));
-
-              case 14:
-                productFirmware = _context3.sent;
-                _context3.next = 20;
-                break;
-
-              case 17:
-                _context3.next = 19;
-                return _this._productFirmwareRepository.getCurrentForProduct(productDevice.productID);
-
-              case 19:
-                productFirmware = _context3.sent;
-
-              case 20:
-                if (productFirmware) {
-                  _context3.next = 22;
-                  break;
-                }
-
-                return _context3.abrupt('return');
-
-              case 22:
-                if (!(productFirmware.version === deviceAttributes.productFirmwareVersion)) {
-                  _context3.next = 24;
-                  break;
-                }
-
-                return _context3.abrupt('return');
-
-              case 24:
-                _context3.next = 26;
-                return device.flash(productFirmware.data);
-
-              case 26:
-                _context3.next = 28;
-                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, existingProductFirmwareVersion);
-
-              case 28:
-                oldProductFirmware = _context3.sent;
-
-                if (!oldProductFirmware) {
-                  _context3.next = 33;
-                  break;
-                }
-
-                oldProductFirmware.device_count -= 1;
-                _context3.next = 33;
-                return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
-
-              case 33:
-                productFirmware.device_count += 1;
-                _context3.next = 36;
-                return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
-
-              case 36:
               case 'end':
                 return _context3.stop();
             }
@@ -1296,38 +1216,55 @@ var DeviceServer = function () {
 
     this._onFlashProductFirmware = function () {
       var _ref21 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee21(event) {
-        var _nullthrows8, productID, fileBuffer, productDevices, _loop;
+        var _nullthrows8, deviceID, productID, productDevice, productDevices, _loop;
 
         return _regenerator2.default.wrap(function _callee21$(_context22) {
           while (1) {
             switch (_context22.prev = _context22.next) {
               case 0:
-                _nullthrows8 = (0, _nullthrows10.default)(event.context), productID = _nullthrows8.productID, fileBuffer = _nullthrows8.fileBuffer;
+                _nullthrows8 = (0, _nullthrows10.default)(event.context), deviceID = _nullthrows8.deviceID, productID = _nullthrows8.productID;
 
-                // NOTE - In a giant system, this is probably a bad idea but
-                // we can worry about scaling this later. It will also be
-                // inefficient if there is any horizontal scaling :/
+                // Handle case where a new device is added to an existing product
 
-                _context22.next = 3;
+                if (!deviceID) {
+                  _context22.next = 10;
+                  break;
+                }
+
+                _context22.next = 4;
+                return _this._productDeviceRepository.getFromDeviceID(deviceID);
+
+              case 4:
+                productDevice = _context22.sent;
+
+                if (!(!productDevice || productDevice.productID !== productID)) {
+                  _context22.next = 7;
+                  break;
+                }
+
+                throw new Error('Device ' + deviceID + ' does not belong to product ' + productID);
+
+              case 7:
+                _context22.next = 9;
+                return _this._flashDevice(productDevice);
+
+              case 9:
+                return _context22.abrupt('return');
+
+              case 10:
+                _context22.next = 12;
                 return _this._productDeviceRepository.getAllByProductID(productID, 0, Number.MAX_VALUE);
 
-              case 3:
+              case 12:
                 productDevices = _context22.sent;
                 _loop = _regenerator2.default.mark(function _loop() {
-                  var productDevice, device;
+                  var productDevice;
                   return _regenerator2.default.wrap(function _loop$(_context21) {
                     while (1) {
                       switch (_context21.prev = _context21.next) {
                         case 0:
                           productDevice = productDevices.pop();
-                          device = _this._devicesById.get(productDevice.deviceID);
-
-                          if (!device) {
-                            _context21.next = 5;
-                            break;
-                          }
-
-                          _context21.next = 5;
+                          _context21.next = 3;
                           return new _promise2.default(function (resolve) {
                             (0, _setImmediate3.default)((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee20() {
                               return _regenerator2.default.wrap(function _callee20$(_context20) {
@@ -1335,7 +1272,7 @@ var DeviceServer = function () {
                                   switch (_context20.prev = _context20.next) {
                                     case 0:
                                       _context20.next = 2;
-                                      return device.flash(fileBuffer);
+                                      return _this._flashDevice(productDevice);
 
                                     case 2:
                                       resolve();
@@ -1349,7 +1286,7 @@ var DeviceServer = function () {
                             })));
                           });
 
-                        case 5:
+                        case 3:
                         case 'end':
                           return _context21.stop();
                       }
@@ -1357,19 +1294,19 @@ var DeviceServer = function () {
                   }, _loop, _this);
                 });
 
-              case 5:
+              case 14:
                 if (!productDevices.length) {
-                  _context22.next = 9;
+                  _context22.next = 18;
                   break;
                 }
 
-                return _context22.delegateYield(_loop(), 't0', 7);
+                return _context22.delegateYield(_loop(), 't0', 16);
 
-              case 7:
-                _context22.next = 5;
+              case 16:
+                _context22.next = 14;
                 break;
 
-              case 9:
+              case 18:
               case 'end':
                 return _context22.stop();
             }
@@ -1379,6 +1316,118 @@ var DeviceServer = function () {
 
       return function (_x19) {
         return _ref21.apply(this, arguments);
+      };
+    }();
+
+    this._flashDevice = function () {
+      var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22(productDevice) {
+        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, oldProductFirmware;
+
+        return _regenerator2.default.wrap(function _callee22$(_context23) {
+          while (1) {
+            switch (_context23.prev = _context23.next) {
+              case 0:
+                if (!(!productDevice || productDevice.denied || productDevice.development || productDevice.quarantined)) {
+                  _context23.next = 2;
+                  break;
+                }
+
+                return _context23.abrupt('return');
+
+              case 2:
+                device = _this._devicesById.get(productDevice.deviceID);
+
+                if (device) {
+                  _context23.next = 5;
+                  break;
+                }
+
+                return _context23.abrupt('return');
+
+              case 5:
+                productFirmware = null;
+                lockedFirmwareVersion = productDevice.lockedFirmwareVersion;
+                _device$getAttributes7 = device.getAttributes(), productFirmwareVersion = _device$getAttributes7.productFirmwareVersion, particleProductId = _device$getAttributes7.particleProductId;
+
+                if (!(particleProductId === productDevice.productID && lockedFirmwareVersion === productFirmwareVersion)) {
+                  _context23.next = 10;
+                  break;
+                }
+
+                return _context23.abrupt('return');
+
+              case 10:
+                if (!(lockedFirmwareVersion !== null)) {
+                  _context23.next = 16;
+                  break;
+                }
+
+                _context23.next = 13;
+                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, (0, _nullthrows10.default)(lockedFirmwareVersion));
+
+              case 13:
+                productFirmware = _context23.sent;
+                _context23.next = 19;
+                break;
+
+              case 16:
+                _context23.next = 18;
+                return _this._productFirmwareRepository.getCurrentForProduct(productDevice.productID);
+
+              case 18:
+                productFirmware = _context23.sent;
+
+              case 19:
+                if (productFirmware) {
+                  _context23.next = 21;
+                  break;
+                }
+
+                return _context23.abrupt('return');
+
+              case 21:
+                if (!(productFirmware.version === productFirmwareVersion)) {
+                  _context23.next = 23;
+                  break;
+                }
+
+                return _context23.abrupt('return');
+
+              case 23:
+                _context23.next = 25;
+                return device.flash(productFirmware.data);
+
+              case 25:
+                _context23.next = 27;
+                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
+
+              case 27:
+                oldProductFirmware = _context23.sent;
+
+                if (!oldProductFirmware) {
+                  _context23.next = 32;
+                  break;
+                }
+
+                oldProductFirmware.device_count -= 1;
+                _context23.next = 32;
+                return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
+
+              case 32:
+                productFirmware.device_count += 1;
+                _context23.next = 35;
+                return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
+
+              case 35:
+              case 'end':
+                return _context23.stop();
+            }
+          }
+        }, _callee22, _this);
+      }));
+
+      return function (_x20) {
+        return _ref23.apply(this, arguments);
       };
     }();
 

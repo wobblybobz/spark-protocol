@@ -29,7 +29,7 @@ export type DeviceKeyObject = {
   key: string,
 };
 
-export type Event = EventData & {
+export type ProtocolEvent = EventData & {
   broadcasted?: boolean,
   publishedAt: Date,
   isPublic: boolean,
@@ -88,11 +88,11 @@ export type PublishOptions = {
 };
 
 export interface IBaseRepository<TModel> {
-  create(model: TModel | $Shape<TModel>): Promise<TModel>,
-  deleteByID(id: string): Promise<void>,
-  getAll(): Promise<Array<TModel>>,
-  getByID(id: string): Promise<?TModel>,
-  updateByID(id: string, props: $Shape<TModel>): Promise<TModel>,
+  create(model: TModel | $Shape<TModel>): Promise<TModel>;
+  deleteByID(id: string): Promise<void>;
+  getAll(): Promise<Array<TModel>>;
+  getByID(id: string): Promise<?TModel>;
+  updateByID(id: string, props: $Shape<TModel>): Promise<TModel>;
 }
 
 export interface IDeviceAttributeRepository
@@ -107,21 +107,21 @@ export interface IProductDeviceRepository
     productID: number,
     page: number,
     perPage: number,
-  ): Promise<Array<ProductDevice>>,
-  getFromDeviceID(deviceID: string): Promise<?ProductDevice>,
+  ): Promise<Array<ProductDevice>>;
+  getFromDeviceID(deviceID: string): Promise<?ProductDevice>;
 }
 
 export interface IProductFirmwareRepository
   extends IBaseRepository<ProductFirmware> {
-  getAllByProductID(productID: number): Promise<Array<ProductFirmware>>,
+  getAllByProductID(productID: number): Promise<Array<ProductFirmware>>;
   getByVersionForProduct(
     productID: number,
     version: number,
-  ): Promise<?ProductFirmware>,
-  getCurrentForProduct(productID: number): Promise<?ProductFirmware>,
+  ): Promise<?ProductFirmware>;
+  getCurrentForProduct(productID: number): Promise<?ProductFirmware>;
 }
 
 export interface ILoggerCreate {
-  static createLogger(applicationName: string): bunyan.Logger,
-  static createModuleLogger(applicationModule: any): bunyan.Logger,
+  static createLogger(applicationName: string): bunyan.Logger;
+  static createModuleLogger(applicationModule: any): bunyan.Logger;
 }
