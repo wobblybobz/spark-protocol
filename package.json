@@ -26,30 +26,15 @@
     "update-firmware": "node ./dist/scripts/update-firmware-binaries"
   },
   "lint-staged": {
-    "src/**/*.js": [
-      "lint",
-      "prettify",
-      "git add"
-    ],
-    "test/**/*.js": [
-      "lint",
-      "prettify",
-      "git add"
-    ]
+    "src/**/*.js": ["lint", "prettify", "git add"],
+    "test/**/*.js": ["lint", "prettify", "git add"]
   },
-  "pre-commit": [
-    "lint-staged",
-    "test"
-  ],
+  "pre-commit": ["lint-staged", "test"],
   "ava": {
     "verbose": true,
     "babel": "inherit",
-    "files": [
-      "test/*.test.js"
-    ],
-    "require": [
-      "babel-register"
-    ]
+    "files": ["test/*.test.js"],
+    "require": ["babel-register"]
   },
   "dependencies": {
     "babel-plugin-transform-decorators": "^6.24.1",
