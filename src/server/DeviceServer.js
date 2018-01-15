@@ -265,6 +265,7 @@ class DeviceServer {
 
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
     try {
+      logger.info('New Connection');
       connectionIdCounter += 1;
       const counter = connectionIdCounter;
       const connectionKey = `_${connectionIdCounter}`;
@@ -367,9 +368,15 @@ class DeviceServer {
           this._devicesById.set(deviceID, device);
 
           const systemInformation = await device.completeProtocolInitialization();
-          const appModule = FirmwareManager.getAppModule(systemInformation);
 
-          const { uuid: appHash } = appModule;
+          let appModules;
+          try {
+            appModules = FirmwareManager.getAppModule(systemInformation);
+          } catch (ignore) {
+            appModules = { uuid: 'none' };
+          }
+
+          const { uuid: appHash } = appModules;
 
           await this._checkProductFirmwareForUpdate(device /* appModule*/);
 
@@ -476,7 +483,9 @@ class DeviceServer {
   };
 
   _onDeviceGetTime = (packet: CoapPacket, device: Device) => {
-    const timeStamp = moment().utc().unix();
+    const timeStamp = moment()
+      .utc()
+      .unix();
     const binaryValue = CoapMessages.toBinary(timeStamp, 'uint32');
 
     device.sendReply(
@@ -665,36 +674,36 @@ class DeviceServer {
     device: Device,
   ): Promise<void> => {
     await device.hasStatus(DEVICE_STATUS_MAP.READY);
-    const deviceAttributes = device.getAttributes();
-    const deviceID = deviceAttributes.deviceID;
-    let ownerID = deviceAttributes.ownerID;
-
-    // uri -> /e/?u    --> firehose for all my devices
-    // uri -> /e/ (deviceid in body)   --> allowed
-    // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-    // uri -> /e/event_name?u    --> all my devices
-    // uri -> /e/event_name?u (deviceid)    --> deviceid?
-    const messageName = CoapMessages.getUriPath(packet).substr(3);
-    const query = CoapMessages.getUriQuery(packet);
-    const isFromMyDevices = !!query.match('u');
-
-    if (!messageName) {
-      device.sendReply('SubscribeFail', packet.messageId);
-      return;
-    }
-
-    logger.info(
-      {
-        deviceID,
-        isFromMyDevices,
-        messageName,
-      },
-      'Subscribe Request',
-    );
-
-    device.sendReply('SubscribeAck', packet.messageId);
-
     process.nextTick(() => {
+      const deviceAttributes = device.getAttributes();
+      const deviceID = deviceAttributes.deviceID;
+      let ownerID = deviceAttributes.ownerID;
+
+      // uri -> /e/?u    --> firehose for all my devices
+      // uri -> /e/ (deviceid in body)   --> allowed
+      // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+      // uri -> /e/event_name?u    --> all my devices
+      // uri -> /e/event_name?u (deviceid)    --> deviceid?
+      const messageName = CoapMessages.getUriPath(packet).substr(3);
+      const query = CoapMessages.getUriQuery(packet);
+      const isFromMyDevices = !!query.match('u');
+
+      if (!messageName) {
+        device.sendReply('SubscribeFail', packet.messageId);
+        return;
+      }
+
+      logger.info(
+        {
+          deviceID,
+          isFromMyDevices,
+          messageName,
+        },
+        'Subscribe Request',
+      );
+
+      device.sendReply('SubscribeAck', packet.messageId);
+
       if (!ownerID) {
         logger.info(
           {

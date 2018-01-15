@@ -302,15 +302,16 @@ var DeviceServer = function () {
               case 0:
                 _context8.prev = 0;
 
+                logger.info('New Connection');
                 connectionIdCounter += 1;
                 counter = connectionIdCounter;
                 connectionKey = '_' + connectionIdCounter;
                 handshake = new _Handshake2.default(_this._cryptoManager);
                 device = new _Device2.default(socket, connectionKey, handshake);
-                _context8.next = 8;
+                _context8.next = 9;
                 return device.startProtocolInitialization();
 
-              case 8:
+              case 9:
                 deviceID = _context8.sent;
 
 
@@ -321,7 +322,7 @@ var DeviceServer = function () {
                 }, 'Connection');
 
                 process.nextTick((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {
-                  var existingConnection, systemInformation, appModule, appHash, existingAttributes, _ref9, claimCode, currentBuildTarget, imei, isCellular, last_iccid, name, ownerID, registrar;
+                  var existingConnection, systemInformation, appModules, _appModules, appHash, existingAttributes, _ref9, claimCode, currentBuildTarget, imei, isCellular, last_iccid, name, ownerID, registrar;
 
                   return _regenerator2.default.wrap(function _callee7$(_context7) {
                     while (1) {
@@ -435,16 +436,23 @@ var DeviceServer = function () {
 
                         case 13:
                           systemInformation = _context7.sent;
-                          appModule = _FirmwareManager2.default.getAppModule(systemInformation);
-                          appHash = appModule.uuid;
-                          _context7.next = 18;
+                          appModules = void 0;
+
+                          try {
+                            appModules = _FirmwareManager2.default.getAppModule(systemInformation);
+                          } catch (ignore) {
+                            appModules = { uuid: 'none' };
+                          }
+
+                          _appModules = appModules, appHash = _appModules.uuid;
+                          _context7.next = 19;
                           return _this._checkProductFirmwareForUpdate(device /* appModule*/);
 
-                        case 18:
-                          _context7.next = 20;
+                        case 19:
+                          _context7.next = 21;
                           return _this._deviceAttributeRepository.getByID(deviceID);
 
-                        case 20:
+                        case 21:
                           existingAttributes = _context7.sent;
                           _ref9 = existingAttributes || {}, claimCode = _ref9.claimCode, currentBuildTarget = _ref9.currentBuildTarget, imei = _ref9.imei, isCellular = _ref9.isCellular, last_iccid = _ref9.last_iccid, name = _ref9.name, ownerID = _ref9.ownerID, registrar = _ref9.registrar;
 
@@ -470,46 +478,46 @@ var DeviceServer = function () {
                           // we may update attributes only on disconnect, but currently
                           // removing update here can break claim/provision flow
                           // so need to test carefully before doing this.
-                          _context7.next = 27;
+                          _context7.next = 28;
                           return _this._deviceAttributeRepository.updateByID(deviceID, device.getAttributes());
 
-                        case 27:
+                        case 28:
 
                           // Send app-hash if this is a new app firmware
                           if (!existingAttributes || appHash !== existingAttributes.appHash) {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, appHash, deviceID, ownerID, false);
                           }
-                          _context7.next = 33;
+                          _context7.next = 34;
                           break;
 
-                        case 30:
-                          _context7.prev = 30;
+                        case 31:
+                          _context7.prev = 31;
                           _context7.t0 = _context7['catch'](0);
 
                           device.disconnect('Error during connection: ' + _context7.t0 + ': ' + _context7.t0.stack);
 
-                        case 33:
+                        case 34:
                         case 'end':
                           return _context7.stop();
                       }
                     }
-                  }, _callee7, _this, [[0, 30]]);
+                  }, _callee7, _this, [[0, 31]]);
                 })));
-                _context8.next = 16;
+                _context8.next = 17;
                 break;
 
-              case 13:
-                _context8.prev = 13;
+              case 14:
+                _context8.prev = 14;
                 _context8.t0 = _context8['catch'](0);
 
                 logger.error({ err: _context8.t0 }, 'Device startup failed');
 
-              case 16:
+              case 17:
               case 'end':
                 return _context8.stop();
             }
           }
-        }, _callee8, _this, [[0, 13]]);
+        }, _callee8, _this, [[0, 14]]);
       }));
 
       return function (_x3) {
@@ -778,7 +786,6 @@ var DeviceServer = function () {
 
     this._onDeviceSubscribe = function () {
       var _ref13 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee12(packet, device) {
-        var deviceAttributes, deviceID, ownerID, messageName, query, isFromMyDevices;
         return _regenerator2.default.wrap(function _callee12$(_context12) {
           while (1) {
             switch (_context12.prev = _context12.next) {
@@ -787,39 +794,33 @@ var DeviceServer = function () {
                 return device.hasStatus(_Device.DEVICE_STATUS_MAP.READY);
 
               case 2:
-                deviceAttributes = device.getAttributes();
-                deviceID = deviceAttributes.deviceID;
-                ownerID = deviceAttributes.ownerID;
-
-                // uri -> /e/?u    --> firehose for all my devices
-                // uri -> /e/ (deviceid in body)   --> allowed
-                // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
-                // uri -> /e/event_name?u    --> all my devices
-                // uri -> /e/event_name?u (deviceid)    --> deviceid?
-
-                messageName = _CoapMessages2.default.getUriPath(packet).substr(3);
-                query = _CoapMessages2.default.getUriQuery(packet);
-                isFromMyDevices = !!query.match('u');
-
-                if (messageName) {
-                  _context12.next = 11;
-                  break;
-                }
-
-                device.sendReply('SubscribeFail', packet.messageId);
-                return _context12.abrupt('return');
-
-              case 11:
-
-                logger.info({
-                  deviceID: deviceID,
-                  isFromMyDevices: isFromMyDevices,
-                  messageName: messageName
-                }, 'Subscribe Request');
-
-                device.sendReply('SubscribeAck', packet.messageId);
-
                 process.nextTick(function () {
+                  var deviceAttributes = device.getAttributes();
+                  var deviceID = deviceAttributes.deviceID;
+                  var ownerID = deviceAttributes.ownerID;
+
+                  // uri -> /e/?u    --> firehose for all my devices
+                  // uri -> /e/ (deviceid in body)   --> allowed
+                  // uri -> /e/    --> not allowed (no global firehose for cores, kthxplox)
+                  // uri -> /e/event_name?u    --> all my devices
+                  // uri -> /e/event_name?u (deviceid)    --> deviceid?
+                  var messageName = _CoapMessages2.default.getUriPath(packet).substr(3);
+                  var query = _CoapMessages2.default.getUriQuery(packet);
+                  var isFromMyDevices = !!query.match('u');
+
+                  if (!messageName) {
+                    device.sendReply('SubscribeFail', packet.messageId);
+                    return;
+                  }
+
+                  logger.info({
+                    deviceID: deviceID,
+                    isFromMyDevices: isFromMyDevices,
+                    messageName: messageName
+                  }, 'Subscribe Request');
+
+                  device.sendReply('SubscribeAck', packet.messageId);
+
                   if (!ownerID) {
                     logger.info({
                       deviceID: deviceID,
@@ -840,7 +841,7 @@ var DeviceServer = function () {
                   });
                 });
 
-              case 14:
+              case 3:
               case 'end':
                 return _context12.stop();
             }

@@ -61,6 +61,7 @@ const defaultBindings = (
     DeviceAttributeFileRepository,
     ['DEVICE_DIRECTORY'],
   );
+
   container.bindClass('IDeviceKeyRepository', DeviceKeyFileRepository, [
     'DEVICE_DIRECTORY',
   ]);
@@ -69,6 +70,7 @@ const defaultBindings = (
     'IProductFirmwareRepository',
     MockProductFirmwareRepository,
   );
+
   container.bindClass('ServerKeyRepository', ServerKeyFileRepository, [
     'SERVER_KEYS_DIRECTORY',
     'SERVER_KEY_FILENAME',
