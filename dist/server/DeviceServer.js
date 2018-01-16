@@ -398,34 +398,36 @@ var DeviceServer = function () {
 
                           _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID, false);
 
+                          console.log('FOOOOOOOOOOOO', deviceID);
+
                           // TODO
                           // we may update attributes only on disconnect, but currently
                           // removing update here can break claim/provision flow
                           // so need to test carefully before doing this.
-                          _context7.next = 28;
+                          _context7.next = 29;
                           return _this._deviceAttributeRepository.updateByID(deviceID, device.getAttributes());
 
-                        case 28:
+                        case 29:
 
                           // Send app-hash if this is a new app firmware
                           if (!existingAttributes || appHash !== existingAttributes.appHash) {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, appHash, deviceID, ownerID, false);
                           }
-                          _context7.next = 34;
+                          _context7.next = 35;
                           break;
 
-                        case 31:
-                          _context7.prev = 31;
+                        case 32:
+                          _context7.prev = 32;
                           _context7.t0 = _context7['catch'](0);
 
                           device.disconnect('Error during connection: ' + _context7.t0 + ': ' + _context7.t0.stack);
 
-                        case 34:
+                        case 35:
                         case 'end':
                           return _context7.stop();
                       }
                     }
-                  }, _callee7, _this, [[0, 31]]);
+                  }, _callee7, _this, [[0, 32]]);
                 })));
                 _context8.next = 17;
                 break;

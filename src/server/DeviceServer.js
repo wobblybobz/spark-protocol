@@ -363,6 +363,8 @@ class DeviceServer {
             false,
           );
 
+          console.log('FOOOOOOOOOOOO', deviceID);
+
           // TODO
           // we may update attributes only on disconnect, but currently
           // removing update here can break claim/provision flow
