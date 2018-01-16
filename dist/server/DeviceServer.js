@@ -1353,7 +1353,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                logger.logInfo({
+                logger.info({
                   deviceAttributes: device.getAttributes(),
                   productDevice: productDevice
                 }, 'Device already flashing');
@@ -1406,7 +1406,7 @@ var DeviceServer = function () {
 
               case 28:
                 console.log(4);
-                logger.logInfo({
+                logger.info({
                   deviceAttributes: device.getAttributes(),
                   productDevice: productDevice,
                   productFirmware: productFirmware

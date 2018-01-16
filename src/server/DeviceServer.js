@@ -985,7 +985,7 @@ class DeviceServer {
     }
 
     if (device.isFlashing()) {
-      logger.logInfo(
+      logger.info(
         {
           deviceAttributes: device.getAttributes(),
           productDevice,
@@ -1026,7 +1026,7 @@ class DeviceServer {
       return;
     }
     console.log(4);
-    logger.logInfo(
+    logger.info(
       {
         deviceAttributes: device.getAttributes(),
         productDevice,
