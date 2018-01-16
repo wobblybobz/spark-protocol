@@ -391,6 +391,8 @@ class Device extends EventEmitter {
         reservedFlags: payload.readUInt16BE(4),
       };
 
+      console.log('Connection attributes', this._attributesFromDevice);
+
       return this._attributesFromDevice;
     } catch (error) {
       logger.error({ err: error }, 'error while parsing hello payload ');
