@@ -153,12 +153,17 @@ class Device extends EventEmitter {
     reservedFlags: 0,
     variables: null,
   };
-  _attributesFromDevice: ?{
+  _attributesFromDevice: {
     particleProductId: number,
     platformId: number,
     productFirmwareVersion: number,
     reservedFlags: number,
-  } = null;
+  } = {
+    particleProductId: 0,
+    platformId: 0,
+    productFirmwareVersion: 0,
+    reservedFlags: 0,
+  };
   _cipherStream: ?Duplex = null;
   _connectionKey: ?string = null;
   _connectionStartTime: ?Date = null;

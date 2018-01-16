@@ -217,7 +217,12 @@ var Device = function (_EventEmitter) {
       reservedFlags: 0,
       variables: null
     };
-    _this._attributesFromDevice = null;
+    _this._attributesFromDevice = {
+      particleProductId: 0,
+      platformId: 0,
+      productFirmwareVersion: 0,
+      reservedFlags: 0
+    };
     _this._cipherStream = null;
     _this._connectionKey = null;
     _this._connectionStartTime = null;
