@@ -363,7 +363,7 @@ class DeviceServer {
             false,
           );
 
-          console.log('FOOOOOOOOOOOO', deviceID);
+          console.log('FOOOOOOOOOOOO', device.getAttributes());
 
           // TODO
           // we may update attributes only on disconnect, but currently

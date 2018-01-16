@@ -398,7 +398,7 @@ var DeviceServer = function () {
 
                           _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID, false);
 
-                          console.log('FOOOOOOOOOOOO', deviceID);
+                          console.log('FOOOOOOOOOOOO', device.getAttributes());
 
                           // TODO
                           // we may update attributes only on disconnect, but currently
