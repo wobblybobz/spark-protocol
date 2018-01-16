@@ -217,6 +217,7 @@ var Device = function (_EventEmitter) {
       reservedFlags: 0,
       variables: null
     };
+    _this._attributesFromDevice = null;
     _this._cipherStream = null;
     _this._connectionKey = null;
     _this._connectionStartTime = null;
@@ -250,7 +251,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this.updateAttributes = function (attributes) {
-      _this._attributes = (0, _extends3.default)({}, _this._attributes, attributes);
+      _this._attributes = (0, _extends3.default)({}, _this._attributes, attributes, _this._attributesFromDevice);
 
       return _this._attributes;
     };
@@ -495,12 +496,14 @@ var Device = function (_EventEmitter) {
           return null;
         }
 
-        return {
+        _this._attributesFromDevice = {
           particleProductId: payload.readUInt16BE(0),
           platformId: payload.readUInt16BE(6),
           productFirmwareVersion: payload.readUInt16BE(2),
           reservedFlags: payload.readUInt16BE(4)
         };
+
+        return _this._attributesFromDevice;
       } catch (error) {
         logger.error({ err: error }, 'error while parsing hello payload ');
         return null;

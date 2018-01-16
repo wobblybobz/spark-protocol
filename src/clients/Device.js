@@ -153,6 +153,12 @@ class Device extends EventEmitter {
     reservedFlags: 0,
     variables: null,
   };
+  _attributesFromDevice: {
+    particleProductId: number,
+    platformId: number,
+    productFirmwareVersion: number,
+    reservedFlags: number,
+  } = null;
   _cipherStream: ?Duplex = null;
   _connectionKey: ?string = null;
   _connectionStartTime: ?Date = null;
@@ -195,6 +201,7 @@ class Device extends EventEmitter {
     this._attributes = {
       ...this._attributes,
       ...attributes,
+      ...this._attributesFromDevice,
     };
 
     return this._attributes;
@@ -369,12 +376,14 @@ class Device extends EventEmitter {
         return null;
       }
 
-      return {
+      this._attributesFromDevice = {
         particleProductId: payload.readUInt16BE(0),
         platformId: payload.readUInt16BE(6),
         productFirmwareVersion: payload.readUInt16BE(2),
         reservedFlags: payload.readUInt16BE(4),
       };
+
+      return this._attributesFromDevice;
     } catch (error) {
       logger.error({ err: error }, 'error while parsing hello payload ');
       return null;
