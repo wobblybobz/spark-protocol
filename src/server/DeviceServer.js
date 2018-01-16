@@ -971,7 +971,6 @@ class DeviceServer {
   };
 
   _flashDevice = async (productDevice: ?ProductDevice): Promise<void> => {
-    console.log(0);
     if (
       !productDevice ||
       productDevice.denied ||
@@ -980,7 +979,7 @@ class DeviceServer {
     ) {
       return;
     }
-    console.log(1);
+
     const device = this._devicesById.get(productDevice.deviceID);
     if (!device) {
       return;
@@ -996,7 +995,6 @@ class DeviceServer {
       );
       return;
     }
-    console.log(2);
 
     let productFirmware = null;
 
@@ -1011,7 +1009,6 @@ class DeviceServer {
     ) {
       return;
     }
-    console.log(3);
 
     if (lockedFirmwareVersion !== null) {
       productFirmware = await this._productFirmwareRepository.getByVersionForProduct(
@@ -1027,17 +1024,6 @@ class DeviceServer {
     if (!productFirmware) {
       return;
     }
-    console.log(4);
-    // eslint-disable-next-line no-unused-vars
-    const { data, ...other } = productFirmware;
-    logger.info(
-      {
-        deviceAttributes: device.getAttributes(),
-        productDevice,
-        productFirmware: other,
-      },
-      'Info!!!',
-    );
 
     // TODO - check appHash as well.  We should be saving this alongside the firmware
     if (
@@ -1046,14 +1032,13 @@ class DeviceServer {
     ) {
       return;
     }
-    console.log(5);
 
-    // Check if product is in safe mode
+    // Check if product is in safe mode. For some reason it returns this weird
+    // firmware code when it's in this state.
     const deviceAttributes = device.getAttributes();
     if (deviceAttributes.productFirmwareVersion === 65535) {
       return;
     }
-    console.log(6);
 
     await device.flash(productFirmware.data);
     const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
