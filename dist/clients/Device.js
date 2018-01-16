@@ -457,10 +457,10 @@ var Device = function (_EventEmitter) {
               logger.info({
                 cache_key: _this._connectionKey,
                 deviceID: _this.getDeviceID(),
-                firmwareVersion: _this._attributes.productFirmwareVersion,
+                firmwareVersion: _this._attributesFromDevice.productFirmwareVersion,
                 ip: _this.getRemoteIPAddress(),
-                platformID: _this._attributes.platformId,
-                productID: _this._attributes.particleProductId
+                particleProductId: _this._attributesFromDevice.particleProductId,
+                platformId: _this._attributesFromDevice.platformId
               }, 'On device protocol initialization complete');
 
               return _context4.abrupt('return', _systemInformation);

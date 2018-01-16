@@ -1327,7 +1327,7 @@ var DeviceServer = function () {
 
     this._flashDevice = function () {
       var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22(productDevice) {
-        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, _productFirmware, data, other, oldProductFirmware;
+        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, _productFirmware, data, other, deviceAttributes, oldProductFirmware;
 
         return _regenerator2.default.wrap(function _callee22$(_context23) {
           while (1) {
@@ -1433,31 +1433,44 @@ var DeviceServer = function () {
               case 33:
                 console.log(5);
 
-                _context23.next = 36;
+                // Check if product is in safe mode
+                deviceAttributes = device.getAttributes();
+
+                if (!(deviceAttributes.productFirmwareVersion === 65535)) {
+                  _context23.next = 37;
+                  break;
+                }
+
+                return _context23.abrupt('return');
+
+              case 37:
+                console.log(6);
+
+                _context23.next = 40;
                 return device.flash(productFirmware.data);
 
-              case 36:
-                _context23.next = 38;
+              case 40:
+                _context23.next = 42;
                 return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
 
-              case 38:
+              case 42:
                 oldProductFirmware = _context23.sent;
 
                 if (!oldProductFirmware) {
-                  _context23.next = 43;
+                  _context23.next = 47;
                   break;
                 }
 
                 oldProductFirmware.device_count -= 1;
-                _context23.next = 43;
+                _context23.next = 47;
                 return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
 
-              case 43:
+              case 47:
                 productFirmware.device_count += 1;
-                _context23.next = 46;
+                _context23.next = 50;
                 return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
 
-              case 46:
+              case 50:
               case 'end':
                 return _context23.stop();
             }

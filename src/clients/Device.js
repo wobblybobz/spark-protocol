@@ -342,10 +342,10 @@ class Device extends EventEmitter {
         {
           cache_key: this._connectionKey,
           deviceID: this.getDeviceID(),
-          firmwareVersion: this._attributes.productFirmwareVersion,
+          firmwareVersion: this._attributesFromDevice.productFirmwareVersion,
           ip: this.getRemoteIPAddress(),
-          platformID: this._attributes.platformId,
-          productID: this._attributes.particleProductId,
+          particleProductId: this._attributesFromDevice.particleProductId,
+          platformId: this._attributesFromDevice.platformId,
         },
         'On device protocol initialization complete',
       );

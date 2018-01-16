@@ -1048,6 +1048,13 @@ class DeviceServer {
     }
     console.log(5);
 
+    // Check if product is in safe mode
+    const deviceAttributes = device.getAttributes();
+    if (deviceAttributes.productFirmwareVersion === 65535) {
+      return;
+    }
+    console.log(6);
+
     await device.flash(productFirmware.data);
     const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
       productDevice.productID,
