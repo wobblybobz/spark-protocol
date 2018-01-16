@@ -235,7 +235,7 @@ var Device = function (_EventEmitter) {
     _this._tokens = {};
 
     _this.getAttributes = function () {
-      return _this._attributes;
+      return (0, _extends3.default)({}, _this._attributes, _this._attributesFromDevice);
     };
 
     _this.getStatus = function () {

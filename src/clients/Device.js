@@ -153,7 +153,7 @@ class Device extends EventEmitter {
     reservedFlags: 0,
     variables: null,
   };
-  _attributesFromDevice: {
+  _attributesFromDevice: ?{
     particleProductId: number,
     platformId: number,
     productFirmwareVersion: number,
@@ -187,7 +187,10 @@ class Device extends EventEmitter {
     this._handshake = handshake;
   }
 
-  getAttributes = (): DeviceAttributes => this._attributes;
+  getAttributes = (): DeviceAttributes => ({
+    ...this._attributes,
+    ...this._attributesFromDevice,
+  });
 
   getStatus = (): DeviceStatus => this._status;
 
