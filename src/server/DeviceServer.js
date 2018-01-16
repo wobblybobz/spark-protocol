@@ -1026,11 +1026,13 @@ class DeviceServer {
       return;
     }
     console.log(4);
+    // eslint-disable-next-line no-unused-vars
+    const { data, ...other } = productFirmware;
     logger.info(
       {
         deviceAttributes: device.getAttributes(),
         productDevice,
-        productFirmware,
+        productFirmware: other,
       },
       'Info!!!',
     );

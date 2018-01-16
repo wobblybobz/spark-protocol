@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+var _objectWithoutProperties2 = require('babel-runtime/helpers/objectWithoutProperties');
+
+var _objectWithoutProperties3 = _interopRequireDefault(_objectWithoutProperties2);
+
 var _setImmediate2 = require('babel-runtime/core-js/set-immediate');
 
 var _setImmediate3 = _interopRequireDefault(_setImmediate2);
@@ -1321,7 +1325,7 @@ var DeviceServer = function () {
 
     this._flashDevice = function () {
       var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22(productDevice) {
-        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, oldProductFirmware;
+        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, _productFirmware, data, other, oldProductFirmware;
 
         return _regenerator2.default.wrap(function _callee22$(_context23) {
           while (1) {
@@ -1406,49 +1410,52 @@ var DeviceServer = function () {
 
               case 28:
                 console.log(4);
+                // eslint-disable-next-line no-unused-vars
+                _productFirmware = productFirmware, data = _productFirmware.data, other = (0, _objectWithoutProperties3.default)(_productFirmware, ['data']);
+
                 logger.info({
                   deviceAttributes: device.getAttributes(),
                   productDevice: productDevice,
-                  productFirmware: productFirmware
+                  productFirmware: other
                 }, 'Info!!!');
 
                 // TODO - check appHash as well.  We should be saving this alongside the firmware
 
                 if (!(productFirmware.product_id === particleProductId && productFirmware.version === productFirmwareVersion)) {
-                  _context23.next = 32;
+                  _context23.next = 33;
                   break;
                 }
 
                 return _context23.abrupt('return');
 
-              case 32:
+              case 33:
                 console.log(5);
 
-                _context23.next = 35;
+                _context23.next = 36;
                 return device.flash(productFirmware.data);
 
-              case 35:
-                _context23.next = 37;
+              case 36:
+                _context23.next = 38;
                 return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
 
-              case 37:
+              case 38:
                 oldProductFirmware = _context23.sent;
 
                 if (!oldProductFirmware) {
-                  _context23.next = 42;
+                  _context23.next = 43;
                   break;
                 }
 
                 oldProductFirmware.device_count -= 1;
-                _context23.next = 42;
+                _context23.next = 43;
                 return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
 
-              case 42:
+              case 43:
                 productFirmware.device_count += 1;
-                _context23.next = 45;
+                _context23.next = 46;
                 return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
 
-              case 45:
+              case 46:
               case 'end':
                 return _context23.stop();
             }
