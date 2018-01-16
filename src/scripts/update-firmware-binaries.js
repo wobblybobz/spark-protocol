@@ -77,6 +77,12 @@ const exitWithJSON = (json: Object) => {
 const downloadFile = (url: string): Promise<*> =>
   new Promise((resolve: (filename: string) => void) => {
     const filename = nullthrows(url.match(/.*\/(.*)/))[1];
+    if (fs.exists(filename)) {
+      console.log(`File Exists: ${filename}`);
+      resolve(filename);
+      return;
+    }
+
     console.log(`Downloading ${filename}...`);
     const file = fs.createWriteStream(
       `${settings.BINARIES_DIRECTORY}/${filename}`,

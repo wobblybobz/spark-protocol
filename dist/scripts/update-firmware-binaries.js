@@ -127,6 +127,12 @@ var exitWithJSON = function exitWithJSON(json) {
 var downloadFile = function downloadFile(url) {
   return new _promise2.default(function (resolve) {
     var filename = (0, _nullthrows2.default)(url.match(/.*\/(.*)/))[1];
+    if (_fs2.default.exists(filename)) {
+      console.log('File Exists: ' + filename);
+      resolve(filename);
+      return;
+    }
+
     console.log('Downloading ' + filename + '...');
     var file = _fs2.default.createWriteStream(_settings2.default.BINARIES_DIRECTORY + '/' + filename);
 
