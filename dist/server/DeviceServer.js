@@ -1320,34 +1320,46 @@ var DeviceServer = function () {
     }();
 
     this._flashDevice = function () {
-      var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee23(productDevice) {
-        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId;
+      var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22(productDevice) {
+        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, oldProductFirmware;
 
-        return _regenerator2.default.wrap(function _callee23$(_context24) {
+        return _regenerator2.default.wrap(function _callee22$(_context23) {
           while (1) {
-            switch (_context24.prev = _context24.next) {
+            switch (_context23.prev = _context23.next) {
               case 0:
                 console.log(0);
 
                 if (!(!productDevice || productDevice.denied || productDevice.development || productDevice.quarantined)) {
-                  _context24.next = 3;
+                  _context23.next = 3;
                   break;
                 }
 
-                return _context24.abrupt('return');
+                return _context23.abrupt('return');
 
               case 3:
                 console.log(1);
                 device = _this._devicesById.get(productDevice.deviceID);
 
                 if (device) {
-                  _context24.next = 7;
+                  _context23.next = 7;
                   break;
                 }
 
-                return _context24.abrupt('return');
+                return _context23.abrupt('return');
 
               case 7:
+                if (!device.isFlashing()) {
+                  _context23.next = 10;
+                  break;
+                }
+
+                logger.logInfo({
+                  deviceAttributes: device.getAttributes(),
+                  productDevice: productDevice
+                }, 'Device already flashing');
+                return _context23.abrupt('return');
+
+              case 10:
                 console.log(2);
 
                 productFirmware = null;
@@ -1355,110 +1367,93 @@ var DeviceServer = function () {
                 _device$getAttributes7 = device.getAttributes(), productFirmwareVersion = _device$getAttributes7.productFirmwareVersion, particleProductId = _device$getAttributes7.particleProductId;
 
                 if (!(particleProductId === productDevice.productID && lockedFirmwareVersion === productFirmwareVersion)) {
-                  _context24.next = 13;
+                  _context23.next = 16;
                   break;
                 }
 
-                return _context24.abrupt('return');
+                return _context23.abrupt('return');
 
-              case 13:
+              case 16:
                 console.log(3);
 
                 if (!(lockedFirmwareVersion !== null)) {
-                  _context24.next = 20;
+                  _context23.next = 23;
                   break;
                 }
 
-                _context24.next = 17;
+                _context23.next = 20;
                 return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, (0, _nullthrows10.default)(lockedFirmwareVersion));
 
-              case 17:
-                productFirmware = _context24.sent;
-                _context24.next = 23;
+              case 20:
+                productFirmware = _context23.sent;
+                _context23.next = 26;
                 break;
 
-              case 20:
-                _context24.next = 22;
+              case 23:
+                _context23.next = 25;
                 return _this._productFirmwareRepository.getCurrentForProduct(productDevice.productID);
 
-              case 22:
-                productFirmware = _context24.sent;
+              case 25:
+                productFirmware = _context23.sent;
 
-              case 23:
+              case 26:
                 if (productFirmware) {
-                  _context24.next = 25;
+                  _context23.next = 28;
                   break;
                 }
 
-                return _context24.abrupt('return');
+                return _context23.abrupt('return');
 
-              case 25:
+              case 28:
                 console.log(4);
+                logger.logInfo({
+                  deviceAttributes: device.getAttributes(),
+                  productDevice: productDevice,
+                  productFirmware: productFirmware
+                }, 'Info!!!');
 
                 // TODO - check appHash as well.  We should be saving this alongside the firmware
 
                 if (!(productFirmware.product_id === particleProductId && productFirmware.version === productFirmwareVersion)) {
-                  _context24.next = 28;
+                  _context23.next = 32;
                   break;
                 }
 
-                return _context24.abrupt('return');
+                return _context23.abrupt('return');
 
-              case 28:
+              case 32:
                 console.log(5);
 
-                setTimeout((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22() {
-                  var oldProductFirmware;
-                  return _regenerator2.default.wrap(function _callee22$(_context23) {
-                    while (1) {
-                      switch (_context23.prev = _context23.next) {
-                        case 0:
-                          if (!(!productFirmware || !productDevice)) {
-                            _context23.next = 2;
-                            break;
-                          }
+                _context23.next = 35;
+                return device.flash(productFirmware.data);
 
-                          return _context23.abrupt('return');
+              case 35:
+                _context23.next = 37;
+                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
 
-                        case 2:
-                          _context23.next = 4;
-                          return device.flash(productFirmware.data);
+              case 37:
+                oldProductFirmware = _context23.sent;
 
-                        case 4:
-                          _context23.next = 6;
-                          return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
+                if (!oldProductFirmware) {
+                  _context23.next = 42;
+                  break;
+                }
 
-                        case 6:
-                          oldProductFirmware = _context23.sent;
+                oldProductFirmware.device_count -= 1;
+                _context23.next = 42;
+                return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
 
-                          if (!oldProductFirmware) {
-                            _context23.next = 11;
-                            break;
-                          }
+              case 42:
+                productFirmware.device_count += 1;
+                _context23.next = 45;
+                return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
 
-                          oldProductFirmware.device_count -= 1;
-                          _context23.next = 11;
-                          return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
-
-                        case 11:
-                          productFirmware.device_count += 1;
-                          _context23.next = 14;
-                          return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
-
-                        case 14:
-                        case 'end':
-                          return _context23.stop();
-                      }
-                    }
-                  }, _callee22, _this);
-                })));
-
-              case 30:
+              case 45:
               case 'end':
-                return _context24.stop();
+                return _context23.stop();
             }
           }
-        }, _callee23, _this);
+        }, _callee22, _this);
       }));
 
       return function (_x20) {

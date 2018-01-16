@@ -158,6 +158,7 @@ class Device extends EventEmitter {
   _connectionStartTime: ?Date = null;
   _decipherStream: ?Duplex = null;
   _disconnectCounter: number = 0;
+  _isFlashing: boolean = false;
   _maxBinarySize: ?number = null;
   _otaChunkSize: ?number = null;
   _owningFlasher: ?Flasher;
@@ -185,6 +186,8 @@ class Device extends EventEmitter {
   getStatus = (): DeviceStatus => this._status;
 
   getSystemInformation = (): Object => nullthrows(this._systemInformation);
+
+  isFlashing = (): boolean => this._isFlashing;
 
   updateAttributes = (
     attributes: $Shape<DeviceAttributes>,
@@ -789,6 +792,8 @@ class Device extends EventEmitter {
       throw new Error('This device is locked during the flashing process.');
     }
 
+    this._isFlashing = true;
+
     const flasher = new Flasher(this, this._maxBinarySize, this._otaChunkSize);
     try {
       logger.info(
@@ -810,6 +815,7 @@ class Device extends EventEmitter {
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
+      this._isFlashing = false;
 
       return { status: 'Update finished' };
     } catch (error) {
@@ -820,6 +826,8 @@ class Device extends EventEmitter {
         },
         'flash device failed! - sending api event',
       );
+
+      this._isFlashing = false;
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
       throw new Error(`Update failed: ${error.message}`);

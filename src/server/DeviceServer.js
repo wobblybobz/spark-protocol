@@ -983,6 +983,17 @@ class DeviceServer {
     if (!device) {
       return;
     }
+
+    if (device.isFlashing()) {
+      logger.logInfo(
+        {
+          deviceAttributes: device.getAttributes(),
+          productDevice,
+        },
+        'Device already flashing',
+      );
+      return;
+    }
     console.log(2);
 
     let productFirmware = null;
@@ -1015,6 +1026,14 @@ class DeviceServer {
       return;
     }
     console.log(4);
+    logger.logInfo(
+      {
+        deviceAttributes: device.getAttributes(),
+        productDevice,
+        productFirmware,
+      },
+      'Info!!!',
+    );
 
     // TODO - check appHash as well.  We should be saving this alongside the firmware
     if (
@@ -1025,31 +1044,25 @@ class DeviceServer {
     }
     console.log(5);
 
-    setTimeout(async (): void => {
-      if (!productFirmware || !productDevice) {
-        return;
-      }
+    await device.flash(productFirmware.data);
+    const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
+      productDevice.productID,
+      productFirmwareVersion,
+    );
 
-      await device.flash(productFirmware.data);
-      const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
-        productDevice.productID,
-        productFirmwareVersion,
-      );
-
-      // Update the number of devices on the firmware versions
-      if (oldProductFirmware) {
-        oldProductFirmware.device_count -= 1;
-        await this._productFirmwareRepository.updateByID(
-          oldProductFirmware.id,
-          oldProductFirmware,
-        );
-      }
-      productFirmware.device_count += 1;
+    // Update the number of devices on the firmware versions
+    if (oldProductFirmware) {
+      oldProductFirmware.device_count -= 1;
       await this._productFirmwareRepository.updateByID(
-        productFirmware.id,
-        productFirmware,
+        oldProductFirmware.id,
+        oldProductFirmware,
       );
-    });
+    }
+    productFirmware.device_count += 1;
+    await this._productFirmwareRepository.updateByID(
+      productFirmware.id,
+      productFirmware,
+    );
   };
 
   getDevice = (deviceID: string): ?Device => this._devicesById.get(deviceID);

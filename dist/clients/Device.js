@@ -222,6 +222,7 @@ var Device = function (_EventEmitter) {
     _this._connectionStartTime = null;
     _this._decipherStream = null;
     _this._disconnectCounter = 0;
+    _this._isFlashing = false;
     _this._maxBinarySize = null;
     _this._otaChunkSize = null;
     _this._receiveCounter = 0;
@@ -242,6 +243,10 @@ var Device = function (_EventEmitter) {
 
     _this.getSystemInformation = function () {
       return (0, _nullthrows2.default)(_this._systemInformation);
+    };
+
+    _this.isFlashing = function () {
+      return _this._isFlashing;
     };
 
     _this.updateAttributes = function (attributes) {
@@ -952,8 +957,11 @@ var Device = function (_EventEmitter) {
                 throw new Error('This device is locked during the flashing process.');
 
               case 3:
+
+                _this._isFlashing = true;
+
                 flasher = new _Flasher2.default(_this, _this._maxBinarySize, _this._otaChunkSize);
-                _context9.prev = 4;
+                _context9.prev = 5;
 
                 logger.info({
                   deviceID: _this.getDeviceID()
@@ -961,37 +969,40 @@ var Device = function (_EventEmitter) {
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
-                _context9.next = 9;
+                _context9.next = 10;
                 return flasher.startFlashBuffer(binary, fileTransferStore, address);
 
-              case 9:
+              case 10:
 
                 logger.info({
                   deviceID: _this.getDeviceID()
                 }, 'flash device finished! - sending api event');
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
+                _this._isFlashing = false;
 
                 return _context9.abrupt('return', { status: 'Update finished' });
 
-              case 14:
-                _context9.prev = 14;
-                _context9.t0 = _context9['catch'](4);
+              case 16:
+                _context9.prev = 16;
+                _context9.t0 = _context9['catch'](5);
 
                 logger.info({
                   deviceID: _this.getDeviceID(),
                   error: _context9.t0
                 }, 'flash device failed! - sending api event');
 
+                _this._isFlashing = false;
+
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
                 throw new Error('Update failed: ' + _context9.t0.message);
 
-              case 19:
+              case 22:
               case 'end':
                 return _context9.stop();
             }
           }
-        }, _callee9, _this2, [[4, 14]]);
+        }, _callee9, _this2, [[5, 16]]);
       }));
 
       return function (_x9) {
