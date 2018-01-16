@@ -1018,32 +1018,38 @@ class DeviceServer {
 
     // TODO - check appHash as well.  We should be saving this alongside the firmware
     if (
-      particleProductId === productDevice.productID &&
+      productFirmware.product_id === particleProductId &&
       productFirmware.version === productFirmwareVersion
     ) {
       return;
     }
     console.log(5);
 
-    await device.flash(productFirmware.data);
-    const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
-      productDevice.productID,
-      productFirmwareVersion,
-    );
+    setTimeout(async (): void => {
+      if (!productFirmware || !productDevice) {
+        return;
+      }
 
-    // Update the number of devices on the firmware versions
-    if (oldProductFirmware) {
-      oldProductFirmware.device_count -= 1;
-      await this._productFirmwareRepository.updateByID(
-        oldProductFirmware.id,
-        oldProductFirmware,
+      await device.flash(productFirmware.data);
+      const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
+        productDevice.productID,
+        productFirmwareVersion,
       );
-    }
-    productFirmware.device_count += 1;
-    await this._productFirmwareRepository.updateByID(
-      productFirmware.id,
-      productFirmware,
-    );
+
+      // Update the number of devices on the firmware versions
+      if (oldProductFirmware) {
+        oldProductFirmware.device_count -= 1;
+        await this._productFirmwareRepository.updateByID(
+          oldProductFirmware.id,
+          oldProductFirmware,
+        );
+      }
+      productFirmware.device_count += 1;
+      await this._productFirmwareRepository.updateByID(
+        productFirmware.id,
+        productFirmware,
+      );
+    });
   };
 
   getDevice = (deviceID: string): ?Device => this._devicesById.get(deviceID);

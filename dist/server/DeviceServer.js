@@ -1320,32 +1320,32 @@ var DeviceServer = function () {
     }();
 
     this._flashDevice = function () {
-      var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22(productDevice) {
-        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, oldProductFirmware;
+      var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee23(productDevice) {
+        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId;
 
-        return _regenerator2.default.wrap(function _callee22$(_context23) {
+        return _regenerator2.default.wrap(function _callee23$(_context24) {
           while (1) {
-            switch (_context23.prev = _context23.next) {
+            switch (_context24.prev = _context24.next) {
               case 0:
                 console.log(0);
 
                 if (!(!productDevice || productDevice.denied || productDevice.development || productDevice.quarantined)) {
-                  _context23.next = 3;
+                  _context24.next = 3;
                   break;
                 }
 
-                return _context23.abrupt('return');
+                return _context24.abrupt('return');
 
               case 3:
                 console.log(1);
                 device = _this._devicesById.get(productDevice.deviceID);
 
                 if (device) {
-                  _context23.next = 7;
+                  _context24.next = 7;
                   break;
                 }
 
-                return _context23.abrupt('return');
+                return _context24.abrupt('return');
 
               case 7:
                 console.log(2);
@@ -1355,88 +1355,110 @@ var DeviceServer = function () {
                 _device$getAttributes7 = device.getAttributes(), productFirmwareVersion = _device$getAttributes7.productFirmwareVersion, particleProductId = _device$getAttributes7.particleProductId;
 
                 if (!(particleProductId === productDevice.productID && lockedFirmwareVersion === productFirmwareVersion)) {
-                  _context23.next = 13;
+                  _context24.next = 13;
                   break;
                 }
 
-                return _context23.abrupt('return');
+                return _context24.abrupt('return');
 
               case 13:
                 console.log(3);
 
                 if (!(lockedFirmwareVersion !== null)) {
-                  _context23.next = 20;
+                  _context24.next = 20;
                   break;
                 }
 
-                _context23.next = 17;
+                _context24.next = 17;
                 return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, (0, _nullthrows10.default)(lockedFirmwareVersion));
 
               case 17:
-                productFirmware = _context23.sent;
-                _context23.next = 23;
+                productFirmware = _context24.sent;
+                _context24.next = 23;
                 break;
 
               case 20:
-                _context23.next = 22;
+                _context24.next = 22;
                 return _this._productFirmwareRepository.getCurrentForProduct(productDevice.productID);
 
               case 22:
-                productFirmware = _context23.sent;
+                productFirmware = _context24.sent;
 
               case 23:
                 if (productFirmware) {
-                  _context23.next = 25;
+                  _context24.next = 25;
                   break;
                 }
 
-                return _context23.abrupt('return');
+                return _context24.abrupt('return');
 
               case 25:
                 console.log(4);
 
                 // TODO - check appHash as well.  We should be saving this alongside the firmware
 
-                if (!(particleProductId === productDevice.productID && productFirmware.version === productFirmwareVersion)) {
-                  _context23.next = 28;
+                if (!(productFirmware.product_id === particleProductId && productFirmware.version === productFirmwareVersion)) {
+                  _context24.next = 28;
                   break;
                 }
 
-                return _context23.abrupt('return');
+                return _context24.abrupt('return');
 
               case 28:
                 console.log(5);
 
-                _context23.next = 31;
-                return device.flash(productFirmware.data);
+                setTimeout((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22() {
+                  var oldProductFirmware;
+                  return _regenerator2.default.wrap(function _callee22$(_context23) {
+                    while (1) {
+                      switch (_context23.prev = _context23.next) {
+                        case 0:
+                          if (!(!productFirmware || !productDevice)) {
+                            _context23.next = 2;
+                            break;
+                          }
 
-              case 31:
-                _context23.next = 33;
-                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
+                          return _context23.abrupt('return');
 
-              case 33:
-                oldProductFirmware = _context23.sent;
+                        case 2:
+                          _context23.next = 4;
+                          return device.flash(productFirmware.data);
 
-                if (!oldProductFirmware) {
-                  _context23.next = 38;
-                  break;
-                }
+                        case 4:
+                          _context23.next = 6;
+                          return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
 
-                oldProductFirmware.device_count -= 1;
-                _context23.next = 38;
-                return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
+                        case 6:
+                          oldProductFirmware = _context23.sent;
 
-              case 38:
-                productFirmware.device_count += 1;
-                _context23.next = 41;
-                return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
+                          if (!oldProductFirmware) {
+                            _context23.next = 11;
+                            break;
+                          }
 
-              case 41:
+                          oldProductFirmware.device_count -= 1;
+                          _context23.next = 11;
+                          return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
+
+                        case 11:
+                          productFirmware.device_count += 1;
+                          _context23.next = 14;
+                          return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
+
+                        case 14:
+                        case 'end':
+                          return _context23.stop();
+                      }
+                    }
+                  }, _callee22, _this);
+                })));
+
+              case 30:
               case 'end':
-                return _context23.stop();
+                return _context24.stop();
             }
           }
-        }, _callee22, _this);
+        }, _callee23, _this);
       }));
 
       return function (_x20) {
