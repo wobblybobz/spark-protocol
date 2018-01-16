@@ -969,6 +969,7 @@ class DeviceServer {
   };
 
   _flashDevice = async (productDevice: ?ProductDevice): Promise<void> => {
+    console.log(0);
     if (
       !productDevice ||
       productDevice.denied ||
@@ -977,11 +978,12 @@ class DeviceServer {
     ) {
       return;
     }
-
+    console.log(1);
     const device = this._devicesById.get(productDevice.deviceID);
     if (!device) {
       return;
     }
+    console.log(2);
 
     let productFirmware = null;
 
@@ -996,6 +998,7 @@ class DeviceServer {
     ) {
       return;
     }
+    console.log(3);
 
     if (lockedFirmwareVersion !== null) {
       productFirmware = await this._productFirmwareRepository.getByVersionForProduct(
@@ -1011,11 +1014,16 @@ class DeviceServer {
     if (!productFirmware) {
       return;
     }
+    console.log(4);
 
     // TODO - check appHash as well.  We should be saving this alongside the firmware
-    if (productFirmware.version === productFirmwareVersion) {
+    if (
+      particleProductId === productDevice.productID &&
+      productFirmware.version === productFirmwareVersion
+    ) {
       return;
     }
+    console.log(5);
 
     await device.flash(productFirmware.data);
     const oldProductFirmware = await this._productFirmwareRepository.getByVersionForProduct(
