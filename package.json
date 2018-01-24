@@ -18,8 +18,7 @@
     "build": "babel ./src --out-dir ./dist",
     "lint": "eslint --fix --max-warnings 0 -- .",
     "lint-staged": "lint-staged",
-    "prettify":
-      "prettier --single-quote --trailing-comma all --write src/*/**.js test/*/**.js",
+    "prettify": "prettier --single-quote --trailing-comma all --write src/*/**.js test/*/**.js",
     "start": "babel ./src --out-dir ./dist --watch",
     "update-firmware": "babel-node ./src/scripts/update-firmware-binaries.js",
     "test": "ava --no-cache",
@@ -29,15 +28,30 @@
     "update-firmware": "dist/scripts/update-firmware-binaries.js"
   },
   "lint-staged": {
-    "src/**/*.js": ["lint", "prettify", "git add"],
-    "test/**/*.js": ["lint", "prettify", "git add"]
+    "src/**/*.js": [
+      "lint",
+      "prettify",
+      "git add"
+    ],
+    "test/**/*.js": [
+      "lint",
+      "prettify",
+      "git add"
+    ]
   },
-  "pre-commit": ["lint-staged", "test"],
+  "pre-commit": [
+    "lint-staged",
+    "test"
+  ],
   "ava": {
     "verbose": true,
     "babel": "inherit",
-    "files": ["test/*.test.js"],
-    "require": ["babel-register"]
+    "files": [
+      "test/*.test.js"
+    ],
+    "require": [
+      "babel-register"
+    ]
   },
   "dependencies": {
     "babel-plugin-transform-decorators": "^6.24.1",

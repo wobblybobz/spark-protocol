@@ -458,7 +458,7 @@ class DeviceServer {
         name: CoapMessages.getUriPath(packet).substr(3),
         ttl: CoapMessages.getMaxAge(packet),
       };
-      console.log('EVENT', CoapMessages.getUriPath(packet));
+
       const publishOptions: PublishOptions = {
         isInternal: false,
         isPublic,

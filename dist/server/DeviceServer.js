@@ -528,8 +528,6 @@ var DeviceServer = function () {
                   name: _CoapMessages2.default.getUriPath(packet).substr(3),
                   ttl: _CoapMessages2.default.getMaxAge(packet)
                 };
-
-                console.log('EVENT', _CoapMessages2.default.getUriPath(packet));
                 publishOptions = {
                   isInternal: false,
                   isPublic: isPublic
@@ -559,14 +557,14 @@ var DeviceServer = function () {
                 }
 
                 if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-                  _context10.next = 14;
+                  _context10.next = 13;
                   break;
                 }
 
-                _context10.next = 14;
+                _context10.next = 13;
                 return _this._onDeviceClaimCodeMessage(packet, device);
 
-              case 14:
+              case 13:
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_IP)) {
                   _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.GET_NAME, device.getRemoteIPAddress(), deviceID, ownerID, false);
@@ -603,21 +601,21 @@ var DeviceServer = function () {
                 }
 
                 if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
-                  _context10.next = 26;
+                  _context10.next = 25;
                   break;
                 }
 
                 _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE, eventData.data, deviceID, ownerID, false);
 
                 if (!_this._areSystemFirmwareAutoupdatesEnabled) {
-                  _context10.next = 26;
+                  _context10.next = 25;
                   break;
                 }
 
-                _context10.next = 26;
+                _context10.next = 25;
                 return _this._updateDeviceSystemFirmware(device);
 
-              case 26:
+              case 25:
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
                   // TODO: Test this with a Core device
@@ -625,21 +623,21 @@ var DeviceServer = function () {
                   // compare with version on disc
                   // if device version is old, do OTA update with patch
                 }
-                _context10.next = 32;
+                _context10.next = 31;
                 break;
 
-              case 29:
-                _context10.prev = 29;
+              case 28:
+                _context10.prev = 28;
                 _context10.t0 = _context10['catch'](0);
 
                 logger.error({ err: _context10.t0 }, 'Error');
 
-              case 32:
+              case 31:
               case 'end':
                 return _context10.stop();
             }
           }
-        }, _callee10, _this, [[0, 29]]);
+        }, _callee10, _this, [[0, 28]]);
       }));
 
       return function (_x5, _x6, _x7) {
