@@ -394,21 +394,21 @@ var DeviceServer = function () {
 
                           _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID, false);
 
-                          console.log('FOOOOOOOOOOOO', device.getAttributes());
-
                           // TODO
                           // we may update attributes only on disconnect, but currently
                           // removing update here can break claim/provision flow
                           // so need to test carefully before doing this.
-                          _context7.next = 29;
+                          _context7.next = 28;
                           return _this._deviceAttributeRepository.updateByID(deviceID, device.getAttributes());
 
-                        case 29:
+                        case 28:
 
                           // Send app-hash if this is a new app firmware
                           if (!existingAttributes || appHash !== existingAttributes.appHash) {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, appHash, deviceID, ownerID, false);
                           }
+
+                          device.emit(_Device.DEVICE_EVENT_NAMES.READY);
                           _context7.next = 35;
                           break;
 
@@ -528,6 +528,8 @@ var DeviceServer = function () {
                   name: _CoapMessages2.default.getUriPath(packet).substr(3),
                   ttl: _CoapMessages2.default.getMaxAge(packet)
                 };
+
+                console.log('EVENT', _CoapMessages2.default.getUriPath(packet));
                 publishOptions = {
                   isInternal: false,
                   isPublic: isPublic
@@ -557,14 +559,14 @@ var DeviceServer = function () {
                 }
 
                 if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.CLAIM_CODE)) {
-                  _context10.next = 13;
+                  _context10.next = 14;
                   break;
                 }
 
-                _context10.next = 13;
+                _context10.next = 14;
                 return _this._onDeviceClaimCodeMessage(packet, device);
 
-              case 13:
+              case 14:
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_IP)) {
                   _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.GET_NAME, device.getRemoteIPAddress(), deviceID, ownerID, false);
@@ -601,21 +603,21 @@ var DeviceServer = function () {
                 }
 
                 if (!eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE)) {
-                  _context10.next = 25;
+                  _context10.next = 26;
                   break;
                 }
 
                 _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE, eventData.data, deviceID, ownerID, false);
 
                 if (!_this._areSystemFirmwareAutoupdatesEnabled) {
-                  _context10.next = 25;
+                  _context10.next = 26;
                   break;
                 }
 
-                _context10.next = 25;
+                _context10.next = 26;
                 return _this._updateDeviceSystemFirmware(device);
 
-              case 25:
+              case 26:
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.SPARK_SUBSYSTEM)) {
                   // TODO: Test this with a Core device
@@ -623,21 +625,21 @@ var DeviceServer = function () {
                   // compare with version on disc
                   // if device version is old, do OTA update with patch
                 }
-                _context10.next = 31;
+                _context10.next = 32;
                 break;
 
-              case 28:
-                _context10.prev = 28;
+              case 29:
+                _context10.prev = 29;
                 _context10.t0 = _context10['catch'](0);
 
                 logger.error({ err: _context10.t0 }, 'Error');
 
-              case 31:
+              case 32:
               case 'end':
                 return _context10.stop();
             }
           }
-        }, _callee10, _this, [[0, 28]]);
+        }, _callee10, _this, [[0, 29]]);
       }));
 
       return function (_x5, _x6, _x7) {

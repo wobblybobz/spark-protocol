@@ -363,8 +363,6 @@ class DeviceServer {
             false,
           );
 
-          console.log('FOOOOOOOOOOOO', device.getAttributes());
-
           // TODO
           // we may update attributes only on disconnect, but currently
           // removing update here can break claim/provision flow
@@ -384,6 +382,8 @@ class DeviceServer {
               false,
             );
           }
+
+          device.emit(DEVICE_EVENT_NAMES.READY);
         } catch (error) {
           device.disconnect(
             `Error during connection: ${error}: ${error.stack}`,
@@ -458,6 +458,7 @@ class DeviceServer {
         name: CoapMessages.getUriPath(packet).substr(3),
         ttl: CoapMessages.getMaxAge(packet),
       };
+      console.log('EVENT', CoapMessages.getUriPath(packet));
       const publishOptions: PublishOptions = {
         isInternal: false,
         isPublic,
