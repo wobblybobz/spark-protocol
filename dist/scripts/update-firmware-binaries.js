@@ -63,7 +63,7 @@ var _nullthrows2 = _interopRequireDefault(_nullthrows);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var GITHUB_USER = 'spark';
+var GITHUB_USER = 'particle-iot';
 
 var GITHUB_FIRMWARE_REPOSITORY = 'firmware';
 var GITHUB_CLI_REPOSITORY = 'particle-cli';
@@ -254,7 +254,7 @@ var downloadAppBinaries = function () {
             _context2.next = 2;
             return githubAPI.repos.getContent({
               owner: GITHUB_USER,
-              path: 'binaries',
+              path: 'assets/binaries',
               repo: GITHUB_CLI_REPOSITORY
             });
 
@@ -353,7 +353,7 @@ var downloadAppBinaries = function () {
           _context3.next = 19;
           return githubAPI.repos.getContent({
             owner: GITHUB_USER,
-            path: 'oldlib/deviceSpecs/specifications.js',
+            path: 'src/lib/deviceSpecs/specifications.js',
             repo: GITHUB_CLI_REPOSITORY
           });
 

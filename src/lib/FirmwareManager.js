@@ -29,21 +29,21 @@ const SPECIFICATION_KEY_BY_PLATFORM = new Map(
     .filter((item: [mixed, ?string]): boolean => !!item[1]),
 );
 const FIRMWARE_VERSION_BY_PLATFORM_ID = new Map(
-  Object.entries(settings.versionNumbers).map(
-    ([platform, version]: [string, any]): [number, string] => {
-      const specsForPlatform: any = nullthrows(
-        Object.values(specifications).find(
-          (item: any): boolean => item.productName.toLowerCase() === platform,
-        ),
-      );
+  Object.entries(
+    settings.versionNumbers,
+  ).map(([platform, version]: [string, any]): [number, string] => {
+    const specsForPlatform: any = nullthrows(
+      Object.values(specifications).find(
+        (item: any): boolean => item.productName.toLowerCase() === platform,
+      ),
+    );
 
-      const releaseVersion = versions.find(
-        (item: Array<*>): boolean => item[1] === version,
-      )[0];
+    const releaseVersion = versions.find(
+      (item: Array<*>): boolean => item[1] === version,
+    )[0];
 
-      return [specsForPlatform.productId, releaseVersion];
-    },
-  ),
+    return [specsForPlatform.productId, releaseVersion];
+  }),
 );
 
 class FirmwareManager {
