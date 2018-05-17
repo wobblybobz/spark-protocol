@@ -21,7 +21,6 @@
 import type { EventData, ProtocolEvent, PublishOptions } from '../types';
 
 import EventEmitter from 'events';
-import nullthrows from 'nullthrows';
 import uuid from 'uuid';
 import settings from '../settings';
 
@@ -97,7 +96,7 @@ class EventPublisher extends EventEmitter {
         reject: (error: Error) => void,
       ) => {
         const responseListener = (event: ProtocolEvent): void =>
-          resolve(nullthrows(event.context));
+          resolve(event.context);
 
         this.subscribe(responseEventName, responseListener, {
           once: true,
