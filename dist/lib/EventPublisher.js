@@ -129,7 +129,7 @@ var EventPublisher = function (_EventEmitter) {
                 responseEventName = eventData.name + '/response/' + eventID;
                 return _context.abrupt('return', new _promise2.default(function (resolve, reject) {
                   var responseListener = function responseListener(event) {
-                    return resolve(event.context);
+                    return resolve(event.context || null);
                   };
 
                   _this.subscribe(responseEventName, responseListener, {

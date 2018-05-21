@@ -83,7 +83,7 @@ class EventPublisher extends EventEmitter {
 
   publishAndListenForResponse = async (
     eventData: EventData,
-  ): Promise<Object> => {
+  ): Promise<?Object> => {
     const eventID = uuid();
     const requestEventName = `${getRequestEventName(
       eventData.name,
@@ -91,12 +91,9 @@ class EventPublisher extends EventEmitter {
     const responseEventName = `${eventData.name}/response/${eventID}`;
 
     return new Promise(
-      (
-        resolve: (event: ProtocolEvent) => void,
-        reject: (error: Error) => void,
-      ) => {
+      (resolve: (event: ?Object) => void, reject: (error: Error) => void) => {
         const responseListener = (event: ProtocolEvent): void =>
-          resolve(event.context);
+          resolve(event.context || null);
 
         this.subscribe(responseEventName, responseListener, {
           once: true,
@@ -125,7 +122,7 @@ class EventPublisher extends EventEmitter {
 
   subscribe = (
     eventNamePrefix: string = '*',
-    eventHandler: (event: ProtocolEvent) => void | Promise<void>,
+    eventHandler: <TResponse>(event: ProtocolEvent) => void | Promise<*>,
     options?: SubscriptionOptions = {},
   ): string => {
     const {
