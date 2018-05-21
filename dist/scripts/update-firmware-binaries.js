@@ -1,6 +1,18 @@
 #! /usr/bin/env node
 'use strict';
 
+var _toConsumableArray2 = require('babel-runtime/helpers/toConsumableArray');
+
+var _toConsumableArray3 = _interopRequireDefault(_toConsumableArray2);
+
+var _stringify = require('babel-runtime/core-js/json/stringify');
+
+var _stringify2 = _interopRequireDefault(_stringify);
+
+var _extends2 = require('babel-runtime/helpers/extends');
+
+var _extends3 = _interopRequireDefault(_extends2);
+
 var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
@@ -12,10 +24,6 @@ var _regenerator2 = _interopRequireDefault(_regenerator);
 var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
-
-var _stringify = require('babel-runtime/core-js/json/stringify');
-
-var _stringify2 = _interopRequireDefault(_stringify);
 
 var _values = require('babel-runtime/core-js/object/values');
 
@@ -112,13 +120,13 @@ var _process$env = process.env,
 
 
 if (!GITHUB_AUTH_TYPE) {
-  throw 'You need to set up a .env file with auth credentials';
+  throw new Error('You need to set up a .env file with auth credentials');
 }
 
 if (GITHUB_AUTH_TYPE === 'oauth') {
   githubAPI.authenticate({
-    type: GITHUB_AUTH_TYPE,
-    token: GITHUB_AUTH_TOKEN
+    token: GITHUB_AUTH_TOKEN,
+    type: GITHUB_AUTH_TYPE
   });
 } else {
   githubAPI.authenticate({
@@ -128,18 +136,9 @@ if (GITHUB_AUTH_TYPE === 'oauth') {
   });
 }
 
-var exitWithMessage = function exitWithMessage(message) {
-  console.log(message);
-  process.exit(0);
-};
-
-var exitWithJSON = function exitWithJSON(json) {
-  exitWithMessage((0, _stringify2.default)(json, null, 2));
-};
-
 var downloadAssetFile = function () {
   var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee(asset) {
-    var url, filename, fileWithPath, regex;
+    var url, filename, fileWithPath;
     return _regenerator2.default.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
@@ -160,7 +159,6 @@ var downloadAssetFile = function () {
 
             console.log('Downloading ' + filename + '...');
 
-            regex = '.*(' + GITHUB_FIRMWARE_REPOSITORY + '/)(.*)';
             return _context.abrupt('return', githubAPI.repos.getAsset({
               headers: {
                 accept: 'application/octet-stream'
@@ -175,7 +173,7 @@ var downloadAssetFile = function () {
               return console.error(asset, error);
             }));
 
-          case 9:
+          case 8:
           case 'end':
             return _context.stop();
         }
@@ -190,7 +188,7 @@ var downloadAssetFile = function () {
 
 var downloadBlob = function () {
   var _ref2 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(asset) {
-    var filename, fileWithPath, regex;
+    var filename, fileWithPath;
     return _regenerator2.default.wrap(function _callee2$(_context2) {
       while (1) {
         switch (_context2.prev = _context2.next) {
@@ -210,7 +208,6 @@ var downloadBlob = function () {
 
             console.log('Downloading ' + filename + '...');
 
-            regex = '.*(' + GITHUB_FIRMWARE_REPOSITORY + '/)(.*)';
             return _context2.abrupt('return', githubAPI.gitdata.getBlob({
               headers: {
                 accept: 'application/vnd.github.v3.raw'
@@ -225,7 +222,7 @@ var downloadBlob = function () {
               return console.error(error);
             }));
 
-          case 8:
+          case 7:
           case 'end':
             return _context2.stop();
         }
@@ -288,10 +285,10 @@ var updateSettings = function () {
             return _promise2.default.all(binaryFileNames.map(function (filename) {
               return new _promise2.default(function (resolve) {
                 return parser.parseFile(_settings2.default.BINARIES_DIRECTORY + '/' + filename, function (result) {
-                  delete result.fileBuffer;
-                  result.fullpath = result.filename;
-                  result.filename = filename;
-                  resolve(result);
+                  resolve((0, _extends3.default)({}, result, {
+                    fileBuffer: undefined,
+                    filename: filename
+                  }));
                 });
               });
             }));
@@ -355,7 +352,8 @@ var downloadAppBinaries = function () {
 }();
 
 (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6() {
-  var releases, assets, downloadedBinaries;
+  var _ref7, releases, assets, downloadedBinaries;
+
   return _regenerator2.default.wrap(function _callee6$(_context6) {
     while (1) {
       switch (_context6.prev = _context6.next) {
@@ -406,9 +404,9 @@ var downloadAppBinaries = function () {
             return 0;
           });
 
-          assets = [].concat.apply([], releases.data.map(function (release) {
+          assets = (_ref7 = []).concat.apply(_ref7, (0, _toConsumableArray3.default)(releases.data.map(function (release) {
             return release.assets;
-          }));
+          })));
           _context6.next = 18;
           return downloadFirmwareBinaries(assets);
 
