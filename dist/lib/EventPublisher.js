@@ -100,15 +100,10 @@ var EventPublisher = function (_EventEmitter) {
       args[_key] = arguments[_key];
     }
 
-    return _ret = (_temp = (_this = (0, _possibleConstructorReturn3.default)(this, (_ref = EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call.apply(_ref, [this].concat(args))), _this), _this._subscriptionsByID = new _map2.default(), _this.publish = function (eventData) {
-      var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
-        isInternal: false,
-        isPublic: false
-      };
-
+    return _ret = (_temp = (_this = (0, _possibleConstructorReturn3.default)(this, (_ref = EventPublisher.__proto__ || (0, _getPrototypeOf2.default)(EventPublisher)).call.apply(_ref, [this].concat(args))), _this), _this._subscriptionsByID = new _map2.default(), _this.publish = function (eventData, options) {
       var ttl = eventData.ttl && eventData.ttl > 0 ? eventData.ttl : _settings2.default.DEFAULT_EVENT_TTL;
 
-      var event = (0, _extends3.default)({}, eventData, options, {
+      var event = (0, _extends3.default)({}, eventData, options || {}, {
         publishedAt: new Date(),
         ttl: ttl
       });
@@ -159,7 +154,7 @@ var EventPublisher = function (_EventEmitter) {
         }, _callee, _this2);
       }));
 
-      return function (_x2) {
+      return function (_x) {
         return _ref2.apply(this, arguments);
       };
     }(), _this.subscribe = function () {

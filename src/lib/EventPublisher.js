@@ -56,13 +56,7 @@ type Subscription = {
 class EventPublisher extends EventEmitter {
   _subscriptionsByID: Map<string, Subscription> = new Map();
 
-  publish = (
-    eventData: EventData,
-    options: ?PublishOptions = {
-      isInternal: false,
-      isPublic: false,
-    },
-  ) => {
+  publish = (eventData: EventData, options: ?PublishOptions) => {
     const ttl =
       eventData.ttl && eventData.ttl > 0
         ? eventData.ttl
@@ -70,7 +64,7 @@ class EventPublisher extends EventEmitter {
 
     const event: ProtocolEvent = {
       ...eventData,
-      ...options,
+      ...(options || {}),
       publishedAt: new Date(),
       ttl,
     };
