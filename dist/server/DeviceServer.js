@@ -159,7 +159,7 @@ var DeviceServer = function () {
                         case 0:
                           _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SAFE_MODE_UPDATING,
                           // Lets the user know if it's the system update part 1/2/3
-                          config.moduleIndex + 1, deviceID, ownerID, false);
+                          config.moduleIndex, deviceID, ownerID, false);
 
                           _context.next = 3;
                           return device.flash(config.systemFile);
@@ -546,7 +546,7 @@ var DeviceServer = function () {
 
                   shouldSwallowEvent = !SPECIAL_EVENTS.some(function (specialEvent) {
                     return eventName.startsWith(specialEvent);
-                  });
+                  }) || device.isFlashing();
                   if (shouldSwallowEvent) {
                     device.sendReply('EventAck', packet.messageId);
                   }
