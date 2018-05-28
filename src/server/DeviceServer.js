@@ -175,9 +175,7 @@ class DeviceServer {
     const { deviceID, ownerID } = device.getAttributes();
     const systemInformation = device.getSystemInformation();
 
-    const config = await FirmwareManager.getOtaSystemUpdateConfig(
-      systemInformation,
-    );
+    const config = FirmwareManager.getOtaSystemUpdateConfig(systemInformation);
     if (!config) {
       return;
     }
@@ -990,7 +988,6 @@ class DeviceServer {
     if (device.isFlashing()) {
       logger.info(
         {
-          deviceAttributes: device.getAttributes(),
           productDevice,
         },
         'Device already flashing',
@@ -1039,6 +1036,15 @@ class DeviceServer {
     // firmware code when it's in this state.
     const deviceAttributes = device.getAttributes();
     if (deviceAttributes.productFirmwareVersion === 65535) {
+      return;
+    }
+
+    const systemInformation = device.getSystemInformation();
+    const isMissingDependency = FirmwareManager.isMissingOTAUpdate(
+      systemInformation,
+    );
+
+    if (isMissingDependency) {
       return;
     }
 

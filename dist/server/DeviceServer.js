@@ -137,20 +137,16 @@ var DeviceServer = function () {
               case 2:
                 _device$getAttributes = device.getAttributes(), deviceID = _device$getAttributes.deviceID, ownerID = _device$getAttributes.ownerID;
                 systemInformation = device.getSystemInformation();
-                _context2.next = 6;
-                return _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
-
-              case 6:
-                config = _context2.sent;
+                config = _FirmwareManager2.default.getOtaSystemUpdateConfig(systemInformation);
 
                 if (config) {
-                  _context2.next = 9;
+                  _context2.next = 7;
                   break;
                 }
 
                 return _context2.abrupt('return');
 
-              case 9:
+              case 7:
 
                 setTimeout((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
                   return _regenerator2.default.wrap(function _callee$(_context) {
@@ -172,7 +168,7 @@ var DeviceServer = function () {
                   }, _callee, _this);
                 })), 1000);
 
-              case 10:
+              case 8:
               case 'end':
                 return _context2.stop();
             }
@@ -1323,7 +1319,7 @@ var DeviceServer = function () {
 
     this._flashDevice = function () {
       var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22(productDevice) {
-        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, deviceAttributes, oldProductFirmware;
+        var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, deviceAttributes, systemInformation, isMissingDependency, oldProductFirmware;
 
         return _regenerator2.default.wrap(function _callee22$(_context23) {
           while (1) {
@@ -1353,7 +1349,6 @@ var DeviceServer = function () {
                 }
 
                 logger.info({
-                  deviceAttributes: device.getAttributes(),
                   productDevice: productDevice
                 }, 'Device already flashing');
                 return _context23.abrupt('return');
@@ -1421,31 +1416,42 @@ var DeviceServer = function () {
                 return _context23.abrupt('return');
 
               case 29:
-                _context23.next = 31;
-                return device.flash(productFirmware.data);
+                systemInformation = device.getSystemInformation();
+                isMissingDependency = _FirmwareManager2.default.isMissingOTAUpdate(systemInformation);
 
-              case 31:
-                _context23.next = 33;
-                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
+                if (!isMissingDependency) {
+                  _context23.next = 33;
+                  break;
+                }
+
+                return _context23.abrupt('return');
 
               case 33:
+                _context23.next = 35;
+                return device.flash(productFirmware.data);
+
+              case 35:
+                _context23.next = 37;
+                return _this._productFirmwareRepository.getByVersionForProduct(productDevice.productID, productFirmwareVersion);
+
+              case 37:
                 oldProductFirmware = _context23.sent;
 
                 if (!oldProductFirmware) {
-                  _context23.next = 38;
+                  _context23.next = 42;
                   break;
                 }
 
                 oldProductFirmware.device_count -= 1;
-                _context23.next = 38;
+                _context23.next = 42;
                 return _this._productFirmwareRepository.updateByID(oldProductFirmware.id, oldProductFirmware);
 
-              case 38:
+              case 42:
                 productFirmware.device_count += 1;
-                _context23.next = 41;
+                _context23.next = 45;
                 return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
 
-              case 41:
+              case 45:
               case 'end':
                 return _context23.stop();
             }

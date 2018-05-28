@@ -7,9 +7,38 @@ import protocolSettings from '../settings';
 import FirmwareSettings from '../../third-party/settings.json';
 
 class FirmwareManager {
-  static getOtaSystemUpdateConfig = async (
-    systemInformation: Object,
-  ): Promise<*> => {
+  static isMissingOTAUpdate = (systemInformation: Object): boolean =>
+    !!FirmwareManager._getMissingModule(systemInformation);
+  static getOtaSystemUpdateConfig = (systemInformation: Object): * => {
+    const firstDependency = FirmwareManager._getMissingModule(
+      systemInformation,
+    );
+    if (!firstDependency) {
+      return null;
+    }
+
+    const systemFile = fs.readFileSync(
+      `${protocolSettings.BINARIES_DIRECTORY}/${firstDependency.filename}`,
+    );
+
+    return {
+      moduleFunction: firstDependency.moduleFunction,
+      moduleIndex: firstDependency.moduleIndex,
+      systemFile,
+    };
+  };
+
+  static getAppModule = (systemInformation: Object): Object => {
+    const parser = new HalDescribeParser();
+    return nullthrows(
+      parser
+        .getModules(systemInformation)
+        // Filter so we only have the app modules
+        .find((module: Object): boolean => module.func === 'u'),
+    );
+  };
+
+  static _getMissingModule = (systemInformation: Object): ?Object => {
     const platformID = systemInformation.p;
 
     const modules = systemInformation.m;
@@ -85,7 +114,7 @@ class FirmwareManager {
     }
 
     // Find the first dependency that isn't already installed
-    const firstDependency = allFirmware
+    return allFirmware
       .filter((firmware: any): boolean => {
         const {
           moduleVersion,
@@ -100,30 +129,6 @@ class FirmwareManager {
         );
       })
       .pop();
-
-    if (!firstDependency) {
-      return null;
-    }
-
-    const systemFile = fs.readFileSync(
-      `${protocolSettings.BINARIES_DIRECTORY}/${firstDependency.filename}`,
-    );
-
-    return {
-      moduleFunction: firstDependency.moduleFunction,
-      moduleIndex: firstDependency.moduleIndex,
-      systemFile,
-    };
-  };
-
-  static getAppModule = (systemInformation: Object): Object => {
-    const parser = new HalDescribeParser();
-    return nullthrows(
-      parser
-        .getModules(systemInformation)
-        // Filter so we only have the app modules
-        .find((module: Object): boolean => module.func === 'u'),
-    );
   };
 
   getKnownAppFileName = (): ?string => {
