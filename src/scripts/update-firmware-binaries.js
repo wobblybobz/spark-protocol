@@ -15,8 +15,12 @@ let filePath = path.resolve(configDirectory, '.env');
 
 try {
   while (!fs.existsSync(filePath)) {
-    configDirectory = path.resolve('../', configDirectory);
-    filePath = path.resolve(configDirectory, '.env');
+    configDirectory = path.join(configDirectory, '..');
+    const newFilePath = path.join(configDirectory, '.env');
+    if (newFilePath === filePath) {
+      throw new Error();
+    }
+    filePath = newFilePath;
   }
 } catch (error) {
   throw new Error('You need to set up a .env file with auth credentials');
