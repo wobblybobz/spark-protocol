@@ -65,13 +65,12 @@ var configDirectory = _path2.default.resolve(process.cwd());
 var filePath = _path2.default.resolve(configDirectory, ".env");
 
 try {
-  while (!_fs2.default.existsSync(filePath)) {
+  var counter = 0;
+  while (!_fs2.default.existsSync(filePath) && counter < 5) {
+    console.log(filePath);
+    counter += 1;
     configDirectory = _path2.default.join(configDirectory, "..");
-    var newFilePath = _path2.default.join(configDirectory, ".env");
-    if (newFilePath === filePath) {
-      throw new Error();
-    }
-    filePath = newFilePath;
+    filePath = _path2.default.join(configDirectory, ".env");
   }
 } catch (error) {
   throw new Error("You need to set up a .env file with auth credentials");
