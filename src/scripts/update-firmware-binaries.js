@@ -10,7 +10,9 @@ import nullthrows from 'nullthrows';
 import { HalModuleParser } from 'binary-version-reader';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({
+  path: process.env.INIT_CWD,
+});
 
 const GITHUB_USER = 'particle-iot';
 const GITHUB_FIRMWARE_REPOSITORY = 'firmware';
@@ -111,10 +113,12 @@ const downloadAssetFile = async (asset: Asset): Promise<*> => {
       owner: GITHUB_USER,
       repo: GITHUB_FIRMWARE_REPOSITORY,
     })
-    .then((response: any): string => {
-      fs.writeFileSync(fileWithPath, response.data);
-      return filename;
-    })
+    .then(
+      (response: any): string => {
+        fs.writeFileSync(fileWithPath, response.data);
+        return filename;
+      },
+    )
     .catch((error: Error): void => console.error(asset, error));
 };
 
@@ -137,10 +141,12 @@ const downloadBlob = async (asset: any): Promise<*> => {
       repo: GITHUB_CLI_REPOSITORY,
       sha: asset.sha,
     })
-    .then((response: any): string => {
-      fs.writeFileSync(fileWithPath, response.data);
-      return filename;
-    })
+    .then(
+      (response: any): string => {
+        fs.writeFileSync(fileWithPath, response.data);
+        return filename;
+      },
+    )
     .catch((error: Error): void => console.error(error));
 };
 
@@ -148,12 +154,14 @@ const downloadFirmwareBinaries = async (
   assets: Array<Asset>,
 ): Promise<Array<string>> => {
   const assetFileNames = await Promise.all(
-    assets.map((asset: Object): Promise<string> => {
-      if (asset.name.match(/^(system-part|bootloader)/)) {
-        return downloadAssetFile(asset);
-      }
-      return Promise.resolve('');
-    }),
+    assets.map(
+      (asset: Object): Promise<string> => {
+        if (asset.name.match(/^(system-part|bootloader)/)) {
+          return downloadAssetFile(asset);
+        }
+        return Promise.resolve('');
+      },
+    ),
   );
 
   console.log();
@@ -169,17 +177,18 @@ const updateSettings = async (
   const moduleInfos = await Promise.all(
     binaryFileNames.map(
       (filename: string): Promise<any> =>
-        new Promise((resolve: (result: any) => void): void =>
-          parser.parseFile(
-            `${settings.BINARIES_DIRECTORY}/${filename}`,
-            (result: any) => {
-              resolve({
-                ...result,
-                fileBuffer: undefined,
-                filename,
-              });
-            },
-          ),
+        new Promise(
+          (resolve: (result: any) => void): void =>
+            parser.parseFile(
+              `${settings.BINARIES_DIRECTORY}/${filename}`,
+              (result: any) => {
+                resolve({
+                  ...result,
+                  fileBuffer: undefined,
+                  filename,
+                });
+              },
+            ),
         ),
     ),
   );
@@ -224,15 +233,17 @@ const downloadAppBinaries = async (): Promise<*> => {
       repo: GITHUB_FIRMWARE_REPOSITORY,
     });
 
-    releases.data.sort((a: Object, b: Object): number => {
-      if (a.tag_name < b.tag_name) {
-        return 1;
-      }
-      if (a.tag_name > b.tag_name) {
-        return -1;
-      }
-      return 0;
-    });
+    releases.data.sort(
+      (a: Object, b: Object): number => {
+        if (a.tag_name < b.tag_name) {
+          return 1;
+        }
+        if (a.tag_name > b.tag_name) {
+          return -1;
+        }
+        return 0;
+      },
+    );
 
     const assets = [].concat(
       ...releases.data.map((release: any): Array<any> => release.assets),
