@@ -61,17 +61,21 @@ var _dotenv2 = _interopRequireDefault(_dotenv);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-try {
-  var configDirectory = _path2.default.resolve(process.cwd());
+var configDirectory = _path2.default.resolve(process.cwd());
+var filePath = _path2.default.resolve(configDirectory, ".env");
 
-  while (!_dotenv2.default.config({
-    path: _path2.default.resolve(configDirectory, ".env")
-  })) {
+try {
+  while (!_fs2.default.existsSync(configDirectory)) {
     configDirectory = _path2.default.resolve("../", configDirectory);
+    filePath = _path2.default.resolve(configDirectory, ".env");
   }
 } catch (error) {
   throw new Error("You need to set up a .env file with auth credentials");
 }
+
+_dotenv2.default.config({
+  path: filePath
+});
 
 var GITHUB_USER = "particle-iot";
 var GITHUB_FIRMWARE_REPOSITORY = "firmware";
