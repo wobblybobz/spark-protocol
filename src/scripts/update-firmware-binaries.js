@@ -10,18 +10,18 @@ import nullthrows from 'nullthrows';
 import { HalModuleParser } from 'binary-version-reader';
 import dotenv from 'dotenv';
 
-let configDirectory = path.resolve(process.cwd());
-let filePath = path.resolve(configDirectory, '.env');
+const fileDirectoryStack = path.split(path.resolve(process.cwd()));
+let filePath = null;
 
-try {
-  let counter = 0;
-  while (!fs.existsSync(filePath) && counter < 5) {
-    console.log(filePath);
-    counter += 1;
-    configDirectory = path.join(configDirectory, '..');
-    filePath = path.join(configDirectory, '.env');
+while (fileDirectoryStack.length) {
+  filePath = path.join(...fileDirectoryStack, '.env');
+  console.log('Checking for .env: ', filePath);
+  if (fs.existsSync(filePath)) {
+    break;
   }
-} catch (error) {
+}
+
+if (!filePath || fileDirectoryStack.length === 0) {
   throw new Error('You need to set up a .env file with auth credentials');
 }
 

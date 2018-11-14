@@ -1,10 +1,6 @@
 #! /usr/bin/env node
 "use strict";
 
-var _toConsumableArray2 = require("babel-runtime/helpers/toConsumableArray");
-
-var _toConsumableArray3 = _interopRequireDefault(_toConsumableArray2);
-
 var _stringify = require("babel-runtime/core-js/json/stringify");
 
 var _stringify2 = _interopRequireDefault(_stringify);
@@ -28,6 +24,10 @@ var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 var _values = require("babel-runtime/core-js/object/values");
 
 var _values2 = _interopRequireDefault(_values);
+
+var _toConsumableArray2 = require("babel-runtime/helpers/toConsumableArray");
+
+var _toConsumableArray3 = _interopRequireDefault(_toConsumableArray2);
 
 var _fs = require("fs");
 
@@ -61,18 +61,18 @@ var _dotenv2 = _interopRequireDefault(_dotenv);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var configDirectory = _path2.default.resolve(process.cwd());
-var filePath = _path2.default.resolve(configDirectory, ".env");
+var fileDirectoryStack = _path2.default.split(_path2.default.resolve(process.cwd()));
+var filePath = null;
 
-try {
-  var counter = 0;
-  while (!_fs2.default.existsSync(filePath) && counter < 5) {
-    console.log(filePath);
-    counter += 1;
-    configDirectory = _path2.default.join(configDirectory, "..");
-    filePath = _path2.default.join(configDirectory, ".env");
+while (fileDirectoryStack.length) {
+  filePath = _path2.default.join.apply(_path2.default, (0, _toConsumableArray3.default)(fileDirectoryStack).concat([".env"]));
+  console.log("Checking for .env: ", filePath);
+  if (_fs2.default.existsSync(filePath)) {
+    break;
   }
-} catch (error) {
+}
+
+if (!filePath || fileDirectoryStack.length === 0) {
   throw new Error("You need to set up a .env file with auth credentials");
 }
 
