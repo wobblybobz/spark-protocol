@@ -67,7 +67,7 @@ try {
   while (!_dotenv2.default.config({
     path: _path2.default.resolve(configDirectory, ".env")
   })) {
-    configDirectory = _path2.default.resolve(configDirectory, "..");
+    configDirectory = _path2.default.resolve("../", configDirectory);
   }
 } catch (error) {
   throw new Error("You need to set up a .env file with auth credentials");

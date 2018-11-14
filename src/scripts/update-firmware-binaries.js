@@ -18,7 +18,7 @@ try {
       path: path.resolve(configDirectory, '.env'),
     })
   ) {
-    configDirectory = path.resolve(configDirectory, '..');
+    configDirectory = path.resolve('../', configDirectory);
   }
 } catch (error) {
   throw new Error('You need to set up a .env file with auth credentials');
