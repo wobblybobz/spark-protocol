@@ -14,7 +14,7 @@ let configDirectory = path.resolve(process.cwd());
 let filePath = path.resolve(configDirectory, '.env');
 
 try {
-  while (!fs.existsSync(configDirectory)) {
+  while (!fs.existsSync(filePath)) {
     configDirectory = path.resolve('../', configDirectory);
     filePath = path.resolve(configDirectory, '.env');
   }

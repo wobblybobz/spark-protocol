@@ -65,7 +65,7 @@ var configDirectory = _path2.default.resolve(process.cwd());
 var filePath = _path2.default.resolve(configDirectory, ".env");
 
 try {
-  while (!_fs2.default.existsSync(configDirectory)) {
+  while (!_fs2.default.existsSync(filePath)) {
     configDirectory = _path2.default.resolve("../", configDirectory);
     filePath = _path2.default.resolve(configDirectory, ".env");
   }
