@@ -61,7 +61,7 @@ var _dotenv2 = _interopRequireDefault(_dotenv);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var fileDirectoryStack = _path2.default.split(_path2.default.resolve(process.cwd()));
+var fileDirectoryStack = _path2.default.resolve(process.cwd()).split(_path2.default.sep);
 var filePath = null;
 
 while (fileDirectoryStack.length) {
@@ -70,6 +70,8 @@ while (fileDirectoryStack.length) {
   if (_fs2.default.existsSync(filePath)) {
     break;
   }
+
+  fileDirectoryStack.pop();
 }
 
 if (!filePath || fileDirectoryStack.length === 0) {

@@ -10,7 +10,7 @@ import nullthrows from 'nullthrows';
 import { HalModuleParser } from 'binary-version-reader';
 import dotenv from 'dotenv';
 
-const fileDirectoryStack = path.split(path.resolve(process.cwd()));
+const fileDirectoryStack = path.resolve(process.cwd()).split(path.sep);
 let filePath = null;
 
 while (fileDirectoryStack.length) {
@@ -19,6 +19,8 @@ while (fileDirectoryStack.length) {
   if (fs.existsSync(filePath)) {
     break;
   }
+
+  fileDirectoryStack.pop();
 }
 
 if (!filePath || fileDirectoryStack.length === 0) {
