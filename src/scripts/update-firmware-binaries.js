@@ -14,7 +14,7 @@ const fileDirectoryStack = path.resolve(process.cwd()).split(path.sep);
 let filePath = null;
 
 while (fileDirectoryStack.length) {
-  filePath = path.join(...fileDirectoryStack, '.env');
+  filePath = path.resolve(...fileDirectoryStack, '.env');
   console.log('Checking for .env: ', filePath);
   if (fs.existsSync(filePath)) {
     break;
@@ -24,12 +24,12 @@ while (fileDirectoryStack.length) {
 }
 
 if (!filePath || fileDirectoryStack.length === 0) {
-  throw new Error('You need to set up a .env file with auth credentials');
+  dotenv.config();
+} else {
+  dotenv.config({
+    path: filePath,
+  });
 }
-
-dotenv.config({
-  path: filePath,
-});
 
 const GITHUB_USER = 'particle-iot';
 const GITHUB_FIRMWARE_REPOSITORY = 'firmware';
