@@ -10,9 +10,19 @@ import nullthrows from 'nullthrows';
 import { HalModuleParser } from 'binary-version-reader';
 import dotenv from 'dotenv';
 
-dotenv.config({
-  path: process.env.INIT_CWD,
-});
+try {
+  let configDirectory = path.resolve(process.cwd());
+
+  while (
+    !dotenv.config({
+      path: path.resolve(configDirectory, '.env'),
+    })
+  ) {
+    configDirectory = path.resolve(configDirectory, '..');
+  }
+} catch (error) {
+  throw new Error('You need to set up a .env file with auth credentials');
+}
 
 const GITHUB_USER = 'particle-iot';
 const GITHUB_FIRMWARE_REPOSITORY = 'firmware';

@@ -1,22 +1,22 @@
 /*
-*   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
-*
-*   This program is free software; you can redistribute it and/or
-*   modify it under the terms of the GNU Lesser General Public
-*   License as published by the Free Software Foundation, either
-*   version 3 of the License, or (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-*   Lesser General Public License for more details.
-*
-*   You should have received a copy of the GNU Lesser General Public
-*   License along with this program; if not, see <http://www.gnu.org/licenses/>.
-*
-* @flow
-*
-*/
+ *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+ *
+ *   This program is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation, either
+ *   version 3 of the License, or (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *   Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *
+ * @flow
+ *
+ */
 
 import type { FileTransferStoreType } from './FileTransferStore';
 
@@ -137,8 +137,9 @@ class Flasher {
     this._chunkIndex = -1;
 
     // start listening for missed chunks before the update fully begins
-    this._client.on('ChunkMissed', (packet: CoapPacket): void =>
-      this._onChunkMissed(packet),
+    this._client.on(
+      'ChunkMissed',
+      (packet: CoapPacket): void => this._onChunkMissed(packet),
     );
   };
 
@@ -184,30 +185,33 @@ class Flasher {
         this._client.listenFor('UpdateReady', /* uri */ null, /* token */ null),
         this._client
           .listenFor('UpdateAbort', /* uri */ null, /* token */ null)
-          .then((newPacket: ?CoapPacket): ?CoapPacket => {
-            let failReason = '';
-            if (newPacket && newPacket.payload.length) {
-              failReason = !!newPacket.payload.readUInt8(0);
-            }
+          .then(
+            (newPacket: ?CoapPacket): ?CoapPacket => {
+              let failReason = '';
+              if (newPacket && newPacket.payload.length) {
+                failReason = !!newPacket.payload.readUInt8(0);
+              }
 
-            failReason = !Number.isNaN(failReason)
-              ? ProtocolErrors.get(Number.parseInt(failReason, 10)) ||
-                failReason
-              : failReason;
+              failReason = !Number.isNaN(failReason)
+                ? ProtocolErrors.get(Number.parseInt(failReason, 10)) ||
+                  failReason
+                : failReason;
 
-            throw new Error(`aborted: ${failReason}`);
-          }),
+              throw new Error(`aborted: ${failReason}`);
+            },
+          ),
 
         // Try to update multiple times
-        new Promise((resolve: () => void): number =>
-          setTimeout(() => {
-            if (maxTries <= 0) {
-              return;
-            }
+        new Promise(
+          (resolve: () => void): number =>
+            setTimeout(() => {
+              if (maxTries <= 0) {
+                return;
+              }
 
-            tryBeginUpdate();
-            resolve();
-          }, delay * 1000),
+              tryBeginUpdate();
+              resolve();
+            }, delay * 1000),
         ),
       ]);
 
@@ -342,29 +346,31 @@ class Flasher {
 
     const canUseFastOTA = this._fastOtaEnabled && this._protocolVersion > 0;
     await Promise.all(
-      missedChunks.map(async (chunkIndex: number): Promise<void> => {
-        const offset = chunkIndex * this._chunkSize;
-        nullthrows(this._fileStream).seek(offset);
-        this._chunkIndex = chunkIndex;
+      missedChunks.map(
+        async (chunkIndex: number): Promise<void> => {
+          const offset = chunkIndex * this._chunkSize;
+          nullthrows(this._fileStream).seek(offset);
+          this._chunkIndex = chunkIndex;
 
-        this._readNextChunk();
-        const messageToken = this._sendChunk(chunkIndex);
+          this._readNextChunk();
+          const messageToken = this._sendChunk(chunkIndex);
 
-        // We don't need to wait for the response if using FastOTA.
-        if (!canUseFastOTA) {
-          return;
-        }
+          // We don't need to wait for the response if using FastOTA.
+          if (!canUseFastOTA) {
+            return;
+          }
 
-        const message = await this._client.listenFor(
-          'ChunkReceived',
-          null,
-          messageToken,
-        );
+          const message = await this._client.listenFor(
+            'ChunkReceived',
+            null,
+            messageToken,
+          );
 
-        if (!CoapMessages.statusIsOkay(message)) {
-          throw new Error("'ChunkReceived' failed.");
-        }
-      }),
+          if (!CoapMessages.statusIsOkay(message)) {
+            throw new Error("'ChunkReceived' failed.");
+          }
+        },
+      ),
     );
   };
 
@@ -436,11 +442,12 @@ class Flasher {
       return Promise.resolve();
     }
 
-    return new Promise((resolve: () => void): number =>
-      setTimeout(() => {
-        logger.info('finished waiting');
-        resolve();
-      }, 3 * 1000),
+    return new Promise(
+      (resolve: () => void): number =>
+        setTimeout(() => {
+          logger.info('finished waiting');
+          resolve();
+        }, 3 * 1000),
     );
   };
 
