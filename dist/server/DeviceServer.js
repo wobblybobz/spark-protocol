@@ -124,7 +124,7 @@ var DeviceServer = function () {
     this._devicesById = new _map2.default();
 
     this._updateDeviceSystemFirmware = function () {
-      var _ref = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee2(device) {
+      var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee2(device) {
         var _device$getAttributes, deviceID, ownerID, systemInformation, config;
 
         return _regenerator2.default.wrap(function _callee2$(_context2) {
@@ -148,7 +148,7 @@ var DeviceServer = function () {
 
               case 7:
 
-                setTimeout((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee() {
+                setTimeout((0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee() {
                   return _regenerator2.default.wrap(function _callee$(_context) {
                     while (1) {
                       switch (_context.prev = _context.next) {
@@ -182,7 +182,7 @@ var DeviceServer = function () {
     }();
 
     this._checkProductFirmwareForUpdate = function () {
-      var _ref3 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee3(device) {
+      var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3(device) {
         var productDevice;
         return _regenerator2.default.wrap(function _callee3$(_context3) {
           while (1) {
@@ -210,7 +210,7 @@ var DeviceServer = function () {
     }();
 
     this._onNewSocketConnection = function () {
-      var _ref4 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee8(socket) {
+      var _ref4 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8(socket) {
         var counter, connectionKey, handshake, device, deviceID;
         return _regenerator2.default.wrap(function _callee8$(_context8) {
           while (1) {
@@ -237,7 +237,7 @@ var DeviceServer = function () {
                   remoteIPAddress: device.getRemoteIPAddress()
                 }, 'Connection');
 
-                process.nextTick((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee7() {
+                process.nextTick((0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7() {
                   var existingConnection, systemInformation, appModules, _appModules, appHash, existingAttributes, _ref9, claimCode, currentBuildTarget, imei, isCellular, last_iccid, name, ownerID, registrar;
 
                   return _regenerator2.default.wrap(function _callee7$(_context7) {
@@ -270,7 +270,7 @@ var DeviceServer = function () {
                           // there is code duplication, its not clean, but
                           // i guess we'll remove these subscription soon anyways
                           // so I keep it like this for now.
-                          device.on(_Device.DEVICE_EVENT_NAMES.FLASH_STARTED, (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee4() {
+                          device.on(_Device.DEVICE_EVENT_NAMES.FLASH_STARTED, (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee4() {
                             var _device$getAttributes2, ownerID;
 
                             return _regenerator2.default.wrap(function _callee4$(_context4) {
@@ -293,7 +293,7 @@ var DeviceServer = function () {
                             }, _callee4, _this);
                           })));
 
-                          device.on(_Device.DEVICE_EVENT_NAMES.FLASH_SUCCESS, (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee5() {
+                          device.on(_Device.DEVICE_EVENT_NAMES.FLASH_SUCCESS, (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee5() {
                             var _device$getAttributes3, ownerID;
 
                             return _regenerator2.default.wrap(function _callee5$(_context5) {
@@ -316,7 +316,7 @@ var DeviceServer = function () {
                             }, _callee5, _this);
                           })));
 
-                          device.on(_Device.DEVICE_EVENT_NAMES.FLASH_FAILED, (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee6() {
+                          device.on(_Device.DEVICE_EVENT_NAMES.FLASH_FAILED, (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6() {
                             var _device$getAttributes4, ownerID;
 
                             return _regenerator2.default.wrap(function _callee6$(_context6) {
@@ -444,7 +444,7 @@ var DeviceServer = function () {
     }();
 
     this._onDeviceDisconnect = function () {
-      var _ref10 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee9(device) {
+      var _ref10 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee9(device) {
         var attributes, deviceID, ownerID, newDevice, connectionKey;
         return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
@@ -504,7 +504,7 @@ var DeviceServer = function () {
     };
 
     this._onDeviceSentMessage = function () {
-      var _ref11 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee10(packet, isPublic, device) {
+      var _ref11 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee10(packet, isPublic, device) {
         var _device$getAttributes5, deviceID, name, ownerID, eventData, publishOptions, eventName, shouldSwallowEvent, cryptoString;
 
         return _regenerator2.default.wrap(function _callee10$(_context10) {
@@ -642,7 +642,7 @@ var DeviceServer = function () {
     }();
 
     this._onDeviceClaimCodeMessage = function () {
-      var _ref12 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee11(packet, device) {
+      var _ref12 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee11(packet, device) {
         var claimCode, _device$getAttributes6, previousClaimCode, deviceID, ownerID, claimRequestUserID;
 
         return _regenerator2.default.wrap(function _callee11$(_context11) {
@@ -703,7 +703,7 @@ var DeviceServer = function () {
     }();
 
     this._onDeviceSubscribe = function () {
-      var _ref13 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee12(packet, device) {
+      var _ref13 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee12(packet, device) {
         return _regenerator2.default.wrap(function _callee12$(_context12) {
           while (1) {
             switch (_context12.prev = _context12.next) {
@@ -773,7 +773,7 @@ var DeviceServer = function () {
     }();
 
     this._onSparkServerCallDeviceFunctionRequest = function () {
-      var _ref14 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee13(event) {
+      var _ref14 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee13(event) {
         var _nullthrows, deviceID, functionArguments, functionName, responseEventName, device;
 
         return _regenerator2.default.wrap(function _callee13$(_context13) {
@@ -839,7 +839,7 @@ var DeviceServer = function () {
     }();
 
     this._onSparkServerFlashDeviceRequest = function () {
-      var _ref15 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee14(event) {
+      var _ref15 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee14(event) {
         var _nullthrows2, deviceID, fileBuffer, responseEventName, device;
 
         return _regenerator2.default.wrap(function _callee14$(_context14) {
@@ -905,7 +905,7 @@ var DeviceServer = function () {
     }();
 
     this._onSparkServerGetDeviceAttributes = function () {
-      var _ref16 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee15(event) {
+      var _ref16 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee15(event) {
         var _nullthrows3, deviceID, responseEventName, device;
 
         return _regenerator2.default.wrap(function _callee15$(_context15) {
@@ -965,7 +965,7 @@ var DeviceServer = function () {
     }();
 
     this._onSparkServerGetDeviceVariableValueRequest = function () {
-      var _ref17 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee16(event) {
+      var _ref17 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee16(event) {
         var _nullthrows4, deviceID, responseEventName, variableName, device;
 
         return _regenerator2.default.wrap(function _callee16$(_context16) {
@@ -1034,7 +1034,7 @@ var DeviceServer = function () {
     }();
 
     this._onSparkServerPingDeviceRequest = function () {
-      var _ref18 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee17(event) {
+      var _ref18 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee17(event) {
         var _nullthrows5, deviceID, responseEventName, device, pingObject;
 
         return _regenerator2.default.wrap(function _callee17$(_context17) {
@@ -1071,7 +1071,7 @@ var DeviceServer = function () {
     }();
 
     this._onSparkServerRaiseYourHandRequest = function () {
-      var _ref19 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee18(event) {
+      var _ref19 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee18(event) {
         var _nullthrows6, deviceID, responseEventName, shouldShowSignal, device;
 
         return _regenerator2.default.wrap(function _callee18$(_context18) {
@@ -1141,7 +1141,7 @@ var DeviceServer = function () {
     }();
 
     this._onSparkServerUpdateDeviceAttributesRequest = function () {
-      var _ref20 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee19(event) {
+      var _ref20 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee19(event) {
         var _nullthrows7, attributes, deviceID, responseEventName, device;
 
         return _regenerator2.default.wrap(function _callee19$(_context19) {
@@ -1213,7 +1213,7 @@ var DeviceServer = function () {
     }();
 
     this._onFlashProductFirmware = function () {
-      var _ref21 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee21(event) {
+      var _ref21 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee21(event) {
         var _nullthrows8, deviceID, productID, productDevice, productDevices, _loop;
 
         return _regenerator2.default.wrap(function _callee21$(_context22) {
@@ -1255,7 +1255,7 @@ var DeviceServer = function () {
 
               case 12:
                 productDevices = _context22.sent;
-                _loop = _regenerator2.default.mark(function _loop() {
+                _loop = /*#__PURE__*/_regenerator2.default.mark(function _loop() {
                   var productDevice;
                   return _regenerator2.default.wrap(function _loop$(_context21) {
                     while (1) {
@@ -1264,7 +1264,7 @@ var DeviceServer = function () {
                           productDevice = productDevices.pop();
                           _context21.next = 3;
                           return new _promise2.default(function (resolve) {
-                            (0, _setImmediate3.default)((0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee20() {
+                            (0, _setImmediate3.default)((0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee20() {
                               return _regenerator2.default.wrap(function _callee20$(_context20) {
                                 while (1) {
                                   switch (_context20.prev = _context20.next) {
@@ -1318,7 +1318,7 @@ var DeviceServer = function () {
     }();
 
     this._flashDevice = function () {
-      var _ref23 = (0, _asyncToGenerator3.default)(_regenerator2.default.mark(function _callee22(productDevice) {
+      var _ref23 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee22(productDevice) {
         var device, productFirmware, lockedFirmwareVersion, _device$getAttributes7, productFirmwareVersion, particleProductId, systemInformation, isMissingDependency, oldProductFirmware;
 
         return _regenerator2.default.wrap(function _callee22$(_context23) {
