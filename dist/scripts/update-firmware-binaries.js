@@ -1,61 +1,61 @@
 #! /usr/bin/env node
-"use strict";
+'use strict';
 
-var _toConsumableArray2 = require("babel-runtime/helpers/toConsumableArray");
+var _toConsumableArray2 = require('babel-runtime/helpers/toConsumableArray');
 
 var _toConsumableArray3 = _interopRequireDefault(_toConsumableArray2);
 
-var _stringify = require("babel-runtime/core-js/json/stringify");
+var _stringify = require('babel-runtime/core-js/json/stringify');
 
 var _stringify2 = _interopRequireDefault(_stringify);
 
-var _extends2 = require("babel-runtime/helpers/extends");
+var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
 
-var _promise = require("babel-runtime/core-js/promise");
+var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
 
-var _regenerator = require("babel-runtime/regenerator");
+var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
-var _asyncToGenerator2 = require("babel-runtime/helpers/asyncToGenerator");
+var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
-var _values = require("babel-runtime/core-js/object/values");
+var _values = require('babel-runtime/core-js/object/values');
 
 var _values2 = _interopRequireDefault(_values);
 
-var _fs = require("fs");
+var _fs = require('fs');
 
 var _fs2 = _interopRequireDefault(_fs);
 
-var _path = require("path");
+var _path = require('path');
 
 var _path2 = _interopRequireDefault(_path);
 
-var _rest = require("@octokit/rest");
+var _rest = require('@octokit/rest');
 
 var _rest2 = _interopRequireDefault(_rest);
 
-var _mkdirp = require("mkdirp");
+var _mkdirp = require('mkdirp');
 
 var _mkdirp2 = _interopRequireDefault(_mkdirp);
 
-var _settings = require("../settings");
+var _settings = require('../settings');
 
 var _settings2 = _interopRequireDefault(_settings);
 
-var _nullthrows = require("nullthrows");
+var _nullthrows = require('nullthrows');
 
 var _nullthrows2 = _interopRequireDefault(_nullthrows);
 
-var _binaryVersionReader = require("binary-version-reader");
+var _binaryVersionReader = require('binary-version-reader');
 
-var _dotenv = require("dotenv");
+var _dotenv = require('dotenv');
 
 var _dotenv2 = _interopRequireDefault(_dotenv);
 
@@ -68,13 +68,13 @@ var filePath = null;
 var count = 0;
 while (count < 20) {
   count += 1;
-  filePath = _path2.default.join(fileDirectory, ".env");
-  console.log("Checking for .env: ", filePath);
+  filePath = _path2.default.join(fileDirectory, '.env');
+  console.log('Checking for .env: ', filePath);
   if (_fs2.default.existsSync(filePath)) {
     break;
   }
 
-  var newFileDirectory = _path2.default.join(fileDirectory, "..");
+  var newFileDirectory = _path2.default.join(fileDirectory, '..');
   if (newFileDirectory === fileDirectory) {
     filePath = null;
     break;
@@ -90,11 +90,11 @@ if (!filePath) {
   });
 }
 
-var GITHUB_USER = "particle-iot";
-var GITHUB_FIRMWARE_REPOSITORY = "firmware";
-var GITHUB_CLI_REPOSITORY = "particle-cli";
-var FILE_GEN_DIRECTORY = _path2.default.join(__dirname, "../../third-party/");
-var SETTINGS_FILE = FILE_GEN_DIRECTORY + "settings.json";
+var GITHUB_USER = 'particle-iot';
+var GITHUB_FIRMWARE_REPOSITORY = 'firmware';
+var GITHUB_CLI_REPOSITORY = 'particle-cli';
+var FILE_GEN_DIRECTORY = _path2.default.join(__dirname, '../../third-party/');
+var SETTINGS_FILE = FILE_GEN_DIRECTORY + 'settings.json';
 
 // This default is here so that the regex will work when updating these files.
 /* eslint-disable */
@@ -107,27 +107,27 @@ var DEFAULT_SETTINGS = {
     voodoo: true
   },
   knownPlatforms: {
-    "0": "Core",
-    "6": "Photon",
-    "8": "P1",
-    "10": "Electron",
-    "88": "Duo",
-    "103": "Bluz"
+    '0': 'Core',
+    '6': 'Photon',
+    '8': 'P1',
+    '10': 'Electron',
+    '88': 'Duo',
+    '103': 'Bluz'
   },
   updates: {
-    "2b04:d006": {
-      systemFirmwareOne: "system-part1-0.6.0-photon.bin",
-      systemFirmwareTwo: "system-part2-0.6.0-photon.bin"
+    '2b04:d006': {
+      systemFirmwareOne: 'system-part1-0.6.0-photon.bin',
+      systemFirmwareTwo: 'system-part2-0.6.0-photon.bin'
     },
-    "2b04:d008": {
-      systemFirmwareOne: "system-part1-0.6.0-p1.bin",
-      systemFirmwareTwo: "system-part2-0.6.0-p1.bin"
+    '2b04:d008': {
+      systemFirmwareOne: 'system-part1-0.6.0-p1.bin',
+      systemFirmwareTwo: 'system-part2-0.6.0-p1.bin'
     },
-    "2b04:d00a": {
+    '2b04:d00a': {
       // The bin files MUST be in this order to be flashed to the correct memory locations
-      systemFirmwareOne: "system-part2-0.6.0-electron.bin",
-      systemFirmwareTwo: "system-part3-0.6.0-electron.bin",
-      systemFirmwareThree: "system-part1-0.6.0-electron.bin"
+      systemFirmwareOne: 'system-part2-0.6.0-electron.bin',
+      systemFirmwareTwo: 'system-part3-0.6.0-electron.bin',
+      systemFirmwareThree: 'system-part1-0.6.0-electron.bin'
     }
   }
 };
@@ -147,10 +147,10 @@ var _process$env = process.env,
 
 
 if (!GITHUB_AUTH_TYPE) {
-  throw new Error("You need to set up a .env file with auth credentials");
+  throw new Error('You need to set up a .env file with auth credentials');
 }
 
-if (GITHUB_AUTH_TYPE === "oauth") {
+if (GITHUB_AUTH_TYPE === 'oauth') {
   githubAPI.authenticate({
     token: GITHUB_AUTH_TOKEN,
     type: GITHUB_AUTH_TYPE
@@ -172,23 +172,23 @@ var downloadAssetFile = function () {
           case 0:
             url = asset.browser_download_url;
             filename = (0, _nullthrows2.default)(url.match(/.*\/(.*)/))[1];
-            fileWithPath = _settings2.default.BINARIES_DIRECTORY + "/" + filename;
+            fileWithPath = _settings2.default.BINARIES_DIRECTORY + '/' + filename;
 
             if (!_fs2.default.existsSync(fileWithPath)) {
               _context.next = 6;
               break;
             }
 
-            console.log("File Exists: " + filename);
-            return _context.abrupt("return", filename);
+            console.log('File Exists: ' + filename);
+            return _context.abrupt('return', filename);
 
           case 6:
 
-            console.log("Downloading " + filename + "...");
+            console.log('Downloading ' + filename + '...');
 
-            return _context.abrupt("return", githubAPI.repos.getAsset({
+            return _context.abrupt('return', githubAPI.repos.getAsset({
               headers: {
-                accept: "application/octet-stream"
+                accept: 'application/octet-stream'
               },
               id: asset.id,
               owner: GITHUB_USER,
@@ -201,7 +201,7 @@ var downloadAssetFile = function () {
             }));
 
           case 8:
-          case "end":
+          case 'end':
             return _context.stop();
         }
       }
@@ -221,23 +221,23 @@ var downloadBlob = function () {
         switch (_context2.prev = _context2.next) {
           case 0:
             filename = asset.name;
-            fileWithPath = _settings2.default.BINARIES_DIRECTORY + "/" + filename;
+            fileWithPath = _settings2.default.BINARIES_DIRECTORY + '/' + filename;
 
             if (!_fs2.default.existsSync(fileWithPath)) {
               _context2.next = 5;
               break;
             }
 
-            console.log("File Exists: " + filename);
-            return _context2.abrupt("return", filename);
+            console.log('File Exists: ' + filename);
+            return _context2.abrupt('return', filename);
 
           case 5:
 
-            console.log("Downloading " + filename + "...");
+            console.log('Downloading ' + filename + '...');
 
-            return _context2.abrupt("return", githubAPI.gitdata.getBlob({
+            return _context2.abrupt('return', githubAPI.gitdata.getBlob({
               headers: {
-                accept: "application/vnd.github.v3.raw"
+                accept: 'application/vnd.github.v3.raw'
               },
               owner: GITHUB_USER,
               repo: GITHUB_CLI_REPOSITORY,
@@ -250,7 +250,7 @@ var downloadBlob = function () {
             }));
 
           case 7:
-          case "end":
+          case 'end':
             return _context2.stop();
         }
       }
@@ -274,7 +274,7 @@ var downloadFirmwareBinaries = function () {
               if (asset.name.match(/^(system-part|bootloader)/)) {
                 return downloadAssetFile(asset);
               }
-              return _promise2.default.resolve("");
+              return _promise2.default.resolve('');
             }));
 
           case 2:
@@ -283,12 +283,12 @@ var downloadFirmwareBinaries = function () {
 
             console.log();
 
-            return _context3.abrupt("return", assetFileNames.filter(function (item) {
+            return _context3.abrupt('return', assetFileNames.filter(function (item) {
               return !!item;
             }));
 
           case 5:
-          case "end":
+          case 'end':
             return _context3.stop();
         }
       }
@@ -311,7 +311,7 @@ var updateSettings = function () {
             _context4.next = 3;
             return _promise2.default.all(binaryFileNames.map(function (filename) {
               return new _promise2.default(function (resolve) {
-                return parser.parseFile(_settings2.default.BINARIES_DIRECTORY + "/" + filename, function (result) {
+                return parser.parseFile(_settings2.default.BINARIES_DIRECTORY + '/' + filename, function (result) {
                   resolve((0, _extends3.default)({}, result, {
                     fileBuffer: undefined,
                     filename: filename
@@ -326,10 +326,10 @@ var updateSettings = function () {
 
 
             _fs2.default.writeFileSync(SETTINGS_FILE, scriptSettings);
-            console.log("Updated settings");
+            console.log('Updated settings');
 
           case 7:
-          case "end":
+          case 'end':
             return _context4.stop();
         }
       }
@@ -351,7 +351,7 @@ var downloadAppBinaries = function () {
             _context5.next = 2;
             return githubAPI.repos.getContent({
               owner: GITHUB_USER,
-              path: "assets/binaries",
+              path: 'assets/binaries',
               repo: GITHUB_CLI_REPOSITORY
             });
 
@@ -363,10 +363,10 @@ var downloadAppBinaries = function () {
             }));
 
           case 5:
-            return _context5.abrupt("return", _context5.sent);
+            return _context5.abrupt('return', _context5.sent);
 
           case 6:
-          case "end":
+          case 'end':
             return _context5.stop();
         }
       }
@@ -404,7 +404,7 @@ var downloadAppBinaries = function () {
 
         case 8:
           _context6.prev = 8;
-          _context6.t0 = _context6["catch"](3);
+          _context6.t0 = _context6['catch'](3);
 
           console.error(_context6.t0);
 
@@ -444,18 +444,18 @@ var downloadAppBinaries = function () {
 
         case 21:
 
-          console.log("\r\nCompleted Sync");
+          console.log('\r\nCompleted Sync');
           _context6.next = 27;
           break;
 
         case 24:
           _context6.prev = 24;
-          _context6.t1 = _context6["catch"](0);
+          _context6.t1 = _context6['catch'](0);
 
           console.log(_context6.t1);
 
         case 27:
-        case "end":
+        case 'end':
           return _context6.stop();
       }
     }
