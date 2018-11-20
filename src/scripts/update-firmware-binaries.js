@@ -14,7 +14,7 @@ const fileDirectoryStack = path.resolve(process.cwd()).split(path.sep);
 let filePath = null;
 
 while (fileDirectoryStack.length) {
-  filePath = path.resolve(...fileDirectoryStack, '.env');
+  filePath = path.join(...fileDirectoryStack, '.env');
   console.log('Checking for .env: ', filePath);
   if (fs.existsSync(filePath)) {
     break;

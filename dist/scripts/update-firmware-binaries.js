@@ -65,7 +65,7 @@ var fileDirectoryStack = _path2.default.resolve(process.cwd()).split(_path2.defa
 var filePath = null;
 
 while (fileDirectoryStack.length) {
-  filePath = _path2.default.resolve.apply(_path2.default, (0, _toConsumableArray3.default)(fileDirectoryStack).concat([".env"]));
+  filePath = _path2.default.join.apply(_path2.default, (0, _toConsumableArray3.default)(fileDirectoryStack).concat([".env"]));
   console.log("Checking for .env: ", filePath);
   if (_fs2.default.existsSync(filePath)) {
     break;
