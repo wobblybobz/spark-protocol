@@ -10,20 +10,28 @@ import nullthrows from 'nullthrows';
 import { HalModuleParser } from 'binary-version-reader';
 import dotenv from 'dotenv';
 
-const fileDirectoryStack = path.resolve(process.cwd()).split(path.sep);
+let fileDirectory = path.resolve(process.cwd());
 let filePath = null;
 
-while (fileDirectoryStack.length) {
-  filePath = path.join(...fileDirectoryStack, '.env');
+// A counter is a lot safer than a while(true)
+let count = 0;
+while (count < 20) {
+  count += 1;
+  filePath = path.join(fileDirectory, '.env');
   console.log('Checking for .env: ', filePath);
   if (fs.existsSync(filePath)) {
     break;
   }
 
-  fileDirectoryStack.pop();
+  const newFileDirectory = path.join(fileDirectory, '..');
+  if (newFileDirectory === fileDirectory) {
+    filePath = null;
+    break;
+  }
+  fileDirectory = newFileDirectory;
 }
 
-if (!filePath || fileDirectoryStack.length === 0) {
+if (!filePath) {
   dotenv.config();
 } else {
   dotenv.config({

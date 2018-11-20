@@ -1,6 +1,10 @@
 #! /usr/bin/env node
 "use strict";
 
+var _toConsumableArray2 = require("babel-runtime/helpers/toConsumableArray");
+
+var _toConsumableArray3 = _interopRequireDefault(_toConsumableArray2);
+
 var _stringify = require("babel-runtime/core-js/json/stringify");
 
 var _stringify2 = _interopRequireDefault(_stringify);
@@ -24,10 +28,6 @@ var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 var _values = require("babel-runtime/core-js/object/values");
 
 var _values2 = _interopRequireDefault(_values);
-
-var _toConsumableArray2 = require("babel-runtime/helpers/toConsumableArray");
-
-var _toConsumableArray3 = _interopRequireDefault(_toConsumableArray2);
 
 var _fs = require("fs");
 
@@ -61,20 +61,28 @@ var _dotenv2 = _interopRequireDefault(_dotenv);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var fileDirectoryStack = _path2.default.resolve(process.cwd()).split(_path2.default.sep);
+var fileDirectory = _path2.default.resolve(process.cwd());
 var filePath = null;
 
-while (fileDirectoryStack.length) {
-  filePath = _path2.default.join.apply(_path2.default, (0, _toConsumableArray3.default)(fileDirectoryStack).concat([".env"]));
+// A counter is a lot safer than a while(true)
+var count = 0;
+while (count < 20) {
+  count += 1;
+  filePath = _path2.default.join(fileDirectory, ".env");
   console.log("Checking for .env: ", filePath);
   if (_fs2.default.existsSync(filePath)) {
     break;
   }
 
-  fileDirectoryStack.pop();
+  var newFileDirectory = _path2.default.join(fileDirectory, "..");
+  if (newFileDirectory === fileDirectory) {
+    filePath = null;
+    break;
+  }
+  fileDirectory = newFileDirectory;
 }
 
-if (!filePath || fileDirectoryStack.length === 0) {
+if (!filePath) {
   _dotenv2.default.config();
 } else {
   _dotenv2.default.config({
