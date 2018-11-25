@@ -1061,13 +1061,11 @@ class DeviceServer {
 
     // Update the number of devices on the firmware versions
     if (oldProductFirmware) {
-      oldProductFirmware.device_count -= 1;
       await this._productFirmwareRepository.updateByID(
         oldProductFirmware.id,
         oldProductFirmware,
       );
     }
-    productFirmware.device_count += 1;
     await this._productFirmwareRepository.updateByID(
       productFirmware.id,
       productFirmware,
