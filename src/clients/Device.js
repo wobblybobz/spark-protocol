@@ -908,7 +908,7 @@ class Device extends EventEmitter {
     } catch (error) {
       logger.error(
         { err: error },
-        `_transformVariableResult - error transforming response`,
+        '_transformVariableResult - error transforming response',
       );
     }
 
@@ -927,7 +927,7 @@ class Device extends EventEmitter {
     } catch (error) {
       logger.error(
         { err: error },
-        `_transformFunctionResult - error transforming response`,
+        '_transformFunctionResult - error transforming response',
       );
       throw error;
     }
