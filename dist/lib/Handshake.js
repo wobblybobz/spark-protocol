@@ -401,7 +401,7 @@ var Handshake = function Handshake(cryptoManager) {
 
   this._sendSessionKey = function () {
     var _ref8 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6(devicePublicKey) {
-      var sessionKey, ciphertext, hash, signedhmac, message, decipherStream, cipherStream, chunkingIn, chunkingOut;
+      var sessionKey, ciphertext, hash, signedhmac, message, addErrorCallback, decipherStream, cipherStream, chunkingIn, chunkingOut;
       return _regenerator2.default.wrap(function _callee6$(_context6) {
         while (1) {
           switch (_context6.prev = _context6.next) {
@@ -434,17 +434,29 @@ var Handshake = function Handshake(cryptoManager) {
 
               // Server sends ~384 bytes to Device: the ciphertext then the signature.
               message = Buffer.concat([ciphertext, signedhmac], ciphertext.length + signedhmac.length);
+
+              addErrorCallback = function addErrorCallback(stream, streamName) {
+                stream.on('error', function (error) {
+                  logger.error({ deviceID: _this._deviceID, err: error }, 'Error in ' + streamName + ' stream');
+                });
+              };
+
               decipherStream = _this._cryptoManager.createAESDecipherStream(sessionKey);
               cipherStream = _this._cryptoManager.createAESCipherStream(sessionKey);
 
+
+              addErrorCallback(decipherStream, 'decipher');
+              addErrorCallback(cipherStream, 'cipher');
 
               if (_this._useChunkingStream) {
                 chunkingIn = new _ChunkingStream2.default({ outgoing: false });
                 chunkingOut = new _ChunkingStream2.default({ outgoing: true });
 
+                addErrorCallback(chunkingIn, 'chunkingIn');
+                addErrorCallback(chunkingOut, 'chunkingOut');
+
                 // What I receive gets broken into message chunks, and goes into the
                 // decrypter
-
                 _this._socket.pipe(chunkingIn);
                 chunkingIn.pipe(decipherStream);
 
@@ -461,7 +473,7 @@ var Handshake = function Handshake(cryptoManager) {
 
               return _context6.abrupt('return', { cipherStream: cipherStream, decipherStream: decipherStream });
 
-            case 14:
+            case 17:
             case 'end':
               return _context6.stop();
           }

@@ -348,14 +348,28 @@ class Handshake {
       ciphertext.length + signedhmac.length,
     );
 
+    const addErrorCallback = (stream: Stream, streamName: string) => {
+      stream.on('error', (error: Error) => {
+        logger.error(
+          { deviceID: this._deviceID, err: error },
+          `Error in ${streamName} stream`,
+        );
+      });
+    };
+
     const decipherStream = this._cryptoManager.createAESDecipherStream(
       sessionKey,
     );
     const cipherStream = this._cryptoManager.createAESCipherStream(sessionKey);
 
+    addErrorCallback(decipherStream, 'decipher');
+    addErrorCallback(cipherStream, 'cipher');
+
     if (this._useChunkingStream) {
       const chunkingIn = new ChunkingStream({ outgoing: false });
       const chunkingOut = new ChunkingStream({ outgoing: true });
+      addErrorCallback(chunkingIn, 'chunkingIn');
+      addErrorCallback(chunkingOut, 'chunkingOut');
 
       // What I receive gets broken into message chunks, and goes into the
       // decrypter

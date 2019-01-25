@@ -1,88 +1,88 @@
-"use strict";
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _setImmediate2 = require("babel-runtime/core-js/set-immediate");
+var _setImmediate2 = require('babel-runtime/core-js/set-immediate');
 
 var _setImmediate3 = _interopRequireDefault(_setImmediate2);
 
-var _promise = require("babel-runtime/core-js/promise");
+var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
 
-var _parseInt = require("babel-runtime/core-js/number/parse-int");
+var _parseInt = require('babel-runtime/core-js/number/parse-int');
 
 var _parseInt2 = _interopRequireDefault(_parseInt);
 
-var _extends2 = require("babel-runtime/helpers/extends");
+var _extends2 = require('babel-runtime/helpers/extends');
 
 var _extends3 = _interopRequireDefault(_extends2);
 
-var _regenerator = require("babel-runtime/regenerator");
+var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
-var _asyncToGenerator2 = require("babel-runtime/helpers/asyncToGenerator");
+var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
-var _map = require("babel-runtime/core-js/map");
+var _map = require('babel-runtime/core-js/map');
 
 var _map2 = _interopRequireDefault(_map);
 
-var _classCallCheck2 = require("babel-runtime/helpers/classCallCheck");
+var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _createClass2 = require("babel-runtime/helpers/createClass");
+var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
-var _Handshake = require("../lib/Handshake");
+var _Handshake = require('../lib/Handshake');
 
 var _Handshake2 = _interopRequireDefault(_Handshake);
 
-var _net = require("net");
+var _net = require('net');
 
 var _net2 = _interopRequireDefault(_net);
 
-var _crypto = require("crypto");
+var _crypto = require('crypto');
 
 var _crypto2 = _interopRequireDefault(_crypto);
 
-var _nullthrows9 = require("nullthrows");
+var _nullthrows9 = require('nullthrows');
 
 var _nullthrows10 = _interopRequireDefault(_nullthrows9);
 
-var _moment = require("moment");
+var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
-var _moniker = require("moniker");
+var _moniker = require('moniker');
 
 var _moniker2 = _interopRequireDefault(_moniker);
 
-var _Device = require("../clients/Device");
+var _Device = require('../clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
 
-var _FirmwareManager = require("../lib/FirmwareManager");
+var _FirmwareManager = require('../lib/FirmwareManager');
 
 var _FirmwareManager2 = _interopRequireDefault(_FirmwareManager);
 
-var _CoapMessages = require("../lib/CoapMessages");
+var _CoapMessages = require('../lib/CoapMessages');
 
 var _CoapMessages2 = _interopRequireDefault(_CoapMessages);
 
-var _EventPublisher = require("../lib/EventPublisher");
+var _EventPublisher = require('../lib/EventPublisher');
 
-var _SparkServerEvents = require("../lib/SparkServerEvents");
+var _SparkServerEvents = require('../lib/SparkServerEvents');
 
 var _SparkServerEvents2 = _interopRequireDefault(_SparkServerEvents);
 
-var _logger = require("../lib/logger");
+var _logger = require('../lib/logger');
 
 var _logger2 = _interopRequireDefault(_logger);
 
@@ -144,7 +144,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context2.abrupt("return");
+                return _context2.abrupt('return');
 
               case 7:
 
@@ -161,7 +161,7 @@ var DeviceServer = function () {
                           return device.flash(config.systemFile);
 
                         case 3:
-                        case "end":
+                        case 'end':
                           return _context.stop();
                       }
                     }
@@ -169,7 +169,7 @@ var DeviceServer = function () {
                 })), 1000);
 
               case 8:
-              case "end":
+              case 'end':
                 return _context2.stop();
             }
           }
@@ -197,7 +197,7 @@ var DeviceServer = function () {
                 return _this._flashDevice(productDevice);
 
               case 5:
-              case "end":
+              case 'end':
                 return _context3.stop();
             }
           }
@@ -218,10 +218,10 @@ var DeviceServer = function () {
               case 0:
                 _context8.prev = 0;
 
-                logger.info("New Connection");
+                logger.info('New Connection');
                 connectionIdCounter += 1;
                 counter = connectionIdCounter;
-                connectionKey = "_" + connectionIdCounter;
+                connectionKey = '_' + connectionIdCounter;
                 handshake = new _Handshake2.default(_this._cryptoManager);
                 device = new _Device2.default(socket, connectionKey, handshake);
                 _context8.next = 9;
@@ -235,7 +235,7 @@ var DeviceServer = function () {
                   connectionID: counter,
                   deviceID: deviceID,
                   remoteIPAddress: device.getRemoteIPAddress()
-                }, "Connection");
+                }, 'Connection');
 
                 process.nextTick((0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7() {
                   var existingConnection, systemInformation, appModules, _appModules, appHash, existingAttributes, _ref9, claimCode, currentBuildTarget, imei, isCellular, last_iccid, name, ownerID, registrar;
@@ -283,10 +283,10 @@ var DeviceServer = function () {
                                   case 2:
                                     _device$getAttributes2 = device.getAttributes(), ownerID = _device$getAttributes2.ownerID;
 
-                                    _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, "started", deviceID, ownerID, false);
+                                    _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'started', deviceID, ownerID, false);
 
                                   case 4:
-                                  case "end":
+                                  case 'end':
                                     return _context4.stop();
                                 }
                               }
@@ -306,10 +306,10 @@ var DeviceServer = function () {
                                   case 2:
                                     _device$getAttributes3 = device.getAttributes(), ownerID = _device$getAttributes3.ownerID;
 
-                                    _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, "success", deviceID, ownerID, false);
+                                    _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'success', deviceID, ownerID, false);
 
                                   case 4:
-                                  case "end":
+                                  case 'end':
                                     return _context5.stop();
                                 }
                               }
@@ -329,10 +329,10 @@ var DeviceServer = function () {
                                   case 2:
                                     _device$getAttributes4 = device.getAttributes(), ownerID = _device$getAttributes4.ownerID;
 
-                                    _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, "failed", deviceID, ownerID, false);
+                                    _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, 'failed', deviceID, ownerID, false);
 
                                   case 4:
-                                  case "end":
+                                  case 'end':
                                     return _context6.stop();
                                 }
                               }
@@ -342,7 +342,7 @@ var DeviceServer = function () {
                           if (_this._devicesById.has(deviceID)) {
                             existingConnection = _this._devicesById.get(deviceID);
 
-                            (0, _nullthrows10.default)(existingConnection).disconnect("Device was already connected. Reconnecting.");
+                            (0, _nullthrows10.default)(existingConnection).disconnect('Device was already connected. Reconnecting.');
                           }
 
                           _this._devicesById.set(deviceID, device);
@@ -357,7 +357,7 @@ var DeviceServer = function () {
                           try {
                             appModules = _FirmwareManager2.default.getAppModule(systemInformation);
                           } catch (ignore) {
-                            appModules = { uuid: "none" };
+                            appModules = { uuid: 'none' };
                           }
 
                           _appModules = appModules, appHash = _appModules.uuid;
@@ -388,7 +388,7 @@ var DeviceServer = function () {
 
                           device.setStatus(_Device.DEVICE_STATUS_MAP.READY);
 
-                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, "online", deviceID, ownerID, false);
+                          _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'online', deviceID, ownerID, false);
 
                           // TODO
                           // we may update attributes only on disconnect, but currently
@@ -410,12 +410,12 @@ var DeviceServer = function () {
 
                         case 32:
                           _context7.prev = 32;
-                          _context7.t0 = _context7["catch"](0);
+                          _context7.t0 = _context7['catch'](0);
 
-                          device.disconnect("Error during connection: " + _context7.t0 + ": " + _context7.t0.stack);
+                          device.disconnect('Error during connection: ' + _context7.t0 + ': ' + _context7.t0.stack);
 
                         case 35:
-                        case "end":
+                        case 'end':
                           return _context7.stop();
                       }
                     }
@@ -426,12 +426,12 @@ var DeviceServer = function () {
 
               case 14:
                 _context8.prev = 14;
-                _context8.t0 = _context8["catch"](0);
+                _context8.t0 = _context8['catch'](0);
 
-                logger.error({ err: _context8.t0 }, "Device startup failed");
+                logger.error({ err: _context8.t0 }, 'Device startup failed');
 
               case 17:
-              case "end":
+              case 'end':
                 return _context8.stop();
             }
           }
@@ -460,7 +460,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context9.abrupt("return");
+                return _context9.abrupt('return');
 
               case 6:
 
@@ -477,14 +477,14 @@ var DeviceServer = function () {
 
               case 11:
 
-                _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, "offline", deviceID, ownerID, false);
+                _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, 'offline', deviceID, ownerID, false);
                 logger.warn({
                   connectionKey: connectionKey,
                   deviceID: deviceID
-                }, "Session ended for Device");
+                }, 'Session ended for Device');
 
               case 13:
-              case "end":
+              case 'end':
                 return _context9.stop();
             }
           }
@@ -498,9 +498,9 @@ var DeviceServer = function () {
 
     this._onDeviceGetTime = function (packet, device) {
       var timeStamp = (0, _moment2.default)().utc().unix();
-      var binaryValue = _CoapMessages2.default.toBinary(timeStamp, "uint32");
+      var binaryValue = _CoapMessages2.default.toBinary(timeStamp, 'uint32');
 
-      device.sendReply("GetTimeReturn", packet.messageId, binaryValue, packet.token.length ? packet.token.readUInt8(0) : 0);
+      device.sendReply('GetTimeReturn', packet.messageId, binaryValue, packet.token.length ? packet.token.readUInt8(0) : 0);
     };
 
     this._onDeviceSentMessage = function () {
@@ -519,7 +519,7 @@ var DeviceServer = function () {
                 _device$getAttributes5 = device.getAttributes(), deviceID = _device$getAttributes5.deviceID, name = _device$getAttributes5.name, ownerID = _device$getAttributes5.ownerID;
                 eventData = {
                   connectionID: device.getConnectionKey(),
-                  data: packet.payload.toString("utf8"),
+                  data: packet.payload.toString('utf8'),
                   deviceID: deviceID,
                   name: _CoapMessages2.default.getUriPath(packet).substr(3),
                   ttl: _CoapMessages2.default.getMaxAge(packet)
@@ -534,7 +534,7 @@ var DeviceServer = function () {
                 // All spark events except special events should be hidden from the
                 // event stream.
 
-                if (eventName.startsWith("spark")) {
+                if (eventName.startsWith('spark')) {
                   // These should always be private but let's make sure. This way
                   // if you are listening to a specific device you only see the system
                   // events from it.
@@ -544,7 +544,7 @@ var DeviceServer = function () {
                     return eventName.startsWith(specialEvent);
                   }) || device.isFlashing();
                   if (shouldSwallowEvent) {
-                    device.sendReply("EventAck", packet.messageId);
+                    device.sendReply('EventAck', packet.messageId);
                   }
                 }
 
@@ -571,7 +571,7 @@ var DeviceServer = function () {
                 }
 
                 if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER)) {
-                  cryptoString = _crypto2.default.randomBytes(40).toString("base64").substring(0, 40);
+                  cryptoString = _crypto2.default.randomBytes(40).toString('base64').substring(0, 40);
 
 
                   _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.GET_RANDOM_BUFFER, cryptoString, deviceID, ownerID, false);
@@ -624,12 +624,12 @@ var DeviceServer = function () {
 
               case 28:
                 _context10.prev = 28;
-                _context10.t0 = _context10["catch"](0);
+                _context10.t0 = _context10['catch'](0);
 
-                logger.error({ err: _context10.t0 }, "Error");
+                logger.error({ err: _context10.t0 }, 'Error');
 
               case 31:
-              case "end":
+              case 'end':
                 return _context10.stop();
             }
           }
@@ -653,7 +653,7 @@ var DeviceServer = function () {
                 return device.hasStatus(_Device.DEVICE_STATUS_MAP.READY);
 
               case 2:
-                claimCode = packet.payload.toString("utf8");
+                claimCode = packet.payload.toString('utf8');
                 _device$getAttributes6 = device.getAttributes(), previousClaimCode = _device$getAttributes6.claimCode, deviceID = _device$getAttributes6.deviceID, ownerID = _device$getAttributes6.ownerID;
 
                 if (!(ownerID || claimCode === previousClaimCode)) {
@@ -661,7 +661,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context11.abrupt("return");
+                return _context11.abrupt('return');
 
               case 6:
                 claimRequestUserID = _this._claimCodeManager.getUserIDByClaimCode(claimCode);
@@ -671,7 +671,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context11.abrupt("return");
+                return _context11.abrupt('return');
 
               case 9:
 
@@ -690,7 +690,7 @@ var DeviceServer = function () {
                 _this._claimCodeManager.removeClaimCode(claimCode);
 
               case 13:
-              case "end":
+              case 'end':
                 return _context11.stop();
             }
           }
@@ -724,10 +724,10 @@ var DeviceServer = function () {
                   // uri -> /e/event_name?u (deviceid)    --> deviceid?
                   var messageName = _CoapMessages2.default.getUriPath(packet).substr(3);
                   var query = _CoapMessages2.default.getUriQuery(packet);
-                  var isFromMyDevices = !!query.match("u");
+                  var isFromMyDevices = !!query.match('u');
 
                   if (!messageName) {
-                    device.sendReply("SubscribeFail", packet.messageId);
+                    device.sendReply('SubscribeFail', packet.messageId);
                     return;
                   }
 
@@ -735,19 +735,19 @@ var DeviceServer = function () {
                     deviceID: deviceID,
                     isFromMyDevices: isFromMyDevices,
                     messageName: messageName
-                  }, "Subscribe Request");
+                  }, 'Subscribe Request');
 
-                  device.sendReply("SubscribeAck", packet.messageId);
+                  device.sendReply('SubscribeAck', packet.messageId);
 
                   if (!ownerID) {
                     logger.info({
                       deviceID: deviceID,
                       messageName: messageName
-                    }, "device wasnt subscribed to event: the device is unclaimed.");
-                    ownerID = "--unclaimed--";
+                    }, 'device wasnt subscribed to event: the device is unclaimed.');
+                    ownerID = '--unclaimed--';
                   }
 
-                  var isSystemEvent = messageName.startsWith("spark");
+                  var isSystemEvent = messageName.startsWith('spark');
 
                   _this._eventPublisher.subscribe(messageName, device.onDeviceEvent, {
                     filterOptions: {
@@ -760,7 +760,7 @@ var DeviceServer = function () {
                 });
 
               case 3:
-              case "end":
+              case 'end':
                 return _context12.stop();
             }
           }
@@ -789,7 +789,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                throw new Error("Could not get device for ID");
+                throw new Error('Could not get device for ID');
 
               case 5:
                 _context13.t0 = _this._eventPublisher;
@@ -815,7 +815,7 @@ var DeviceServer = function () {
 
               case 15:
                 _context13.prev = 15;
-                _context13.t5 = _context13["catch"](1);
+                _context13.t5 = _context13['catch'](1);
 
                 _this._eventPublisher.publish({
                   context: { error: _context13.t5 },
@@ -826,7 +826,7 @@ var DeviceServer = function () {
                 });
 
               case 18:
-              case "end":
+              case 'end':
                 return _context13.stop();
             }
           }
@@ -855,7 +855,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                throw new Error("Could not get device for ID");
+                throw new Error('Could not get device for ID');
 
               case 5:
                 _context14.t0 = _this._eventPublisher;
@@ -881,7 +881,7 @@ var DeviceServer = function () {
 
               case 15:
                 _context14.prev = 15;
-                _context14.t5 = _context14["catch"](1);
+                _context14.t5 = _context14['catch'](1);
 
                 _this._eventPublisher.publish({
                   context: { error: _context14.t5 },
@@ -892,7 +892,7 @@ var DeviceServer = function () {
                 });
 
               case 18:
-              case "end":
+              case 'end':
                 return _context14.stop();
             }
           }
@@ -921,7 +921,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                throw new Error("Could not get device for ID");
+                throw new Error('Could not get device for ID');
 
               case 5:
                 _context15.next = 7;
@@ -941,7 +941,7 @@ var DeviceServer = function () {
 
               case 10:
                 _context15.prev = 10;
-                _context15.t0 = _context15["catch"](1);
+                _context15.t0 = _context15['catch'](1);
 
                 _this._eventPublisher.publish({
                   context: { error: _context15.t0 },
@@ -952,7 +952,7 @@ var DeviceServer = function () {
                 });
 
               case 13:
-              case "end":
+              case 'end':
                 return _context15.stop();
             }
           }
@@ -981,7 +981,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                throw new Error("Could not get device for ID");
+                throw new Error('Could not get device for ID');
 
               case 5:
                 _context16.t0 = _this._eventPublisher;
@@ -1010,7 +1010,7 @@ var DeviceServer = function () {
 
               case 16:
                 _context16.prev = 16;
-                _context16.t6 = _context16["catch"](1);
+                _context16.t6 = _context16['catch'](1);
 
                 _this._eventPublisher.publish({
                   context: { error: _context16.t6 },
@@ -1021,7 +1021,7 @@ var DeviceServer = function () {
                 });
 
               case 19:
-              case "end":
+              case 'end':
                 return _context16.stop();
             }
           }
@@ -1058,7 +1058,7 @@ var DeviceServer = function () {
                 });
 
               case 4:
-              case "end":
+              case 'end':
                 return _context17.stop();
             }
           }
@@ -1087,7 +1087,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                throw new Error("Could not get device for ID");
+                throw new Error('Could not get device for ID');
 
               case 5:
                 _context18.next = 7;
@@ -1117,7 +1117,7 @@ var DeviceServer = function () {
 
               case 17:
                 _context18.prev = 17;
-                _context18.t5 = _context18["catch"](1);
+                _context18.t5 = _context18['catch'](1);
 
                 _this._eventPublisher.publish({
                   context: { error: _context18.t5 },
@@ -1128,7 +1128,7 @@ var DeviceServer = function () {
                 });
 
               case 20:
-              case "end":
+              case 'end':
                 return _context18.stop();
             }
           }
@@ -1157,7 +1157,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                throw new Error("Could not get device for ID");
+                throw new Error('Could not get device for ID');
 
               case 5:
                 _context19.next = 7;
@@ -1189,7 +1189,7 @@ var DeviceServer = function () {
 
               case 18:
                 _context19.prev = 18;
-                _context19.t5 = _context19["catch"](1);
+                _context19.t5 = _context19['catch'](1);
 
                 _this._eventPublisher.publish({
                   context: { error: _context19.t5 },
@@ -1200,7 +1200,7 @@ var DeviceServer = function () {
                 });
 
               case 21:
-              case "end":
+              case 'end':
                 return _context19.stop();
             }
           }
@@ -1240,14 +1240,14 @@ var DeviceServer = function () {
                   break;
                 }
 
-                throw new Error("Device " + deviceID + " does not belong to product " + productID);
+                throw new Error('Device ' + deviceID + ' does not belong to product ' + productID);
 
               case 7:
                 _context22.next = 9;
                 return _this._flashDevice(productDevice);
 
               case 9:
-                return _context22.abrupt("return");
+                return _context22.abrupt('return');
 
               case 10:
                 _context22.next = 12;
@@ -1276,7 +1276,7 @@ var DeviceServer = function () {
                                       resolve();
 
                                     case 3:
-                                    case "end":
+                                    case 'end':
                                       return _context20.stop();
                                   }
                                 }
@@ -1285,7 +1285,7 @@ var DeviceServer = function () {
                           });
 
                         case 3:
-                        case "end":
+                        case 'end':
                           return _context21.stop();
                       }
                     }
@@ -1298,14 +1298,14 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context22.delegateYield(_loop(), "t0", 16);
+                return _context22.delegateYield(_loop(), 't0', 16);
 
               case 16:
                 _context22.next = 14;
                 break;
 
               case 18:
-              case "end":
+              case 'end':
                 return _context22.stop();
             }
           }
@@ -1330,7 +1330,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context23.abrupt("return");
+                return _context23.abrupt('return');
 
               case 2:
                 device = _this._devicesById.get(productDevice.deviceID);
@@ -1340,7 +1340,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context23.abrupt("return");
+                return _context23.abrupt('return');
 
               case 5:
                 if (!device.isFlashing()) {
@@ -1350,8 +1350,8 @@ var DeviceServer = function () {
 
                 logger.info({
                   productDevice: productDevice
-                }, "Device already flashing");
-                return _context23.abrupt("return");
+                }, 'Device already flashing');
+                return _context23.abrupt('return');
 
               case 8:
                 productFirmware = null;
@@ -1363,7 +1363,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context23.abrupt("return");
+                return _context23.abrupt('return');
 
               case 13:
                 if (!(lockedFirmwareVersion !== null)) {
@@ -1392,7 +1392,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context23.abrupt("return");
+                return _context23.abrupt('return');
 
               case 24:
                 if (!(productFirmware.product_id === particleProductId && productFirmware.version === productFirmwareVersion)) {
@@ -1400,7 +1400,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context23.abrupt("return");
+                return _context23.abrupt('return');
 
               case 26:
                 systemInformation = device.getSystemInformation();
@@ -1411,7 +1411,7 @@ var DeviceServer = function () {
                   break;
                 }
 
-                return _context23.abrupt("return");
+                return _context23.abrupt('return');
 
               case 30:
                 _context23.next = 32;
@@ -1437,7 +1437,7 @@ var DeviceServer = function () {
                 return _this._productFirmwareRepository.updateByID(productFirmware.id, productFirmware);
 
               case 40:
-              case "end":
+              case 'end':
                 return _context23.stop();
             }
           }
@@ -1481,7 +1481,7 @@ var DeviceServer = function () {
   }
 
   (0, _createClass3.default)(DeviceServer, [{
-    key: "start",
+    key: 'start',
     value: function start() {
       var _this2 = this;
 
@@ -1509,17 +1509,17 @@ var DeviceServer = function () {
 
       setInterval(function () {
         return server.getConnections(function (error, count) {
-          logger.info({ devices: _this2._devicesById.size, sockets: count }, "Connected Devices");
+          logger.info({ devices: _this2._devicesById.size, sockets: count }, 'Connected Devices');
         });
       }, 10000);
 
-      server.on("error", function (error) {
-        return logger.error({ err: error }, "something blew up");
+      server.on('error', function (error) {
+        return logger.error({ err: error }, 'something blew up');
       });
 
       var serverPort = this._config.PORT.toString();
       server.listen(serverPort, function () {
-        return logger.info({ serverPort: serverPort }, "Server started");
+        return logger.info({ serverPort: serverPort }, 'Server started');
       });
     }
   }]);
