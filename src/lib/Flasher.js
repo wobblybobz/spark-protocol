@@ -331,7 +331,7 @@ class Flasher {
       await this._waitForMissedChunks();
     }
 
-    // Handle missed chunks
+    // Handle missed chunks. Wait a maximum of 12 seconds
     let counter = 0;
     while (this._missedChunks.size > 0 && counter < 3) {
       await this._resendChunks();
@@ -429,7 +429,7 @@ class Flasher {
   };
 
   /*
-   * delay the teardown until at least like 10 seconds after the last
+   * delay the teardown until 4 seconds after the last
    * chunkmissed message.
    */
   _waitForMissedChunks = async (): Promise<*> => {
@@ -438,16 +438,26 @@ class Flasher {
       return null;
     }
 
-    if (!this._missedChunks.size) {
-      return Promise.resolve();
-    }
+    const startingChunkCount = this._missedChunks.size;
+    let counter = 0;
 
+    // poll every 500ms to see if a new chunk came in and exit this early.
+    // wait a total of 5 seconds
     return new Promise(
       (resolve: () => void): number =>
-        setTimeout(() => {
-          logger.info('finished waiting');
-          resolve();
-        }, 3 * 1000),
+        setInterval(() => {
+          counter += 1;
+          if (startingChunkCount !== this._missedChunks.size) {
+            resolve();
+            return;
+          }
+
+          // 200ms * 5 * 4 / 1000
+          if (counter >= 20) {
+            logger.info('finished waiting');
+            resolve();
+          }
+        }, 200),
     );
   };
 

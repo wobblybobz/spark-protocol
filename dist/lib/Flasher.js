@@ -472,7 +472,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
           case 23:
 
-            // Handle missed chunks
+            // Handle missed chunks. Wait a maximum of 12 seconds
             counter = 0;
 
           case 24:
@@ -640,6 +640,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
   };
 
   this._waitForMissedChunks = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee8() {
+    var startingChunkCount, counter;
     return _regenerator2.default.wrap(function _callee8$(_context8) {
       while (1) {
         switch (_context8.prev = _context8.next) {
@@ -652,19 +653,26 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
             return _context8.abrupt('return', null);
 
           case 2:
-            if (_this._missedChunks.size) {
-              _context8.next = 4;
-              break;
-            }
+            startingChunkCount = _this._missedChunks.size;
+            counter = 0;
 
-            return _context8.abrupt('return', _promise2.default.resolve());
+            // poll every 500ms to see if a new chunk came in and exit this early.
+            // wait a total of 5 seconds
 
-          case 4:
             return _context8.abrupt('return', new _promise2.default(function (resolve) {
-              return setTimeout(function () {
-                logger.info('finished waiting');
-                resolve();
-              }, 3 * 1000);
+              return setInterval(function () {
+                counter += 1;
+                if (startingChunkCount !== _this._missedChunks.size) {
+                  resolve();
+                  return;
+                }
+
+                // 200ms * 5 * 4 / 1000
+                if (counter >= 20) {
+                  logger.info('finished waiting');
+                  resolve();
+                }
+              }, 200);
             }));
 
           case 5:
@@ -721,7 +729,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 }
 
 /*
- * delay the teardown until at least like 10 seconds after the last
+ * delay the teardown until 4 seconds after the last
  * chunkmissed message.
  */
 ;
