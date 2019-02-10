@@ -341,7 +341,11 @@ class CoapMessages {
       case 'int':
       case 'int32':
       case 'number': {
-        return buffer.readInt32BE(0);
+        if (!buffer.length) {
+          return 0;
+        }
+
+        return buffer.readIntBE(0, Math.min(4, buffer.length));
       }
 
       case 'float': {
