@@ -652,7 +652,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
             return _context8.abrupt('return', null);
 
           case 2:
-            if (!_this._missedChunks.size) {
+            if (_this._missedChunks.size) {
               _context8.next = 4;
               break;
             }

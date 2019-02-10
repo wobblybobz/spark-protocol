@@ -438,7 +438,7 @@ class Flasher {
       return null;
     }
 
-    if (this._missedChunks.size) {
+    if (!this._missedChunks.size) {
       return Promise.resolve();
     }
 
