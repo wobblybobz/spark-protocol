@@ -68,7 +68,10 @@ var CryptoStream = function (_Transform) {
 
     _this._transform = function (chunk, encoding, callback) {
       if (!chunk.length) {
-        logger.error({ length: chunk.length }, "CryptoStream transform error: Chunk didn't have any length");
+        logger.error({
+          encoding: encoding,
+          err: new Error("CryptoStream transform error: Chunk didn't have any length")
+        });
         callback();
         return;
       }
@@ -88,7 +91,7 @@ var CryptoStream = function (_Transform) {
 
         _this.push(output);
       } catch (error) {
-        logger.error({ err: error }, 'CryptoStream transform error');
+        logger.error({ encoding: encoding, err: error }, 'CryptoStream transform error');
       }
       callback();
     };

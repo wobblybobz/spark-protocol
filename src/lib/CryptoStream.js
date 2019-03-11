@@ -51,10 +51,12 @@ class CryptoStream extends Transform {
     callback: () => void,
   ) => {
     if (!chunk.length) {
-      logger.error(
-        { length: chunk.length },
-        "CryptoStream transform error: Chunk didn't have any length",
-      );
+      logger.error({
+        encoding,
+        err: new Error(
+          "CryptoStream transform error: Chunk didn't have any length",
+        ),
+      });
       callback();
       return;
     }
@@ -80,7 +82,7 @@ class CryptoStream extends Transform {
 
       this.push(output);
     } catch (error) {
-      logger.error({ err: error }, 'CryptoStream transform error');
+      logger.error({ encoding, err: error }, 'CryptoStream transform error');
     }
     callback();
   };

@@ -509,11 +509,11 @@ var Device = function (_EventEmitter) {
           reservedFlags: payload.readUInt16BE(4)
         };
 
-        logger.info('Connection attributes', _this._attributesFromDevice);
+        logger.info(_this._attributesFromDevice, 'Connection attributes');
 
         return _this._attributesFromDevice;
       } catch (error) {
-        logger.error({ err: error }, 'error while parsing hello payload ');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Error while parsing hello payload ');
         return null;
       }
     };
@@ -541,7 +541,7 @@ var Device = function (_EventEmitter) {
       if (!packet) {
         logger.error({
           deviceID: _this.getDeviceID()
-        }, ' routeMessage got a NULL coap message ');
+        }, 'RouteMessage got a NULL COAP message ');
         return;
       }
 
@@ -651,7 +651,7 @@ var Device = function (_EventEmitter) {
       var message = _CoapMessages2.default.wrap(messageName, _this._sendCounter, params, options, data, token);
 
       if (!message) {
-        logger.error({ data: data, messageName: messageName, params: params }, 'Could not wrap message');
+        logger.error({ data: data, deviceID: _this.getDeviceID(), messageName: messageName, params: params }, 'Could not wrap message');
         return -1;
       }
 
@@ -985,7 +985,7 @@ var Device = function (_EventEmitter) {
 
                 logger.info({
                   deviceID: _this.getDeviceID()
-                }, 'flash device finished! - sending api event');
+                }, 'Flash device finished! - sending api event');
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
                 _this._isFlashing = false;
@@ -996,10 +996,10 @@ var Device = function (_EventEmitter) {
                 _context9.prev = 16;
                 _context9.t0 = _context9['catch'](5);
 
-                logger.info({
+                logger.error({
                   deviceID: _this.getDeviceID(),
-                  error: _context9.t0
-                }, 'flash device failed! - sending api event');
+                  err: _context9.t0
+                }, 'Flash device failed! - sending api event');
 
                 _this._isFlashing = false;
 
@@ -1035,7 +1035,7 @@ var Device = function (_EventEmitter) {
 
     _this.takeOwnership = function (flasher) {
       if (_this._owningFlasher) {
-        logger.error({ deviceID: _this.getDeviceID() }, 'already owned');
+        logger.error({ deviceID: _this.getDeviceID() }, 'Device already owned');
         return false;
       }
       // only permit the owning object to send messages.
@@ -1044,11 +1044,11 @@ var Device = function (_EventEmitter) {
     };
 
     _this.releaseOwnership = function (flasher) {
-      logger.info({ deviceID: _this.getDeviceID() }, 'releasing flash ownership ');
+      logger.info({ deviceID: _this.getDeviceID() }, 'Releasing flash ownership');
       if (_this._owningFlasher === flasher) {
         _this._owningFlasher = null;
       } else if (_this._owningFlasher) {
-        logger.error({ deviceID: _this.getDeviceID(), flasher: flasher }, "cannot releaseOwnership, isn't  current owner");
+        logger.error({ deviceID: _this.getDeviceID(), flasher: flasher }, "Cannot releaseOwnership, isn't  current owner");
       }
     };
 
@@ -1230,13 +1230,12 @@ var Device = function (_EventEmitter) {
           duration: _this._connectionStartTime ? (new Date() - _this._connectionStartTime) / 1000.0 : undefined
         };
 
-        logger.error({
+        logger.info((0, _extends3.default)({}, logInfo, {
           disconnectCounter: _this._disconnectCounter,
-          logInfo: logInfo,
           message: message
-        }, 'Device disconnected');
+        }), 'Device disconnected');
       } catch (error) {
-        logger.error({ err: error }, 'Disconnect log error');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Disconnect log error');
       }
 
       if (_this._decipherStream) {
@@ -1244,7 +1243,7 @@ var Device = function (_EventEmitter) {
           _this._decipherStream.end();
           _this._decipherStream = null;
         } catch (error) {
-          logger.error({ err: error }, 'Error cleaning up decipherStream');
+          logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Error cleaning up decipherStream');
         }
       }
 
@@ -1253,7 +1252,7 @@ var Device = function (_EventEmitter) {
           _this._cipherStream.end();
           _this._cipherStream = null;
         } catch (error) {
-          logger.error({ err: error }, 'Error cleaning up cipherStream');
+          logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Error cleaning up cipherStream');
         }
       }
 
@@ -1261,7 +1260,7 @@ var Device = function (_EventEmitter) {
         _this._socket.end();
         _this._socket.destroy();
       } catch (error) {
-        logger.error({ err: error }, 'Disconnect TCPSocket error');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Disconnect TCPSocket error');
       }
 
       _this.emit(DEVICE_EVENT_NAMES.DISCONNECT, message);
@@ -1270,7 +1269,7 @@ var Device = function (_EventEmitter) {
       try {
         _this.removeAllListeners();
       } catch (error) {
-        logger.error({ err: error }, 'Problem removing listeners');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Problem removing listeners');
       }
     };
 

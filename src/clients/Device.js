@@ -393,11 +393,14 @@ class Device extends EventEmitter {
         reservedFlags: payload.readUInt16BE(4),
       };
 
-      logger.info('Connection attributes', this._attributesFromDevice);
+      logger.info(this._attributesFromDevice, 'Connection attributes');
 
       return this._attributesFromDevice;
     } catch (error) {
-      logger.error({ err: error }, 'error while parsing hello payload ');
+      logger.error(
+        { deviceID: this.getDeviceID(), err: error },
+        'Error while parsing hello payload ',
+      );
       return null;
     }
   };
@@ -434,7 +437,7 @@ class Device extends EventEmitter {
         {
           deviceID: this.getDeviceID(),
         },
-        ' routeMessage got a NULL coap message ',
+        'RouteMessage got a NULL COAP message ',
       );
       return;
     }
@@ -576,7 +579,10 @@ class Device extends EventEmitter {
     );
 
     if (!message) {
-      logger.error({ data, messageName, params }, 'Could not wrap message');
+      logger.error(
+        { data, deviceID: this.getDeviceID(), messageName, params },
+        'Could not wrap message',
+      );
       return -1;
     }
 
@@ -830,7 +836,7 @@ class Device extends EventEmitter {
         {
           deviceID: this.getDeviceID(),
         },
-        'flash device finished! - sending api event',
+        'Flash device finished! - sending api event',
       );
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
@@ -838,12 +844,12 @@ class Device extends EventEmitter {
 
       return { status: 'Update finished' };
     } catch (error) {
-      logger.info(
+      logger.error(
         {
           deviceID: this.getDeviceID(),
-          error,
+          err: error,
         },
-        'flash device failed! - sending api event',
+        'Flash device failed! - sending api event',
       );
 
       this._isFlashing = false;
@@ -872,7 +878,7 @@ class Device extends EventEmitter {
 
   takeOwnership = (flasher: Flasher): boolean => {
     if (this._owningFlasher) {
-      logger.error({ deviceID: this.getDeviceID() }, 'already owned');
+      logger.error({ deviceID: this.getDeviceID() }, 'Device already owned');
       return false;
     }
     // only permit the owning object to send messages.
@@ -881,13 +887,13 @@ class Device extends EventEmitter {
   };
 
   releaseOwnership = (flasher: Flasher) => {
-    logger.info({ deviceID: this.getDeviceID() }, 'releasing flash ownership ');
+    logger.info({ deviceID: this.getDeviceID() }, 'Releasing flash ownership');
     if (this._owningFlasher === flasher) {
       this._owningFlasher = null;
     } else if (this._owningFlasher) {
       logger.error(
         { deviceID: this.getDeviceID(), flasher },
-        "cannot releaseOwnership, isn't  current owner",
+        "Cannot releaseOwnership, isn't  current owner",
       );
     }
   };
@@ -1077,16 +1083,19 @@ class Device extends EventEmitter {
           : undefined,
       };
 
-      logger.error(
+      logger.info(
         {
+          ...logInfo,
           disconnectCounter: this._disconnectCounter,
-          logInfo,
           message,
         },
         'Device disconnected',
       );
     } catch (error) {
-      logger.error({ err: error }, 'Disconnect log error');
+      logger.error(
+        { deviceID: this.getDeviceID(), err: error },
+        'Disconnect log error',
+      );
     }
 
     if (this._decipherStream) {
@@ -1094,7 +1103,10 @@ class Device extends EventEmitter {
         this._decipherStream.end();
         this._decipherStream = null;
       } catch (error) {
-        logger.error({ err: error }, 'Error cleaning up decipherStream');
+        logger.error(
+          { deviceID: this.getDeviceID(), err: error },
+          'Error cleaning up decipherStream',
+        );
       }
     }
 
@@ -1103,7 +1115,10 @@ class Device extends EventEmitter {
         this._cipherStream.end();
         this._cipherStream = null;
       } catch (error) {
-        logger.error({ err: error }, 'Error cleaning up cipherStream');
+        logger.error(
+          { deviceID: this.getDeviceID(), err: error },
+          'Error cleaning up cipherStream',
+        );
       }
     }
 
@@ -1111,7 +1126,10 @@ class Device extends EventEmitter {
       this._socket.end();
       this._socket.destroy();
     } catch (error) {
-      logger.error({ err: error }, 'Disconnect TCPSocket error');
+      logger.error(
+        { deviceID: this.getDeviceID(), err: error },
+        'Disconnect TCPSocket error',
+      );
     }
 
     this.emit(DEVICE_EVENT_NAMES.DISCONNECT, message);
@@ -1120,7 +1138,10 @@ class Device extends EventEmitter {
     try {
       this.removeAllListeners();
     } catch (error) {
-      logger.error({ err: error }, 'Problem removing listeners');
+      logger.error(
+        { deviceID: this.getDeviceID(), err: error },
+        'Problem removing listeners',
+      );
     }
   };
 }

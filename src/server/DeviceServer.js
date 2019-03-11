@@ -212,6 +212,7 @@ class DeviceServer {
   };
 
   _onNewSocketConnection = async (socket: Socket): Promise<void> => {
+    let deviceID = null;
     try {
       logger.info('New Connection');
       connectionIdCounter += 1;
@@ -220,7 +221,7 @@ class DeviceServer {
       const handshake = new Handshake(this._cryptoManager);
       const device = new Device(socket, connectionKey, handshake);
 
-      const deviceID = await device.startProtocolInitialization();
+      deviceID = await device.startProtocolInitialization();
 
       logger.info(
         {
@@ -401,7 +402,7 @@ class DeviceServer {
         },
       );
     } catch (error) {
-      logger.error({ err: error }, 'Device startup failed');
+      logger.error({ deviceID, err: error }, 'Device startup failed');
     }
   };
 
@@ -433,6 +434,7 @@ class DeviceServer {
       {
         connectionKey,
         deviceID,
+        ownerID,
       },
       'Session ended for Device',
     );
@@ -457,9 +459,12 @@ class DeviceServer {
     isPublic: boolean,
     device: Device,
   ): Promise<void> => {
+    let deviceID = null;
+    let name = null;
+    let ownerID = null;
     try {
       await device.hasStatus(DEVICE_STATUS_MAP.READY);
-      const { deviceID, name, ownerID } = device.getAttributes();
+      ({ deviceID, name, ownerID } = device.getAttributes());
 
       const eventData: EventData = {
         connectionID: device.getConnectionKey(),
@@ -589,7 +594,7 @@ class DeviceServer {
         // if device version is old, do OTA update with patch
       }
     } catch (error) {
-      logger.error({ err: error }, 'Error');
+      logger.error({ deviceID, err: error }, 'Device Server Error');
     }
   };
 
@@ -1001,12 +1006,7 @@ class DeviceServer {
     }
 
     if (device.isFlashing()) {
-      logger.info(
-        {
-          productDevice,
-        },
-        'Device already flashing',
-      );
+      logger.info(productDevice, 'Device already flashing');
       return;
     }
 

@@ -174,7 +174,10 @@ class CoapMessages {
     try {
       const specification = CoapMessages._specifications.get(messageName);
       if (!specification) {
-        logger.error({ messageName }, 'Unknown Message Type');
+        logger.error(
+          { err: new Error(messageName), messageName },
+          'Unknown Message Type',
+        );
         return null;
       }
 
@@ -224,7 +227,7 @@ class CoapMessages {
         token: (token || token === 0) && Buffer.from([token]),
       });
     } catch (error) {
-      logger.error({ err: error }, 'Coap Error');
+      logger.error({ err: error, messageName }, 'Coap Error');
     }
     return null;
   };
@@ -237,7 +240,7 @@ class CoapMessages {
     try {
       return CoapPacket.parse(data);
     } catch (error) {
-      logger.error({ err: error }, 'Coap Error');
+      logger.error({ data, err: error }, 'Coap Error');
     }
 
     return null;
@@ -295,7 +298,10 @@ class CoapMessages {
       }
 
       default: {
-        logger.error({ typeInt }, 'asked for unknown type');
+        logger.error(
+          { err: new Error('asked for unknown type'), typeInt },
+          'asked for unknown type',
+        );
         throw new Error(`error getNameFromTypeInt: ${typeInt}`);
       }
     }

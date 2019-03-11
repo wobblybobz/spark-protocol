@@ -191,7 +191,7 @@ function (_ref) {
   try {
     var specification = CoapMessages._specifications.get(messageName);
     if (!specification) {
-      logger.error({ messageName: messageName }, 'Unknown Message Type');
+      logger.error({ err: new Error(messageName), messageName: messageName }, 'Unknown Message Type');
       return null;
     }
 
@@ -234,7 +234,7 @@ function (_ref) {
       token: (token || token === 0) && Buffer.from([token])
     }));
   } catch (error) {
-    logger.error({ err: error }, 'Coap Error');
+    logger.error({ err: error, messageName: messageName }, 'Coap Error');
   }
   return null;
 }, _class.unwrap = function (data) {
@@ -245,7 +245,7 @@ function (_ref) {
   try {
     return _coapPacket2.default.parse(data);
   } catch (error) {
-    logger.error({ err: error }, 'Coap Error');
+    logger.error({ data: data, err: error }, 'Coap Error');
   }
 
   return null;
@@ -296,7 +296,7 @@ function (_ref) {
 
     default:
       {
-        logger.error({ typeInt: typeInt }, 'asked for unknown type');
+        logger.error({ err: new Error('asked for unknown type'), typeInt: typeInt }, 'asked for unknown type');
         throw new Error('error getNameFromTypeInt: ' + typeInt);
       }
   }

@@ -127,7 +127,7 @@ class Handshake {
             : 'unknown',
       };
 
-      logger.error({ err: error, logInfo }, 'Handshake failed');
+      logger.error({ ...logInfo, err: error }, 'Handshake failed');
 
       throw error;
     });

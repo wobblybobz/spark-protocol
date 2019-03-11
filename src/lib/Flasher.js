@@ -75,8 +75,9 @@ class Flasher {
       logger.error(
         {
           deviceID: this._client.getDeviceID(),
+          err: new Error('Empty file buffer'),
         },
-        'flash failed! - file is empty! ',
+        'Flash failed! - file is empty! ',
       );
 
       throw new Error('Update failed - File was empty!');
@@ -86,9 +87,10 @@ class Flasher {
       logger.error(
         {
           deviceID: this._client.getDeviceID(),
+          err: new Error('Flash: File too large'),
           length: buffer.length,
         },
-        'flash failed! - file is too BIG',
+        'Flash failed! - file is too large',
       );
 
       throw new Error('Update failed - File was too big!');
@@ -258,7 +260,7 @@ class Flasher {
     const destAddr = parseInt(address, 10);
 
     if (this._fastOtaEnabled) {
-      logger.info({ logInfo: this._getLogInfo() }, 'fast ota enabled! ');
+      logger.info(this._getLogInfo(), 'fast ota enabled! ');
       flags = 1;
     }
 
@@ -316,7 +318,13 @@ class Flasher {
         messageToken,
       );
 
-      logger.info({ message }, 'ChunkReceived');
+      logger.info(
+        {
+          deviceID: this._client.getDeviceID(),
+          message,
+        },
+        'Chunk Received',
+      );
 
       if (!CoapMessages.statusIsOkay(message)) {
         throw new Error("'ChunkReceived' failed.");
@@ -376,7 +384,12 @@ class Flasher {
 
   _readNextChunk = () => {
     if (!this._fileStream) {
-      logger.error('Asked to read a chunk after the update was finished');
+      logger.error(
+        {
+          deviceID: this._client.getDeviceID(),
+        },
+        'Asked to read a chunk after the update was finished',
+      );
     }
 
     let chunk = (this._chunk = this._fileStream
@@ -455,7 +468,12 @@ class Flasher {
 
           // 200ms * 5 * 4 / 1000
           if (counter >= 20) {
-            logger.info('finished waiting');
+            logger.info(
+              {
+                deviceID: this._client.getDeviceID(),
+              },
+              'Finished Waiting',
+            );
             clearInterval(interval);
             resolve();
           }
@@ -486,14 +504,11 @@ class Flasher {
     // if we're not doing a fast OTA, and ignore missed is turned on, then
     // ignore this missed chunk.
     if (!this._fastOtaEnabled && this._ignoreMissedChunks) {
-      logger.info({ logInfo: this._getLogInfo() }, 'ignoring missed chunk');
+      logger.info(this._getLogInfo(), 'Ignoring missed chunk');
       return;
     }
 
-    logger.warn(
-      { logInfo: this._getLogInfo() },
-      'flasher - chunk missed - recovering ',
-    );
+    logger.warn(this._getLogInfo(), 'Flasher - chunk missed - recovering ');
 
     // kosher if I ack before I've read the payload?
     this._client.sendReply(
@@ -510,7 +525,10 @@ class Flasher {
       try {
         this._missedChunks.add(payload.readUInt16BE());
       } catch (error) {
-        logger.error({ err: error }, 'onChunkMissed error reading payload');
+        logger.error(
+          { deviceID: this._client.getDeviceID(), err: error },
+          'onChunkMissed error reading payload',
+        );
       }
     }
   };

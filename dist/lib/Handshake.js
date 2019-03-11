@@ -12,6 +12,10 @@ var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
+var _extends2 = require('babel-runtime/helpers/extends');
+
+var _extends3 = _interopRequireDefault(_extends2);
+
 var _promise = require('babel-runtime/core-js/promise');
 
 var _promise2 = _interopRequireDefault(_promise);
@@ -141,7 +145,7 @@ var Handshake = function Handshake(cryptoManager) {
                   ip: _this._socket && _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown'
                 };
 
-                logger.error({ err: error, logInfo: logInfo }, 'Handshake failed');
+                logger.error((0, _extends3.default)({}, logInfo, { err: error }), 'Handshake failed');
 
                 throw error;
               }));
