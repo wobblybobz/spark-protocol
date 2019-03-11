@@ -117,7 +117,7 @@ var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_
 var connectionIdCounter = 0;
 
 var DeviceServer = function () {
-  function DeviceServer(deviceAttributeRepository, productDeviceRepository, productFirmwareRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig, areSystemFirmwareAutoupdatesEnabled) {
+  function DeviceServer(deviceAttributeRepository, productDeviceRepository, productFirmwareRepository, claimCodeManager, cryptoManager, eventPublisher, deviceServerConfig, areSystemFirmwareAutoupdatesEnabled, connectedDevicesLoggingInterval) {
     var _this = this;
 
     (0, _classCallCheck3.default)(this, DeviceServer);
@@ -1471,6 +1471,7 @@ var DeviceServer = function () {
     };
 
     this._areSystemFirmwareAutoupdatesEnabled = areSystemFirmwareAutoupdatesEnabled;
+    this._connectedDevicesLoggingInterval = connectedDevicesLoggingInterval;
     this._config = deviceServerConfig;
     this._cryptoManager = cryptoManager;
     this._claimCodeManager = claimCodeManager;
@@ -1511,7 +1512,7 @@ var DeviceServer = function () {
         return server.getConnections(function (error, count) {
           logger.info({ devices: _this2._devicesById.size, sockets: count }, 'Connected Devices');
         });
-      }, 10000);
+      }, this._connectedDevicesLoggingInterval);
 
       server.on('error', function (error) {
         return logger.error({ err: error }, 'something blew up');

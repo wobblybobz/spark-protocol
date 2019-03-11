@@ -30,7 +30,8 @@ exports.default = {
   SOCKET_TIMEOUT: 31000, // 31 seconds
 
   VERBOSE_PROTOCOL: false,
-  SHOW_VERBOSE_DEVICE_LOGS: false
+  SHOW_VERBOSE_DEVICE_LOGS: false,
+  CONNECTED_DEVICES_LOGGING_INTERVAL: 10000
 }; /*
     *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
     *

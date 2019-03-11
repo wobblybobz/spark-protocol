@@ -509,7 +509,7 @@ var Device = function (_EventEmitter) {
           reservedFlags: payload.readUInt16BE(4)
         };
 
-        console.log('Connection attributes', _this._attributesFromDevice);
+        logger.info('Connection attributes', _this._attributesFromDevice);
 
         return _this._attributesFromDevice;
       } catch (error) {

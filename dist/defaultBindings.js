@@ -61,6 +61,7 @@ var defaultBindings = function defaultBindings(container, serverSettings) {
 
   // Settings
   container.bindValue('DEVICE_DIRECTORY', mergedSettings.DEVICE_DIRECTORY);
+  container.bindValue('CONNECTED_DEVICES_LOGGING_INTERVAL', mergedSettings.CONNECTED_DEVICES_LOGGING_INTERVAL);
   container.bindValue('ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES', mergedSettings.ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES);
   container.bindValue('SERVER_KEY_FILENAME', mergedSettings.SERVER_KEY_FILENAME);
   container.bindValue('SERVER_KEY_PASSWORD', mergedSettings.SERVER_KEY_PASSWORD);
@@ -83,7 +84,7 @@ var defaultBindings = function defaultBindings(container, serverSettings) {
   container.bindClass('CryptoManager', _CryptoManager2.default, ['IDeviceKeyRepository', 'ServerKeyRepository', 'SERVER_KEY_PASSWORD']);
 
   // Device server
-  container.bindClass('DeviceServer', _DeviceServer2.default, ['IDeviceAttributeRepository', 'IProductDeviceRepository', 'IProductFirmwareRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES']);
+  container.bindClass('DeviceServer', _DeviceServer2.default, ['IDeviceAttributeRepository', 'IProductDeviceRepository', 'IProductFirmwareRepository', 'ClaimCodeManager', 'CryptoManager', 'EventPublisher', 'TCP_DEVICE_SERVER_CONFIG', 'ENABLE_SYSTEM_FIRWMARE_AUTOUPDATES', 'CONNECTED_DEVICES_LOGGING_INTERVAL']);
 };
 
 exports.default = defaultBindings;

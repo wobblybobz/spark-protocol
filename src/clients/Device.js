@@ -393,7 +393,7 @@ class Device extends EventEmitter {
         reservedFlags: payload.readUInt16BE(4),
       };
 
-      console.log('Connection attributes', this._attributesFromDevice);
+      logger.info('Connection attributes', this._attributesFromDevice);
 
       return this._attributesFromDevice;
     } catch (error) {
