@@ -354,7 +354,11 @@ class Device extends EventEmitter {
 
       return systemInformation;
     } catch (error) {
-      throw new Error(`completeProtocolInitialization: ${error}`);
+      logger.error(
+        { ...this._attributes, err: error },
+        'completeProtocolInitialization',
+      );
+      throw error;
     }
   };
 
@@ -1087,7 +1091,6 @@ class Device extends EventEmitter {
         {
           ...logInfo,
           disconnectCounter: this._disconnectCounter,
-          message,
         },
         'Device disconnected',
       );

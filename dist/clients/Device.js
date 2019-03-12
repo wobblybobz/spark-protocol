@@ -469,9 +469,11 @@ var Device = function (_EventEmitter) {
             case 19:
               _context4.prev = 19;
               _context4.t0 = _context4['catch'](0);
-              throw new Error('completeProtocolInitialization: ' + _context4.t0);
 
-            case 22:
+              logger.error((0, _extends3.default)({}, _this._attributes, { err: _context4.t0 }), 'completeProtocolInitialization');
+              throw _context4.t0;
+
+            case 23:
             case 'end':
               return _context4.stop();
           }
@@ -1231,8 +1233,7 @@ var Device = function (_EventEmitter) {
         };
 
         logger.info((0, _extends3.default)({}, logInfo, {
-          disconnectCounter: _this._disconnectCounter,
-          message: message
+          disconnectCounter: _this._disconnectCounter
         }), 'Device disconnected');
       } catch (error) {
         logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Disconnect log error');

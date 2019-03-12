@@ -406,16 +406,17 @@ var DeviceServer = function () {
                           }
 
                           device.emit(_Device.DEVICE_EVENT_NAMES.READY);
-                          _context7.next = 35;
+                          _context7.next = 36;
                           break;
 
                         case 32:
                           _context7.prev = 32;
                           _context7.t0 = _context7['catch'](0);
 
+                          logger.error({ deviceID: deviceID, err: _context7.t0 }, 'Connection Error');
                           device.disconnect('Error during connection: ' + _context7.t0 + ': ' + _context7.t0.stack);
 
-                        case 35:
+                        case 36:
                         case 'end':
                           return _context7.stop();
                       }
