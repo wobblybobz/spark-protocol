@@ -32,7 +32,13 @@ var _settings3 = require('../../third-party/settings.json');
 
 var _settings4 = _interopRequireDefault(_settings3);
 
+var _logger = require('./logger');
+
+var _logger2 = _interopRequireDefault(_logger);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var logger = _logger2.default.createModuleLogger(module);
 
 var FirmwareManager = (_temp = _class = function FirmwareManager() {
   (0, _classCallCheck3.default)(this, FirmwareManager);
@@ -41,14 +47,23 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
     throw new Error('getKnownAppFileName has not been implemented.');
   };
 }, _class.isMissingOTAUpdate = function (systemInformation) {
-  return !!FirmwareManager._getMissingModule(systemInformation);
+  return !!FirmwareManager._getMissingModule(systemInformation, logger);
 }, _class.getOtaSystemUpdateConfig = function (systemInformation) {
-  var firstDependency = FirmwareManager._getMissingModule(systemInformation);
+  var firstDependency = FirmwareManager._getMissingModule(systemInformation, logger);
   if (!firstDependency) {
     return null;
   }
 
-  var systemFile = _fs2.default.readFileSync(_settings2.default.BINARIES_DIRECTORY + '/' + firstDependency.filename);
+  var dependencyPath = _settings2.default.BINARIES_DIRECTORY + '/' + firstDependency.filename;
+
+  if (!_fs2.default.existsSync(dependencyPath)) {
+    logger.error({
+      dependencyPath: dependencyPath,
+      firstDependency: firstDependency
+    }, 'Dependency does not exist on disk');
+  }
+
+  var systemFile = _fs2.default.readFileSync(dependencyPath);
 
   return {
     moduleFunction: firstDependency.moduleFunction,
@@ -97,11 +112,17 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
 
   // Map dependencies to firmware metadata
   var knownFirmwares = knownMissingDependencies.map(function (dep) {
-    return _settings4.default.find(function (_ref) {
+    var setting = _settings4.default.find(function (_ref) {
       var prefixInfo = _ref.prefixInfo;
       return prefixInfo.platformID === platformID && prefixInfo.moduleVersion === dep.v && prefixInfo.moduleFunction === numberByFunction[dep.f] && prefixInfo.moduleIndex === parseInt(dep.n, 10);
     });
-  });
+
+    if (!setting) {
+      logger.error({ dep: dep, platformID: platformID }, 'Missing firmware setting');
+    }
+
+    return setting;
+  }).filter(Boolean);
 
   if (!knownFirmwares.length) {
     return null;
@@ -126,6 +147,8 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
     if (foundFirmware) {
       knownFirmwares.push(foundFirmware);
       allFirmware.push(foundFirmware);
+    } else if (depModuleVersion) {
+      logger.error(current.prefixInfo, 'Missing dependent firmware setting');
     }
   };
 

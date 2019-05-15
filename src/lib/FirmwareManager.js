@@ -5,21 +5,36 @@ import { HalDescribeParser } from 'binary-version-reader';
 import nullthrows from 'nullthrows';
 import protocolSettings from '../settings';
 import FirmwareSettings from '../../third-party/settings.json';
+import Logger from './logger';
+const logger = Logger.createModuleLogger(module);
 
 class FirmwareManager {
   static isMissingOTAUpdate = (systemInformation: Object): boolean =>
-    !!FirmwareManager._getMissingModule(systemInformation);
+    !!FirmwareManager._getMissingModule(systemInformation, logger);
   static getOtaSystemUpdateConfig = (systemInformation: Object): * => {
     const firstDependency = FirmwareManager._getMissingModule(
       systemInformation,
+      logger,
     );
     if (!firstDependency) {
       return null;
     }
 
-    const systemFile = fs.readFileSync(
-      `${protocolSettings.BINARIES_DIRECTORY}/${firstDependency.filename}`,
-    );
+    const dependencyPath = `${protocolSettings.BINARIES_DIRECTORY}/${
+      firstDependency.filename
+    }`;
+
+    if (!fs.existsSync(dependencyPath)) {
+      logger.error(
+        {
+          dependencyPath,
+          firstDependency,
+        },
+        'Dependency does not exist on disk',
+      );
+    }
+
+    const systemFile = fs.readFileSync(dependencyPath);
 
     return {
       moduleFunction: firstDependency.moduleFunction,
@@ -74,16 +89,25 @@ class FirmwareManager {
     };
 
     // Map dependencies to firmware metadata
-    const knownFirmwares = knownMissingDependencies.map(
-      (dep: any): any =>
-        FirmwareSettings.find(
-          ({ prefixInfo }: { prefixInfo: any }): boolean =>
-            prefixInfo.platformID === platformID &&
-            prefixInfo.moduleVersion === dep.v &&
-            prefixInfo.moduleFunction === numberByFunction[dep.f] &&
-            prefixInfo.moduleIndex === parseInt(dep.n, 10),
-        ),
-    );
+    const knownFirmwares = knownMissingDependencies
+      .map(
+        (dep: any): any => {
+          const setting = FirmwareSettings.find(
+            ({ prefixInfo }: { prefixInfo: any }): boolean =>
+              prefixInfo.platformID === platformID &&
+              prefixInfo.moduleVersion === dep.v &&
+              prefixInfo.moduleFunction === numberByFunction[dep.f] &&
+              prefixInfo.moduleIndex === parseInt(dep.n, 10),
+          );
+
+          if (!setting) {
+            logger.error({ dep, platformID }, 'Missing firmware setting');
+          }
+
+          return setting;
+        },
+      )
+      .filter(Boolean);
 
     if (!knownFirmwares.length) {
       return null;
@@ -110,6 +134,8 @@ class FirmwareManager {
       if (foundFirmware) {
         knownFirmwares.push(foundFirmware);
         allFirmware.push(foundFirmware);
+      } else if (depModuleVersion) {
+        logger.error(current.prefixInfo, 'Missing dependent firmware setting');
       }
     }
 
