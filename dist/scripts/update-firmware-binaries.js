@@ -165,28 +165,27 @@ if (GITHUB_AUTH_TYPE === 'oauth') {
 
 var downloadAssetFile = function () {
   var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(asset) {
-    var url, filename, fileWithPath;
+    var filename, fileWithPath;
     return _regenerator2.default.wrap(function _callee$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            url = asset.browser_download_url;
-            filename = (0, _nullthrows2.default)(url.match(/.*\/(.*)/))[1];
+            filename = asset.name;
             fileWithPath = _settings2.default.BINARIES_DIRECTORY + '/' + filename;
 
             if (!_fs2.default.existsSync(fileWithPath)) {
-              _context.next = 6;
+              _context.next = 5;
               break;
             }
 
             console.log('File Exists: ' + filename);
             return _context.abrupt('return', filename);
 
-          case 6:
+          case 5:
 
             console.log('Downloading ' + filename + '...');
 
-            return _context.abrupt('return', githubAPI.repos.getAsset({
+            return _context.abrupt('return', githubAPI.repos.getReleaseAsset({
               headers: {
                 accept: 'application/octet-stream'
               },
@@ -200,7 +199,7 @@ var downloadAssetFile = function () {
               return console.error(asset, error);
             }));
 
-          case 8:
+          case 7:
           case 'end':
             return _context.stop();
         }
@@ -236,12 +235,12 @@ var downloadBlob = function () {
             console.log('Downloading ' + filename + '...');
 
             return _context2.abrupt('return', githubAPI.gitdata.getBlob({
+              file_sha: asset.sha,
               headers: {
                 accept: 'application/vnd.github.v3.raw'
               },
               owner: GITHUB_USER,
-              repo: GITHUB_CLI_REPOSITORY,
-              sha: asset.sha
+              repo: GITHUB_CLI_REPOSITORY
             }).then(function (response) {
               _fs2.default.writeFileSync(fileWithPath, response.data);
               return filename;
@@ -271,7 +270,7 @@ var downloadFirmwareBinaries = function () {
           case 0:
             _context3.next = 2;
             return _promise2.default.all(assets.map(function (asset) {
-              if (asset.name.match(/^(system-part|bootloader)/)) {
+              if (asset.name.match(/(system-part|bootloader)/)) {
                 return downloadAssetFile(asset);
               }
               return _promise2.default.resolve('');
@@ -349,7 +348,7 @@ var downloadAppBinaries = function () {
         switch (_context5.prev = _context5.next) {
           case 0:
             _context5.next = 2;
-            return githubAPI.repos.getContent({
+            return githubAPI.repos.getContents({
               owner: GITHUB_USER,
               path: 'assets/binaries',
               repo: GITHUB_CLI_REPOSITORY
@@ -410,7 +409,7 @@ var downloadAppBinaries = function () {
 
         case 11:
           _context6.next = 13;
-          return githubAPI.repos.getReleases({
+          return githubAPI.repos.listReleases({
             owner: GITHUB_USER,
             page: 0,
             perPage: 30,

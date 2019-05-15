@@ -6,7 +6,6 @@ import path from 'path';
 import Github from '@octokit/rest';
 import mkdirp from 'mkdirp';
 import settings from '../settings';
-import nullthrows from 'nullthrows';
 import { HalModuleParser } from 'binary-version-reader';
 import dotenv from 'dotenv';
 
@@ -119,8 +118,7 @@ if (GITHUB_AUTH_TYPE === 'oauth') {
 }
 
 const downloadAssetFile = async (asset: Asset): Promise<*> => {
-  const url = asset.browser_download_url;
-  const filename = nullthrows(url.match(/.*\/(.*)/))[1];
+  const filename = asset.name;
   const fileWithPath = `${settings.BINARIES_DIRECTORY}/${filename}`;
   if (fs.existsSync(fileWithPath)) {
     console.log(`File Exists: ${filename}`);
@@ -130,7 +128,7 @@ const downloadAssetFile = async (asset: Asset): Promise<*> => {
   console.log(`Downloading ${filename}...`);
 
   return githubAPI.repos
-    .getAsset({
+    .getReleaseAsset({
       headers: {
         accept: 'application/octet-stream',
       },
@@ -159,12 +157,12 @@ const downloadBlob = async (asset: any): Promise<*> => {
 
   return githubAPI.gitdata
     .getBlob({
+      file_sha: asset.sha,
       headers: {
         accept: 'application/vnd.github.v3.raw',
       },
       owner: GITHUB_USER,
       repo: GITHUB_CLI_REPOSITORY,
-      sha: asset.sha,
     })
     .then(
       (response: any): string => {
@@ -181,7 +179,7 @@ const downloadFirmwareBinaries = async (
   const assetFileNames = await Promise.all(
     assets.map(
       (asset: Object): Promise<string> => {
-        if (asset.name.match(/^(system-part|bootloader)/)) {
+        if (asset.name.match(/(system-part|bootloader)/)) {
           return downloadAssetFile(asset);
         }
         return Promise.resolve('');
@@ -225,7 +223,7 @@ const updateSettings = async (
 };
 
 const downloadAppBinaries = async (): Promise<*> => {
-  const assets = await githubAPI.repos.getContent({
+  const assets = await githubAPI.repos.getContents({
     owner: GITHUB_USER,
     path: 'assets/binaries',
     repo: GITHUB_CLI_REPOSITORY,
@@ -251,7 +249,7 @@ const downloadAppBinaries = async (): Promise<*> => {
       console.error(error);
     }
     // Download firmware binaries
-    const releases = await githubAPI.repos.getReleases({
+    const releases = await githubAPI.repos.listReleases({
       owner: GITHUB_USER,
       page: 0,
       perPage: 30,
