@@ -807,39 +807,42 @@ var DeviceServer = function () {
 
               case 8:
                 _context13.t1 = _context13.sent;
-                _context13.t2 = responseEventName;
-                _context13.t3 = {
-                  context: _context13.t1,
-                  name: _context13.t2
+                _context13.t2 = {
+                  result: _context13.t1
                 };
+                _context13.t3 = responseEventName;
                 _context13.t4 = {
+                  context: _context13.t2,
+                  name: _context13.t3
+                };
+                _context13.t5 = {
                   isInternal: true,
                   isPublic: false
                 };
 
-                _context13.t0.publish.call(_context13.t0, _context13.t3, _context13.t4);
+                _context13.t0.publish.call(_context13.t0, _context13.t4, _context13.t5);
 
-                _context13.next = 18;
+                _context13.next = 19;
                 break;
 
-              case 15:
-                _context13.prev = 15;
-                _context13.t5 = _context13['catch'](1);
+              case 16:
+                _context13.prev = 16;
+                _context13.t6 = _context13['catch'](1);
 
                 _this._eventPublisher.publish({
-                  context: { error: _context13.t5 },
+                  context: { error: _context13.t6 },
                   name: responseEventName
                 }, {
                   isInternal: true,
                   isPublic: false
                 });
 
-              case 18:
+              case 19:
               case 'end':
                 return _context13.stop();
             }
           }
-        }, _callee13, _this, [[1, 15]]);
+        }, _callee13, _this, [[1, 16]]);
       }));
 
       return function (_x12) {

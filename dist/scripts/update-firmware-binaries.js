@@ -49,10 +49,6 @@ var _settings = require('../settings');
 
 var _settings2 = _interopRequireDefault(_settings);
 
-var _nullthrows = require('nullthrows');
-
-var _nullthrows2 = _interopRequireDefault(_nullthrows);
-
 var _binaryVersionReader = require('binary-version-reader');
 
 var _dotenv = require('dotenv');
@@ -62,6 +58,7 @@ var _dotenv2 = _interopRequireDefault(_dotenv);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var fileDirectory = _path2.default.resolve(process.cwd());
+
 var filePath = null;
 
 // A counter is a lot safer than a while(true)

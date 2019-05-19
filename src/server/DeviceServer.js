@@ -710,7 +710,9 @@ class DeviceServer {
 
       this._eventPublisher.publish(
         {
-          context: await device.callFunction(functionName, functionArguments),
+          context: {
+            result: await device.callFunction(functionName, functionArguments),
+          },
           name: responseEventName,
         },
         {
