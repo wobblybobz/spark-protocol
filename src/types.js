@@ -97,7 +97,13 @@ export interface IBaseRepository<TModel> {
 }
 
 export interface IDeviceAttributeRepository
-  extends IBaseRepository<DeviceAttributes> {}
+  extends IBaseRepository<DeviceAttributes> {
+  getByName(deviceName: string): Promise<DeviceAttributes>;
+  getManyFromIDs(
+    deviceIDs: Array<string>,
+    ownerID?: string,
+  ): Promise<Array<DeviceAttributes>>;
+}
 
 export interface IDeviceKeyRepository
   extends IBaseRepository<DeviceKeyObject> {}
@@ -123,6 +129,6 @@ export interface IProductFirmwareRepository
 }
 
 export interface ILoggerCreate {
-  static createLogger(applicationName: string): bunyan.Logger;
-  static createModuleLogger(applicationModule: any): bunyan.Logger;
+  createLogger(applicationName: string): bunyan.Logger;
+  createModuleLogger(applicationModule: any): bunyan.Logger;
 }

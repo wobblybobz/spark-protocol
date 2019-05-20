@@ -57,6 +57,15 @@ class DeviceAttributeFileRepository {
     return this._fileManager.getFile(`${deviceID}.json`);
   }
 
+  @memoizeGet(['deviceName'])
+  async getByName(deviceName: string): Promise<DeviceAttributes> {
+    const allData = await this._getAll();
+
+    return allData.find(
+      (attributes: DeviceAttributes): boolean => attributes.name === deviceName,
+    );
+  }
+
   @memoizeGet()
   async _getAll(): Promise<Array<DeviceAttributes>> {
     return this._fileManager.getAllData();

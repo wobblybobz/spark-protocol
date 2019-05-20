@@ -28,7 +28,7 @@ var _createClass2 = require('babel-runtime/helpers/createClass');
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
-var _dec, _dec2, _dec3, _dec4, _desc, _value, _class;
+var _dec, _dec2, _dec3, _dec4, _dec5, _desc, _value, _class;
 
 var _JSONFileManager = require('./JSONFileManager');
 
@@ -74,7 +74,7 @@ function _applyDecoratedDescriptor(target, property, decorators, descriptor, con
 }
 
 // getByID, deleteByID and update uses model.deviceID as ID for querying
-var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(['deviceID']), _dec3 = (0, _memoizeGet2.default)(['deviceID']), _dec4 = (0, _memoizeGet2.default)(), (_class = function () {
+var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 = (0, _memoizeSet2.default)(['deviceID']), _dec3 = (0, _memoizeGet2.default)(['deviceID']), _dec4 = (0, _memoizeGet2.default)(['deviceName']), _dec5 = (0, _memoizeGet2.default)(), (_class = function () {
   function DeviceAttributeFileRepository(path) {
     var _this = this;
 
@@ -231,16 +231,24 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
       return getByID;
     }()
   }, {
-    key: '_getAll',
+    key: 'getByName',
     value: function () {
-      var _ref6 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6() {
+      var _ref6 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6(deviceName) {
+        var allData;
         return _regenerator2.default.wrap(function _callee6$(_context6) {
           while (1) {
             switch (_context6.prev = _context6.next) {
               case 0:
-                return _context6.abrupt('return', this._fileManager.getAllData());
+                _context6.next = 2;
+                return this._getAll();
 
-              case 1:
+              case 2:
+                allData = _context6.sent;
+                return _context6.abrupt('return', allData.find(function (attributes) {
+                  return attributes.name === deviceName;
+                }));
+
+              case 4:
               case 'end':
                 return _context6.stop();
             }
@@ -248,13 +256,37 @@ var DeviceAttributeFileRepository = (_dec = (0, _memoizeSet2.default)(), _dec2 =
         }, _callee6, this);
       }));
 
-      function _getAll() {
+      function getByName(_x7) {
         return _ref6.apply(this, arguments);
+      }
+
+      return getByName;
+    }()
+  }, {
+    key: '_getAll',
+    value: function () {
+      var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7() {
+        return _regenerator2.default.wrap(function _callee7$(_context7) {
+          while (1) {
+            switch (_context7.prev = _context7.next) {
+              case 0:
+                return _context7.abrupt('return', this._fileManager.getAllData());
+
+              case 1:
+              case 'end':
+                return _context7.stop();
+            }
+          }
+        }, _callee7, this);
+      }));
+
+      function _getAll() {
+        return _ref7.apply(this, arguments);
       }
 
       return _getAll;
     }()
   }]);
   return DeviceAttributeFileRepository;
-}(), (_applyDecoratedDescriptor(_class.prototype, 'updateByID', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'updateByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteByID', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getByID', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getAll', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getAll'), _class.prototype)), _class));
+}(), (_applyDecoratedDescriptor(_class.prototype, 'updateByID', [_dec], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'updateByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'deleteByID', [_dec2], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'deleteByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getByID', [_dec3], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getByID'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, 'getByName', [_dec4], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, 'getByName'), _class.prototype), _applyDecoratedDescriptor(_class.prototype, '_getAll', [_dec5], (0, _getOwnPropertyDescriptor2.default)(_class.prototype, '_getAll'), _class.prototype)), _class));
 exports.default = DeviceAttributeFileRepository;
