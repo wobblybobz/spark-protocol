@@ -20,6 +20,14 @@ class FirmwareManager {
       return null;
     }
 
+    logger.info(
+      {
+        firstDependency,
+        systemInformation,
+      },
+      'Flashing Module',
+    );
+
     const dependencyPath = `${protocolSettings.BINARIES_DIRECTORY}/${
       firstDependency.filename
     }`;

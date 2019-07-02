@@ -54,6 +54,11 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
     return null;
   }
 
+  logger.info({
+    firstDependency: firstDependency,
+    systemInformation: systemInformation
+  }, 'Flashing Module');
+
   var dependencyPath = _settings2.default.BINARIES_DIRECTORY + '/' + firstDependency.filename;
 
   if (!_fs2.default.existsSync(dependencyPath)) {
