@@ -56,7 +56,7 @@
   "dependencies": {
     "@octokit/rest": "^15.6.0",
     "babel-plugin-transform-decorators": "^6.24.1",
-    "binary-version-reader": "^0.5.2",
+    "binary-version-reader": "https://github.com/particle-iot/binary-version-reader",
     "buffer-crc32": "~0.2.3",
     "bunyan": "^1.8.12",
     "chalk": "^1.1.3",

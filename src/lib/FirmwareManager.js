@@ -10,27 +10,16 @@ const logger = Logger.createModuleLogger(module);
 
 class FirmwareManager {
   static isMissingOTAUpdate = (systemInformation: Object): boolean =>
-    !!FirmwareManager._getMissingModule(systemInformation, logger);
+    !!FirmwareManager._getMissingModule(systemInformation);
   static getOtaSystemUpdateConfig = (systemInformation: Object): * => {
     const firstDependency = FirmwareManager._getMissingModule(
       systemInformation,
-      logger,
     );
     if (!firstDependency) {
       return null;
     }
 
-    logger.info(
-      {
-        firstDependency,
-        systemInformation,
-      },
-      'Flashing Module',
-    );
-
-    const dependencyPath = `${protocolSettings.BINARIES_DIRECTORY}/${
-      firstDependency.filename
-    }`;
+    const dependencyPath = `${protocolSettings.BINARIES_DIRECTORY}/${firstDependency.filename}`;
 
     if (!fs.existsSync(dependencyPath)) {
       logger.error(
@@ -70,9 +59,10 @@ class FirmwareManager {
     // This filters out any dependencies that have already been installed
     // or that are older than the currently installed modules.
     const knownMissingDependencies = modules
-      .reduce(
-        (deps: Array<any>, module: any): Array<any> => [...deps, ...module.d],
-      )
+      .reduce((deps: Array<any>, module: any): Array<any> => [
+        ...deps,
+        ...module.d,
+      ])
       .filter((dep: any): boolean => {
         const oldModuleExistsForSlot = modules.some(
           (m: any): boolean => m.f === dep.f && m.n === dep.n && m.v < dep.v,
@@ -98,23 +88,21 @@ class FirmwareManager {
 
     // Map dependencies to firmware metadata
     const knownFirmwares = knownMissingDependencies
-      .map(
-        (dep: any): any => {
-          const setting = FirmwareSettings.find(
-            ({ prefixInfo }: { prefixInfo: any }): boolean =>
-              prefixInfo.platformID === platformID &&
-              prefixInfo.moduleVersion === dep.v &&
-              prefixInfo.moduleFunction === numberByFunction[dep.f] &&
-              prefixInfo.moduleIndex === parseInt(dep.n, 10),
-          );
+      .map((dep: any): any => {
+        const setting = FirmwareSettings.find(
+          ({ prefixInfo }: { prefixInfo: any }): boolean =>
+            prefixInfo.platformID === platformID &&
+            prefixInfo.moduleVersion === dep.v &&
+            prefixInfo.moduleFunction === numberByFunction[dep.f] &&
+            prefixInfo.moduleIndex === parseInt(dep.n, 10),
+        );
 
-          if (!setting) {
-            logger.error({ dep, platformID }, 'Missing firmware setting');
-          }
+        if (!setting) {
+          logger.error({ dep, platformID }, 'Missing firmware setting');
+        }
 
-          return setting;
-        },
-      )
+        return setting;
+      })
       .filter(Boolean);
 
     if (!knownFirmwares.length) {
@@ -149,21 +137,19 @@ class FirmwareManager {
 
     // Find the first dependency that isn't already installed
     return allFirmware
-      .filter(
-        (firmware: any): boolean => {
-          const {
-            moduleVersion,
-            moduleFunction,
-            moduleIndex,
-          } = firmware.prefixInfo;
-          return !modules.some(
-            (module: any): boolean =>
-              module.v === moduleVersion &&
-              numberByFunction[module.f] === moduleFunction &&
-              parseInt(module.n, 10) === moduleIndex,
-          );
-        },
-      )
+      .filter((firmware: any): boolean => {
+        const {
+          moduleVersion,
+          moduleFunction,
+          moduleIndex,
+        } = firmware.prefixInfo;
+        return !modules.some(
+          (module: any): boolean =>
+            module.v === moduleVersion &&
+            numberByFunction[module.f] === moduleFunction &&
+            parseInt(module.n, 10) === moduleIndex,
+        );
+      })
       .pop();
   };
 
