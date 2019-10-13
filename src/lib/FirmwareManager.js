@@ -1,7 +1,10 @@
 // @flow
 
 import fs from 'fs';
-import { HalDescribeParser } from 'binary-version-reader';
+import {
+  HalDependencyResolver,
+  HalDescribeParser,
+} from 'binary-version-reader';
 import nullthrows from 'nullthrows';
 import protocolSettings from '../settings';
 import FirmwareSettings from '../../third-party/settings.json';
@@ -55,26 +58,32 @@ class FirmwareManager {
 
     const modules = systemInformation.m;
 
+    const dr = new HalDependencyResolver();
+
+    const knownMissingDependencies = dr.findAnyMissingDependencies(
+      systemInformation,
+    );
+
     // This grabs all the dependencies from modules that have them defined.
     // This filters out any dependencies that have already been installed
     // or that are older than the currently installed modules.
-    const knownMissingDependencies = modules
-      .reduce((deps: Array<any>, module: any): Array<any> => [
-        ...deps,
-        ...module.d,
-      ])
-      .filter((dep: any): boolean => {
-        const oldModuleExistsForSlot = modules.some(
-          (m: any): boolean => m.f === dep.f && m.n === dep.n && m.v < dep.v,
-        );
-        // If the new dependency doesn't have an existing module installed.
-        // If the firmware goes from 2 parts to 3 parts
-        const moduleNotInstalled = !modules.some(
-          (m: any): boolean => m.f === dep.f && m.n === dep.n,
-        );
+    // const knownMissingDependencies = modules
+    //   .reduce((deps: Array<any>, module: any): Array<any> => [
+    //     ...deps,
+    //     ...module.d,
+    //   ])
+    //   .filter((dep: any): boolean => {
+    //     const oldModuleExistsForSlot = modules.some(
+    //       (m: any): boolean => m.f === dep.f && m.n === dep.n && m.v < dep.v,
+    //     );
+    //     // If the new dependency doesn't have an existing module installed.
+    //     // If the firmware goes from 2 parts to 3 parts
+    //     const moduleNotInstalled = !modules.some(
+    //       (m: any): boolean => m.f === dep.f && m.n === dep.n,
+    //     );
 
-        return oldModuleExistsForSlot || moduleNotInstalled;
-      }, []);
+    //     return oldModuleExistsForSlot || moduleNotInstalled;
+    //   }, []);
 
     if (!knownMissingDependencies.length) {
       return null;
@@ -87,7 +96,7 @@ class FirmwareManager {
     };
 
     // Map dependencies to firmware metadata
-    const knownFirmwares = knownMissingDependencies
+    const knownFirmwares = [knownMissingDependencies[0]]
       .map((dep: any): any => {
         const setting = FirmwareSettings.find(
           ({ prefixInfo }: { prefixInfo: any }): boolean =>
@@ -104,6 +113,16 @@ class FirmwareManager {
         return setting;
       })
       .filter(Boolean);
+
+    logger.error(
+      {
+        // knownFirmwares,
+        knownMissingDependencies,
+        // safeModules,
+        // systemInformation,
+      },
+      'foo',
+    );
 
     if (!knownFirmwares.length) {
       return null;
@@ -130,27 +149,26 @@ class FirmwareManager {
       if (foundFirmware) {
         knownFirmwares.push(foundFirmware);
         allFirmware.push(foundFirmware);
-      } else if (depModuleVersion) {
-        logger.error(current.prefixInfo, 'Missing dependent firmware setting');
       }
     }
 
     // Find the first dependency that isn't already installed
-    return allFirmware
+    const result = allFirmware
       .filter((firmware: any): boolean => {
         const {
           moduleVersion,
           moduleFunction,
           moduleIndex,
         } = firmware.prefixInfo;
-        return !modules.some(
+        const existingModule = modules.find(
           (module: any): boolean =>
-            module.v === moduleVersion &&
             numberByFunction[module.f] === moduleFunction &&
             parseInt(module.n, 10) === moduleIndex,
         );
+        return existingModule == null || existingModule.v < moduleVersion;
       })
       .pop();
+    return result;
   };
 
   getKnownAppFileName = (): ?string => {

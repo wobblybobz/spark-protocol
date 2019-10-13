@@ -321,6 +321,15 @@ var updateSettings = function () {
             return _promise2.default.all(binaryFileNames.map(function (filename) {
               return new _promise2.default(function (resolve) {
                 return parser.parseFile(_settings2.default.BINARIES_DIRECTORY + '/' + filename, function (result) {
+                  // For some reason all the new modules are dependent on
+                  // version 204 but these modules don't actually exist
+                  // Use 207 as it's close enough (v0.7.0)
+                  // https://github.com/Brewskey/spark-protocol/issues/145
+                  if (result.prefixInfo.depModuleVersion === 204) {
+                    // eslint-disable-next-line no-param-reassign
+                    result.prefixInfo.depModuleVersion = 207;
+                  }
+
                   resolve((0, _extends3.default)({}, result, {
                     fileBuffer: undefined,
                     filename: filename

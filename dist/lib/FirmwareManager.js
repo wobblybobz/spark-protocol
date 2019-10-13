@@ -47,17 +47,12 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
     throw new Error('getKnownAppFileName has not been implemented.');
   };
 }, _class.isMissingOTAUpdate = function (systemInformation) {
-  return !!FirmwareManager._getMissingModule(systemInformation, logger);
+  return !!FirmwareManager._getMissingModule(systemInformation);
 }, _class.getOtaSystemUpdateConfig = function (systemInformation) {
-  var firstDependency = FirmwareManager._getMissingModule(systemInformation, logger);
+  var firstDependency = FirmwareManager._getMissingModule(systemInformation);
   if (!firstDependency) {
     return null;
   }
-
-  logger.info({
-    firstDependency: firstDependency,
-    systemInformation: systemInformation
-  }, 'Flashing Module');
 
   var dependencyPath = _settings2.default.BINARIES_DIRECTORY + '/' + firstDependency.filename;
 
@@ -87,23 +82,30 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
 
   var modules = systemInformation.m;
 
+  var dr = new _binaryVersionReader.HalDependencyResolver();
+
+  var knownMissingDependencies = dr.findAnyMissingDependencies(systemInformation);
+
   // This grabs all the dependencies from modules that have them defined.
   // This filters out any dependencies that have already been installed
   // or that are older than the currently installed modules.
-  var knownMissingDependencies = modules.reduce(function (deps, module) {
-    return [].concat((0, _toConsumableArray3.default)(deps), (0, _toConsumableArray3.default)(module.d));
-  }).filter(function (dep) {
-    var oldModuleExistsForSlot = modules.some(function (m) {
-      return m.f === dep.f && m.n === dep.n && m.v < dep.v;
-    });
-    // If the new dependency doesn't have an existing module installed.
-    // If the firmware goes from 2 parts to 3 parts
-    var moduleNotInstalled = !modules.some(function (m) {
-      return m.f === dep.f && m.n === dep.n;
-    });
+  // const knownMissingDependencies = modules
+  //   .reduce((deps: Array<any>, module: any): Array<any> => [
+  //     ...deps,
+  //     ...module.d,
+  //   ])
+  //   .filter((dep: any): boolean => {
+  //     const oldModuleExistsForSlot = modules.some(
+  //       (m: any): boolean => m.f === dep.f && m.n === dep.n && m.v < dep.v,
+  //     );
+  //     // If the new dependency doesn't have an existing module installed.
+  //     // If the firmware goes from 2 parts to 3 parts
+  //     const moduleNotInstalled = !modules.some(
+  //       (m: any): boolean => m.f === dep.f && m.n === dep.n,
+  //     );
 
-    return oldModuleExistsForSlot || moduleNotInstalled;
-  }, []);
+  //     return oldModuleExistsForSlot || moduleNotInstalled;
+  //   }, []);
 
   if (!knownMissingDependencies.length) {
     return null;
@@ -116,7 +118,7 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
   };
 
   // Map dependencies to firmware metadata
-  var knownFirmwares = knownMissingDependencies.map(function (dep) {
+  var knownFirmwares = [knownMissingDependencies[0]].map(function (dep) {
     var setting = _settings4.default.find(function (_ref) {
       var prefixInfo = _ref.prefixInfo;
       return prefixInfo.platformID === platformID && prefixInfo.moduleVersion === dep.v && prefixInfo.moduleFunction === numberByFunction[dep.f] && prefixInfo.moduleIndex === parseInt(dep.n, 10);
@@ -128,6 +130,13 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
 
     return setting;
   }).filter(Boolean);
+
+  logger.error({
+    // knownFirmwares,
+    knownMissingDependencies: knownMissingDependencies
+    // safeModules,
+    // systemInformation,
+  }, 'foo');
 
   if (!knownFirmwares.length) {
     return null;
@@ -152,8 +161,6 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
     if (foundFirmware) {
       knownFirmwares.push(foundFirmware);
       allFirmware.push(foundFirmware);
-    } else if (depModuleVersion) {
-      logger.error(current.prefixInfo, 'Missing dependent firmware setting');
     }
   };
 
@@ -162,15 +169,17 @@ var FirmwareManager = (_temp = _class = function FirmwareManager() {
   }
 
   // Find the first dependency that isn't already installed
-  return allFirmware.filter(function (firmware) {
+  var result = allFirmware.filter(function (firmware) {
     var _firmware$prefixInfo = firmware.prefixInfo,
         moduleVersion = _firmware$prefixInfo.moduleVersion,
         moduleFunction = _firmware$prefixInfo.moduleFunction,
         moduleIndex = _firmware$prefixInfo.moduleIndex;
 
-    return !modules.some(function (module) {
-      return module.v === moduleVersion && numberByFunction[module.f] === moduleFunction && parseInt(module.n, 10) === moduleIndex;
+    var existingModule = modules.find(function (module) {
+      return numberByFunction[module.f] === moduleFunction && parseInt(module.n, 10) === moduleIndex;
     });
+    return existingModule == null || existingModule.v < moduleVersion;
   }).pop();
+  return result;
 }, _temp);
 exports.default = FirmwareManager;

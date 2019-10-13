@@ -136,12 +136,10 @@ const downloadAssetFile = async (asset: Asset): Promise<*> => {
       owner: GITHUB_USER,
       repo: GITHUB_FIRMWARE_REPOSITORY,
     })
-    .then(
-      (response: any): string => {
-        fs.writeFileSync(fileWithPath, response.data);
-        return filename;
-      },
-    )
+    .then((response: any): string => {
+      fs.writeFileSync(fileWithPath, response.data);
+      return filename;
+    })
     .catch((error: Error): void => console.error(asset, error));
 };
 
@@ -164,12 +162,10 @@ const downloadBlob = async (asset: any): Promise<*> => {
       owner: GITHUB_USER,
       repo: GITHUB_CLI_REPOSITORY,
     })
-    .then(
-      (response: any): string => {
-        fs.writeFileSync(fileWithPath, response.data);
-        return filename;
-      },
-    )
+    .then((response: any): string => {
+      fs.writeFileSync(fileWithPath, response.data);
+      return filename;
+    })
     .catch((error: Error): void => console.error(error));
 };
 
@@ -191,20 +187,18 @@ const downloadFirmwareBinaries = async (
   }
 
   const chunks = chunkArray(
-    assets.filter(
-      (asset: Object): Promise<string> =>
-        asset.name.match(/(system-part|bootloader)/),
+    assets.filter((asset: Object): Promise<string> =>
+      asset.name.match(/(system-part|bootloader)/),
     ),
     CHUNK_SIZE,
   );
   const assetFileNames = await chunks.reduce(
     (promise: Promise, chunk: Array): Array =>
-      promise.then(
-        (results: Array): Promise =>
-          Promise.all([
-            ...(results || []),
-            ...chunk.map((asset: Object): Promise => downloadAssetFile(asset)),
-          ]),
+      promise.then((results: Array): Promise =>
+        Promise.all([
+          ...(results || []),
+          ...chunk.map((asset: Object): Promise => downloadAssetFile(asset)),
+        ]),
       ),
     Promise.resolve(),
   );
@@ -220,18 +214,26 @@ const updateSettings = async (
   const moduleInfos = await Promise.all(
     binaryFileNames.map(
       (filename: string): Promise<any> =>
-        new Promise(
-          (resolve: (result: any) => void): void =>
-            parser.parseFile(
-              `${settings.BINARIES_DIRECTORY}/${filename}`,
-              (result: any) => {
-                resolve({
-                  ...result,
-                  fileBuffer: undefined,
-                  filename,
-                });
-              },
-            ),
+        new Promise((resolve: (result: any) => void): void =>
+          parser.parseFile(
+            `${settings.BINARIES_DIRECTORY}/${filename}`,
+            (result: any) => {
+              // For some reason all the new modules are dependent on
+              // version 204 but these modules don't actually exist
+              // Use 207 as it's close enough (v0.7.0)
+              // https://github.com/Brewskey/spark-protocol/issues/145
+              if (result.prefixInfo.depModuleVersion === 204) {
+                // eslint-disable-next-line no-param-reassign
+                result.prefixInfo.depModuleVersion = 207;
+              }
+
+              resolve({
+                ...result,
+                fileBuffer: undefined,
+                filename,
+              });
+            },
+          ),
         ),
     ),
   );
@@ -281,17 +283,15 @@ const downloadAppBinaries = async (): Promise<*> => {
       data = data.concat(releases.data);
     }
 
-    data.sort(
-      (a: Object, b: Object): number => {
-        if (a.tag_name < b.tag_name) {
-          return 1;
-        }
-        if (a.tag_name > b.tag_name) {
-          return -1;
-        }
-        return 0;
-      },
-    );
+    data.sort((a: Object, b: Object): number => {
+      if (a.tag_name < b.tag_name) {
+        return 1;
+      }
+      if (a.tag_name > b.tag_name) {
+        return -1;
+      }
+      return 0;
+    });
 
     const assets = [].concat(
       ...data.map((release: any): Array<any> => release.assets),
