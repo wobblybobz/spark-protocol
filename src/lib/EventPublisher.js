@@ -184,12 +184,11 @@ class EventPublisher extends EventEmitter {
 
   _emitWithPrefix = (eventName: string, event: ProtocolEvent) => {
     this.eventNames()
-      .filter(
-        (eventNamePrefix: string): boolean =>
-          eventName.startsWith(eventNamePrefix),
+      .filter((eventNamePrefix: string): boolean =>
+        eventName.startsWith(eventNamePrefix),
       )
-      .forEach(
-        (eventNamePrefix: string): boolean => this.emit(eventNamePrefix, event),
+      .forEach((eventNamePrefix: string): boolean =>
+        this.emit(eventNamePrefix, event),
       );
   };
 

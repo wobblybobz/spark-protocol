@@ -257,9 +257,8 @@ class Device extends EventEmitter {
     this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); // every 15 second(s)
     this._socket.setTimeout(SOCKET_TIMEOUT);
 
-    this._socket.on(
-      'error',
-      (error: Error): void => this.disconnect(`socket error: ${error.message}`),
+    this._socket.on('error', (error: Error): void =>
+      this.disconnect(`socket error: ${error.message}`),
     );
     this._socket.on('close', (): void => this.disconnect('socket close'));
     this._socket.on('timeout', (): void => this.disconnect('socket timeout'));
@@ -946,8 +945,8 @@ class Device extends EventEmitter {
   };
 
   _getDescription = async (): Promise<DeviceDescription> => {
-    await new Promise(
-      (resolve: () => void): number => setTimeout((): void => resolve(), 50),
+    await new Promise((resolve: () => void): number =>
+      setTimeout((): void => resolve(), 50),
     );
 
     return new Promise(

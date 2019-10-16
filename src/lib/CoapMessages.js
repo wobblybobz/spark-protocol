@@ -91,18 +91,16 @@ class CoapMessages {
       // eslint-disable-next-line no-unused-vars
       ([name, value]: [MessageType, MessageSpecificationType]): boolean =>
         !!value.uri,
-    ).map(
-      ([name, value]: [MessageType, MessageSpecificationType]): [
-        string,
-        MessageType,
-      ] => {
-        // see what it looks like without params
-        const uri = value.template ? value.template.render({}) : value.uri;
-        const routeKey = _getRouteKey(value.code, `/${uri || ''}`);
+    ).map(([name, value]: [MessageType, MessageSpecificationType]): [
+      string,
+      MessageType,
+    ] => {
+      // see what it looks like without params
+      const uri = value.template ? value.template.render({}) : value.uri;
+      const routeKey = _getRouteKey(value.code, `/${uri || ''}`);
 
-        return [routeKey, name];
-      },
-    ),
+      return [routeKey, name];
+    }),
   );
 
   static getUriPath = (packet: CoapPacket): string => {
@@ -188,12 +186,10 @@ class CoapMessages {
         if (specification.template) {
           uri = specification.template.render(params);
         }
-        queryParams = (params.args || []).map(
-          (value: any): CoapOption => ({
-            name: CoapMessage.Option.URI_QUERY,
-            value: Buffer.isBuffer(value) ? value : new Buffer(value),
-          }),
-        );
+        queryParams = (params.args || []).map((value: any): CoapOption => ({
+          name: CoapMessage.Option.URI_QUERY,
+          value: Buffer.isBuffer(value) ? value : new Buffer(value),
+        }));
       }
 
       let uriOptions = [];
@@ -206,12 +202,10 @@ class CoapMessages {
         uriOptions = uri
           .split('/')
           .filter((segment: string): boolean => !!segment)
-          .map(
-            (segment: string): CoapOption => ({
-              name: CoapMessage.Option.URI_PATH,
-              value: new Buffer(segment),
-            }),
-          );
+          .map((segment: string): CoapOption => ({
+            name: CoapMessage.Option.URI_PATH,
+            value: new Buffer(segment),
+          }));
       }
 
       return CoapPacket.generate({
