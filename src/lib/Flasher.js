@@ -328,9 +328,6 @@ class Flasher {
     }
 
     if (canUseFastOTA) {
-      // cleanup
-      await this._onAllChunksDone();
-
       // Wait a whle for the error messages to come in for FastOTA
       await this._waitForMissedChunks();
     }
@@ -342,6 +339,9 @@ class Flasher {
       await this._waitForMissedChunks();
       counter += 1;
     }
+
+    // cleanup
+    await this._onAllChunksDone();
   };
 
   _resendChunks = async (): Promise<void> => {
@@ -392,7 +392,7 @@ class Flasher {
 
     // workaround for https://github.com/spark/core-firmware/issues/238
     if (chunk && chunk.length !== this._chunkSize) {
-      const buffer = new Buffer(this._chunkSize);
+      const buffer = Buffer.alloc(this._chunkSize);
       chunk.copy(buffer, 0, 0, chunk.length);
       buffer.fill(0, chunk.length, this._chunkSize);
       this._chunk = chunk = buffer;

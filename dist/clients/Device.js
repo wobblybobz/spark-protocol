@@ -1,83 +1,83 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.DEVICE_STATUS_MAP = exports.DEVICE_MESSAGE_EVENTS_NAMES = exports.SYSTEM_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = undefined;
 
-var _values = require('babel-runtime/core-js/object/values');
+var _values = require("babel-runtime/core-js/object/values");
 
 var _values2 = _interopRequireDefault(_values);
 
-var _regenerator = require('babel-runtime/regenerator');
+var _regenerator = require("babel-runtime/regenerator");
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
 
-var _promise = require('babel-runtime/core-js/promise');
+var _promise = require("babel-runtime/core-js/promise");
 
 var _promise2 = _interopRequireDefault(_promise);
 
-var _asyncToGenerator2 = require('babel-runtime/helpers/asyncToGenerator');
+var _asyncToGenerator2 = require("babel-runtime/helpers/asyncToGenerator");
 
 var _asyncToGenerator3 = _interopRequireDefault(_asyncToGenerator2);
 
-var _extends2 = require('babel-runtime/helpers/extends');
+var _extends2 = require("babel-runtime/helpers/extends");
 
 var _extends3 = _interopRequireDefault(_extends2);
 
-var _getPrototypeOf = require('babel-runtime/core-js/object/get-prototype-of');
+var _getPrototypeOf = require("babel-runtime/core-js/object/get-prototype-of");
 
 var _getPrototypeOf2 = _interopRequireDefault(_getPrototypeOf);
 
-var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
+var _classCallCheck2 = require("babel-runtime/helpers/classCallCheck");
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _possibleConstructorReturn2 = require('babel-runtime/helpers/possibleConstructorReturn');
+var _possibleConstructorReturn2 = require("babel-runtime/helpers/possibleConstructorReturn");
 
 var _possibleConstructorReturn3 = _interopRequireDefault(_possibleConstructorReturn2);
 
-var _inherits2 = require('babel-runtime/helpers/inherits');
+var _inherits2 = require("babel-runtime/helpers/inherits");
 
 var _inherits3 = _interopRequireDefault(_inherits2);
 
-var _CoapMessage = require('../lib/CoapMessage');
+var _CoapMessage = require("../lib/CoapMessage");
 
 var _CoapMessage2 = _interopRequireDefault(_CoapMessage);
 
-var _coapPacket = require('coap-packet');
+var _coapPacket = require("coap-packet");
 
 var _coapPacket2 = _interopRequireDefault(_coapPacket);
 
-var _CryptoManager = require('../lib/CryptoManager');
+var _CryptoManager = require("../lib/CryptoManager");
 
 var _CryptoManager2 = _interopRequireDefault(_CryptoManager);
 
-var _FileTransferStore = require('../lib/FileTransferStore');
+var _FileTransferStore = require("../lib/FileTransferStore");
 
 var _FileTransferStore2 = _interopRequireDefault(_FileTransferStore);
 
-var _CoapMessages = require('../lib/CoapMessages');
+var _CoapMessages = require("../lib/CoapMessages");
 
 var _CoapMessages2 = _interopRequireDefault(_CoapMessages);
 
-var _Flasher = require('../lib/Flasher');
+var _Flasher = require("../lib/Flasher");
 
 var _Flasher2 = _interopRequireDefault(_Flasher);
 
-var _events = require('events');
+var _events = require("events");
 
 var _events2 = _interopRequireDefault(_events);
 
-var _nullthrows = require('nullthrows');
+var _nullthrows = require("nullthrows");
 
 var _nullthrows2 = _interopRequireDefault(_nullthrows);
 
-var _settings = require('../settings');
+var _settings = require("../settings");
 
 var _settings2 = _interopRequireDefault(_settings);
 
-var _logger = require('../lib/logger');
+var _logger = require("../lib/logger");
 
 var _logger2 = _interopRequireDefault(_logger);
 
@@ -142,41 +142,43 @@ var KEEP_ALIVE_TIMEOUT = _settings2.default.KEEP_ALIVE_TIMEOUT;
 var SOCKET_TIMEOUT = _settings2.default.SOCKET_TIMEOUT;
 
 var DEVICE_EVENT_NAMES = exports.DEVICE_EVENT_NAMES = {
-  DISCONNECT: 'disconnect',
-  FLASH_FAILED: 'flash/failed',
-  FLASH_STARTED: 'flash/started',
-  FLASH_SUCCESS: 'flash/success',
-  READY: 'ready'
+  DISCONNECT: "disconnect",
+  FLASH_FAILED: "flash/failed",
+  FLASH_STARTED: "flash/started",
+  FLASH_SUCCESS: "flash/success",
+  READY: "ready"
 };
 
 var SYSTEM_EVENT_NAMES = exports.SYSTEM_EVENT_NAMES = {
-  APP_HASH: 'spark/device/app-hash',
-  CLAIM_CODE: 'spark/device/claim/code',
-  FLASH_AVAILABLE: 'spark/flash/available',
-  FLASH_PROGRESS: 'spark/flash/progress',
-  FLASH_STATUS: 'spark/flash/status',
-  GET_IP: 'spark/device/ip',
-  GET_NAME: 'spark/device/name',
-  GET_RANDOM_BUFFER: 'spark/device/random',
-  IDENTITY: 'spark/device/ident/0',
-  LAST_RESET: 'spark/device/last_reset', // This should just have a friendly string in its payload.
-  MAX_BINARY: 'spark/hardware/max_binary',
-  OTA_CHUNK_SIZE: 'spark/hardware/ota_chunk_size',
-  OTA_RESULT: 'spark/device/ota_result',
-  RESET: 'spark/device/reset', // send this to reset passing "safe mode"/"dfu"/"reboot"
-  SAFE_MODE: 'spark/device/safemode',
-  SAFE_MODE_UPDATING: 'spark/safe-mode-updater/updating',
-  SPARK_STATUS: 'spark/status',
-  SPARK_SUBSYSTEM: 'spark/cc3000-patch-version'
+  APP_HASH: "spark/device/app-hash",
+  CLAIM_CODE: "spark/device/claim/code",
+  FLASH_AVAILABLE: "spark/flash/available",
+  FLASH_PROGRESS: "spark/flash/progress",
+  FLASH_STATUS: "spark/flash/status",
+  GET_IP: "spark/device/ip",
+  GET_NAME: "spark/device/name",
+  GET_RANDOM_BUFFER: "spark/device/random",
+  IDENTITY: "spark/device/ident/0",
+  LAST_RESET: "spark/device/last_reset", // This should just have a friendly string in its payload.
+  MAX_BINARY: "spark/hardware/max_binary",
+  OTA_CHUNK_SIZE: "spark/hardware/ota_chunk_size",
+  OTA_RESULT: "spark/device/ota_result",
+  RESET: "spark/device/reset", // send this to reset passing "safe mode"/"dfu"/"reboot"
+  SAFE_MODE: "spark/device/safemode",
+  SAFE_MODE_UPDATING: "spark/safe-mode-updater/updating",
+  SPARK_STATUS: "spark/status",
+  SPARK_SUBSYSTEM: "spark/cc3000-patch-version",
+  UPDATES_ENABLED: "particle/device/updates/enabled",
+  UPDATES_FORCED: "particle/device/updates/forced"
 };
 
 // These constants should be consistent with message names in
 // MessageSpecifications.js
 var DEVICE_MESSAGE_EVENTS_NAMES = exports.DEVICE_MESSAGE_EVENTS_NAMES = {
-  GET_TIME: 'GetTime',
-  PRIVATE_EVENT: 'PrivateEvent',
-  PUBLIC_EVENT: 'PublicEvent',
-  SUBSCRIBE: 'Subscribe'
+  GET_TIME: "GetTime",
+  PRIVATE_EVENT: "PrivateEvent",
+  PUBLIC_EVENT: "PublicEvent",
+  SUBSCRIBE: "Subscribe"
 };
 
 var DEVICE_STATUS_MAP = exports.DEVICE_STATUS_MAP = {
@@ -186,7 +188,7 @@ var DEVICE_STATUS_MAP = exports.DEVICE_STATUS_MAP = {
   READY: 4
 };
 
-var NEW_STATUS_EVENT_NAME = 'newStatus';
+var NEW_STATUS_EVENT_NAME = "newStatus";
 
 /**
  * Implementation of the Particle messaging protocol
@@ -205,11 +207,11 @@ var Device = function (_EventEmitter) {
 
     _this._attributes = {
       appHash: null,
-      deviceID: '',
+      deviceID: "",
       functions: null,
-      ip: 'unkonwn',
+      ip: "unkonwn",
       lastHeard: null,
-      name: '',
+      name: "",
       ownerID: null,
       particleProductId: 0,
       platformId: 0,
@@ -286,10 +288,10 @@ var Device = function (_EventEmitter) {
                   break;
                 }
 
-                return _context.abrupt('return', _promise2.default.resolve());
+                return _context.abrupt("return", _promise2.default.resolve());
 
               case 2:
-                return _context.abrupt('return', new _promise2.default(function (resolve) {
+                return _context.abrupt("return", new _promise2.default(function (resolve) {
                   var deviceStatusListener = function deviceStatusListener(newStatus) {
                     if (status <= newStatus) {
                       resolve();
@@ -301,7 +303,7 @@ var Device = function (_EventEmitter) {
                 }));
 
               case 3:
-              case 'end':
+              case "end":
                 return _context.stop();
             }
           }
@@ -322,24 +324,24 @@ var Device = function (_EventEmitter) {
               _this._socket.setKeepAlive(true, KEEP_ALIVE_TIMEOUT); // every 15 second(s)
               _this._socket.setTimeout(SOCKET_TIMEOUT);
 
-              _this._socket.on('error', function (error) {
-                return _this.disconnect('socket error: ' + error.message);
+              _this._socket.on("error", function (error) {
+                return _this.disconnect("socket error: " + error.message);
               });
-              _this._socket.on('close', function () {
-                return _this.disconnect('socket close');
+              _this._socket.on("close", function () {
+                return _this.disconnect("socket close");
               });
-              _this._socket.on('timeout', function () {
-                return _this.disconnect('socket timeout');
+              _this._socket.on("timeout", function () {
+                return _this.disconnect("socket timeout");
               });
 
               _context2.next = 8;
               return _this.startHandshake();
 
             case 8:
-              return _context2.abrupt('return', _context2.sent);
+              return _context2.abrupt("return", _context2.sent);
 
             case 9:
-            case 'end':
+            case "end":
               return _context2.stop();
           }
         }
@@ -363,7 +365,7 @@ var Device = function (_EventEmitter) {
                 break;
               }
 
-              throw new Error('Handshake result undefined');
+              throw new Error("Handshake result undefined");
 
             case 6:
               cipherStream = result.cipherStream, decipherStream = result.decipherStream, deviceID = result.deviceID, handshakeBuffer = result.handshakeBuffer;
@@ -381,17 +383,17 @@ var Device = function (_EventEmitter) {
               }));
               _this.setStatus(DEVICE_STATUS_MAP.GOT_HELLO);
 
-              return _context3.abrupt('return', deviceID);
+              return _context3.abrupt("return", deviceID);
 
             case 15:
               _context3.prev = 15;
-              _context3.t0 = _context3['catch'](0);
+              _context3.t0 = _context3["catch"](0);
 
               _this.disconnect(_context3.t0);
               throw _context3.t0;
 
             case 19:
-            case 'end':
+            case "end":
               return _context3.stop();
           }
         }
@@ -412,11 +414,11 @@ var Device = function (_EventEmitter) {
                 break;
               }
 
-              throw new Error('decipherStream not set.');
+              throw new Error("decipherStream not set.");
 
             case 4:
 
-              decipherStream.on('readable', function () {
+              decipherStream.on("readable", function () {
                 var read = function read() {
                   return decipherStream.read();
                 };
@@ -462,19 +464,19 @@ var Device = function (_EventEmitter) {
                 ip: _this.getRemoteIPAddress(),
                 particleProductId: _this._attributesFromDevice.particleProductId,
                 platformId: _this._attributesFromDevice.platformId
-              }, 'On device protocol initialization complete');
+              }, "On device protocol initialization complete");
 
-              return _context4.abrupt('return', _systemInformation);
+              return _context4.abrupt("return", _systemInformation);
 
             case 19:
               _context4.prev = 19;
-              _context4.t0 = _context4['catch'](0);
+              _context4.t0 = _context4["catch"](0);
 
-              logger.error((0, _extends3.default)({}, _this._attributes, { err: _context4.t0 }), 'completeProtocolInitialization');
+              logger.error((0, _extends3.default)({}, _this._attributes, { err: _context4.t0 }), "completeProtocolInitialization");
               throw _context4.t0;
 
             case 23:
-            case 'end':
+            case "end":
               return _context4.stop();
           }
         }
@@ -486,14 +488,14 @@ var Device = function (_EventEmitter) {
         clearTimeout(_this._socketTimeoutInterval);
       }
       _this._socketTimeoutInterval = setTimeout(function () {
-        return _this.disconnect('socket timeout');
+        return _this.disconnect("socket timeout");
       }, SOCKET_TIMEOUT);
     };
 
     _this._getHello = function (chunk) {
       var message = _CoapMessages2.default.unwrap(chunk);
       if (!message) {
-        throw new Error('failed to parse hello');
+        throw new Error("failed to parse hello");
       }
 
       _this._receiveCounter = message.messageId;
@@ -511,11 +513,11 @@ var Device = function (_EventEmitter) {
           reservedFlags: payload.readUInt16BE(4)
         };
 
-        logger.info(_this._attributesFromDevice, 'Connection attributes');
+        logger.info(_this._attributesFromDevice, "Connection attributes");
 
         return _this._attributesFromDevice;
       } catch (error) {
-        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Error while parsing hello payload ');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, "Error while parsing hello payload ");
         return null;
       }
     };
@@ -523,12 +525,12 @@ var Device = function (_EventEmitter) {
     _this._sendHello = function () {
       // client will set the counter property on the message
       _this._sendCounter = _CryptoManager2.default.getRandomUINT16();
-      _this.sendMessage('Hello');
+      _this.sendMessage("Hello");
     };
 
     _this.ping = function () {
       if (_settings2.default.logApiMessages) {
-        logger.info({ deviceID: _this.getDeviceID() }, 'Pinged, replying');
+        logger.info({ deviceID: _this.getDeviceID() }, "Pinged, replying");
       }
 
       return {
@@ -543,7 +545,7 @@ var Device = function (_EventEmitter) {
       if (!packet) {
         logger.error({
           deviceID: _this.getDeviceID()
-        }, 'RouteMessage got a NULL COAP message ');
+        }, "RouteMessage got a NULL COAP message ");
         return;
       }
 
@@ -553,7 +555,7 @@ var Device = function (_EventEmitter) {
       // Get the message code (the decimal portion of the code) to determine
       // how we should handle the message
       var messageCode = packet.code;
-      var requestType = '';
+      var requestType = "";
       if (messageCode > _CoapMessage2.default.Code.EMPTY && messageCode <= _CoapMessage2.default.Code.DELETE) {
         // probably a request
         requestType = _CoapMessages2.default.getRequestType(packet);
@@ -568,7 +570,7 @@ var Device = function (_EventEmitter) {
       if (packet.ack) {
         if (!requestType) {
           // no type, can't route it.
-          requestType = 'PingAck';
+          requestType = "PingAck";
         }
 
         _this.emit(requestType, packet);
@@ -578,7 +580,7 @@ var Device = function (_EventEmitter) {
       _this._incrementReceiveCounter();
       if (packet.code === 0 && packet.confirmable) {
         _this.updateAttributes({ lastHeard: new Date() });
-        _this.sendReply('PingAck', packet.messageId);
+        _this.sendReply("PingAck", packet.messageId);
         return;
       }
 
@@ -587,20 +589,20 @@ var Device = function (_EventEmitter) {
           deviceID: _this.getDeviceID(),
           expect: _this._receiveCounter,
           got: packet.messageId
-        }, 'MessageId other than expected');
+        }, "MessageId other than expected");
 
-        if (requestType === 'Ignored') {
+        if (requestType === "Ignored") {
           // don't ignore an ignore...
-          _this.disconnect('Got an Ignore');
+          _this.disconnect("Got an Ignore");
           return;
         }
 
         // this.sendMessage('Ignored', null, {}, null, null);
-        _this.disconnect('Bad Counter');
+        _this.disconnect("Bad Counter");
         return;
       }
 
-      _this.emit(requestType || '', packet);
+      _this.emit(requestType || "", packet);
     };
 
     _this.sendReply = function (messageName, id, data, token, requester) {
@@ -621,14 +623,14 @@ var Device = function (_EventEmitter) {
       if (!message) {
         logger.error({
           deviceID: _this.getDeviceID()
-        }, 'Device - could not unwrap message');
+        }, "Device - could not unwrap message");
         return;
       }
 
       if (!_this._cipherStream) {
         logger.error({
           deviceID: _this.getDeviceID()
-        }, 'Device - sendReply before READY');
+        }, "Device - sendReply before READY");
         return;
       }
 
@@ -653,7 +655,7 @@ var Device = function (_EventEmitter) {
       var message = _CoapMessages2.default.wrap(messageName, _this._sendCounter, params, options, data, token);
 
       if (!message) {
-        logger.error({ data: data, deviceID: _this.getDeviceID(), messageName: messageName, params: params }, 'Could not wrap message');
+        logger.error({ data: data, deviceID: _this.getDeviceID(), messageName: messageName, params: params }, "Could not wrap message");
         return -1;
       }
 
@@ -661,7 +663,7 @@ var Device = function (_EventEmitter) {
         logger.error({
           deviceID: _this.getDeviceID(),
           messageName: messageName
-        }, 'Client - sendMessage before READY');
+        }, "Client - sendMessage before READY");
       }
 
       process.nextTick(function () {
@@ -680,10 +682,10 @@ var Device = function (_EventEmitter) {
               case 0:
                 tokenHex = token ? _this._toHexString(token) : null;
                 beVerbose = _settings2.default.SHOW_VERBOSE_DEVICE_LOGS;
-                return _context5.abrupt('return', new _promise2.default(function (resolve, reject) {
+                return _context5.abrupt("return", new _promise2.default(function (resolve, reject) {
                   var timeout = setTimeout(function () {
                     cleanUpListeners();
-                    reject(new Error('Request timed out ' + eventName));
+                    reject(new Error("Request timed out " + eventName));
                   }, KEEP_ALIVE_TIMEOUT);
 
                   // adds a one time event
@@ -696,23 +698,23 @@ var Device = function (_EventEmitter) {
                           deviceID: _this.getDeviceID(),
                           packetUri: packetUri,
                           uri: uri
-                        }, 'URI filter did not match');
+                        }, "URI filter did not match");
                       }
                       return;
                     }
 
-                    var packetTokenHex = packet.token.toString('hex');
+                    var packetTokenHex = packet.token.toString("hex");
                     if (tokenHex && tokenHex !== packetTokenHex) {
                       if (beVerbose) {
                         logger.warn({
                           deviceID: _this.getDeviceID(),
                           packetTokenHex: packetTokenHex,
                           tokenHex: tokenHex
-                        }, 'Tokens did not match');
+                        }, "Tokens did not match");
                       }
                       return;
                     }
-
+                    logger.error({ packet: packet }, "FOOOOOO");
                     cleanUpListeners();
                     resolve(packet);
                   };
@@ -724,15 +726,15 @@ var Device = function (_EventEmitter) {
 
                   var cleanUpListeners = function cleanUpListeners() {
                     _this.removeListener(eventName, handler);
-                    _this.removeListener('disconnect', disconnectHandler);
+                    _this.removeListener("disconnect", disconnectHandler);
                   };
 
                   _this.on(eventName, handler);
-                  _this.on('disconnect', disconnectHandler);
+                  _this.on("disconnect", disconnectHandler);
                 }));
 
               case 3:
-              case 'end':
+              case "end":
                 return _context5.stop();
             }
           }
@@ -767,7 +769,7 @@ var Device = function (_EventEmitter) {
       var key = _this._toHexString(sendToken);
 
       if (_this._tokens[key]) {
-        throw new Error('Token ' + name + ' ' + _this._tokens[key] + ' ' + key + ' already in use');
+        throw new Error("Token " + name + " " + _this._tokens[key] + " " + key + " already in use");
       }
 
       _this._tokens[key] = name;
@@ -782,10 +784,10 @@ var Device = function (_EventEmitter) {
     };
 
     _this._getResponseType = function (token) {
-      var tokenString = token.toString('hex');
+      var tokenString = token.toString("hex");
       var request = _this._tokens[tokenString];
       if (!request) {
-        return '';
+        return "";
       }
 
       return _CoapMessages2.default.getResponseType(request);
@@ -805,7 +807,7 @@ var Device = function (_EventEmitter) {
                   break;
                 }
 
-                throw new Error('This device is locked during the flashing process.');
+                throw new Error("This device is locked during the flashing process.");
 
               case 3:
                 _context6.next = 5;
@@ -817,19 +819,19 @@ var Device = function (_EventEmitter) {
                   break;
                 }
 
-                throw new Error('Variable not found');
+                throw new Error("Variable not found");
 
               case 7:
-                messageToken = _this.sendMessage('VariableRequest', { name: name });
+                messageToken = _this.sendMessage("VariableRequest", { name: name });
                 _context6.next = 10;
-                return _this.listenFor('VariableValue', null, messageToken);
+                return _this.listenFor("VariableValue", null, messageToken);
 
               case 10:
                 message = _context6.sent;
-                return _context6.abrupt('return', _this._transformVariableResult(name, message));
+                return _context6.abrupt("return", _this._transformVariableResult(name, message));
 
               case 12:
-              case 'end':
+              case "end":
                 return _context6.stop();
             }
           }
@@ -855,7 +857,7 @@ var Device = function (_EventEmitter) {
                   break;
                 }
 
-                throw new Error('This device is locked during the flashing process.');
+                throw new Error("This device is locked during the flashing process.");
 
               case 3:
                 _context7.next = 5;
@@ -867,28 +869,28 @@ var Device = function (_EventEmitter) {
                   break;
                 }
 
-                throw new Error('Function not found');
+                throw new Error("Function not found");
 
               case 7:
 
                 logger.info({
                   deviceID: _this.getDeviceID(),
                   functionName: functionName
-                }, 'sending function call to the device');
+                }, "sending function call to the device");
 
-                token = _this.sendMessage('FunctionCall', {
+                token = _this.sendMessage("FunctionCall", {
                   args: (0, _values2.default)(functionArguments),
                   name: functionName
                 });
                 _context7.next = 11;
-                return _this.listenFor('FunctionReturn', null, token);
+                return _this.listenFor("FunctionReturn", null, token);
 
               case 11:
                 message = _context7.sent;
-                return _context7.abrupt('return', _this._transformFunctionResult(functionName, message));
+                return _context7.abrupt("return", _this._transformFunctionResult(functionName, message));
 
               case 13:
-              case 'end':
+              case "end":
                 return _context7.stop();
             }
           }
@@ -914,7 +916,7 @@ var Device = function (_EventEmitter) {
                   break;
                 }
 
-                throw new Error('This device is locked during the flashing process.');
+                throw new Error("This device is locked during the flashing process.");
 
               case 3:
 
@@ -922,22 +924,22 @@ var Device = function (_EventEmitter) {
                  * does the special URL writing needed directly to the COAP message object,
                  * since the URI requires non-text values
                  */
-                buffer = new Buffer(1);
+                buffer = Buffer.alloc(1);
 
                 buffer.writeUInt8(shouldShowSignal ? 1 : 0, 0);
 
-                token = _this.sendMessage('SignalStart', null, [{
+                token = _this.sendMessage("SignalStart", null, [{
                   name: _CoapMessage2.default.Option.URI_QUERY,
                   value: buffer
                 }]);
                 _context8.next = 8;
-                return _this.listenFor('SignalStartReturn', null, token);
+                return _this.listenFor("SignalStartReturn", null, token);
 
               case 8:
-                return _context8.abrupt('return', _context8.sent);
+                return _context8.abrupt("return", _context8.sent);
 
               case 9:
-              case 'end':
+              case "end":
                 return _context8.stop();
             }
           }
@@ -952,7 +954,7 @@ var Device = function (_EventEmitter) {
     _this.flash = function () {
       var _ref10 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee9(binary) {
         var fileTransferStore = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : _FileTransferStore2.default.FIRMWARE;
-        var address = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : '0x0';
+        var address = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : "0x0";
         var isBusy, flasher;
         return _regenerator2.default.wrap(function _callee9$(_context9) {
           while (1) {
@@ -965,7 +967,7 @@ var Device = function (_EventEmitter) {
                   break;
                 }
 
-                throw new Error('This device is locked during the flashing process.');
+                throw new Error("This device is locked during the flashing process.");
 
               case 3:
 
@@ -976,7 +978,7 @@ var Device = function (_EventEmitter) {
 
                 logger.info({
                   deviceID: _this.getDeviceID()
-                }, 'flash device started! - sending api event');
+                }, "flash device started! - sending api event");
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_STARTED);
 
@@ -987,29 +989,29 @@ var Device = function (_EventEmitter) {
 
                 logger.info({
                   deviceID: _this.getDeviceID()
-                }, 'Flash device finished! - sending api event');
+                }, "Flash device finished! - sending api event");
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_SUCCESS);
                 _this._isFlashing = false;
 
-                return _context9.abrupt('return', { status: 'Update finished' });
+                return _context9.abrupt("return", { status: "Update finished" });
 
               case 16:
                 _context9.prev = 16;
-                _context9.t0 = _context9['catch'](5);
+                _context9.t0 = _context9["catch"](5);
 
                 logger.error({
                   deviceID: _this.getDeviceID(),
                   err: _context9.t0
-                }, 'Flash device failed! - sending api event');
+                }, "Flash device failed! - sending api event");
 
                 _this._isFlashing = false;
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
-                throw new Error('Update failed: ' + _context9.t0.message);
+                throw new Error("Update failed: " + _context9.t0.message);
 
               case 22:
-              case 'end':
+              case "end":
                 return _context9.stop();
             }
           }
@@ -1030,14 +1032,14 @@ var Device = function (_EventEmitter) {
         cache_key: _this._connectionKey,
         deviceID: _this.getDeviceID(),
         messageName: messageName
-      }, 'This client has an exclusive lock');
+      }, "This client has an exclusive lock");
 
       return false;
     };
 
     _this.takeOwnership = function (flasher) {
       if (_this._owningFlasher) {
-        logger.error({ deviceID: _this.getDeviceID() }, 'Device already owned');
+        logger.error({ deviceID: _this.getDeviceID() }, "Device already owned");
         return false;
       }
       // only permit the owning object to send messages.
@@ -1046,7 +1048,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this.releaseOwnership = function (flasher) {
-      logger.info({ deviceID: _this.getDeviceID() }, 'Releasing flash ownership');
+      logger.info({ deviceID: _this.getDeviceID() }, "Releasing flash ownership");
       if (_this._owningFlasher === flasher) {
         _this._owningFlasher = null;
       } else if (_this._owningFlasher) {
@@ -1056,7 +1058,7 @@ var Device = function (_EventEmitter) {
 
     _this._transformVariableResult = function (name, packet) {
       // grab the variable type, if the device doesn't say, assume it's a 'string'
-      var variableType = _this._attributes.variables && _this._attributes.variables[name] || 'string';
+      var variableType = _this._attributes.variables && _this._attributes.variables[name] || "string";
 
       var result = null;
       try {
@@ -1066,14 +1068,14 @@ var Device = function (_EventEmitter) {
           result = _CoapMessages2.default.fromBinary(packet.payload, variableType);
         }
       } catch (error) {
-        logger.error({ err: error }, '_transformVariableResult - error transforming response');
+        logger.error({ err: error }, "_transformVariableResult - error transforming response");
       }
 
       return result;
     };
 
     _this._transformFunctionResult = function (name, packet) {
-      var variableType = 'int32';
+      var variableType = "int32";
 
       var result = null;
       try {
@@ -1081,7 +1083,7 @@ var Device = function (_EventEmitter) {
           result = _CoapMessages2.default.fromBinary(packet.payload, variableType);
         }
       } catch (error) {
-        logger.error({ err: error }, '_transformFunctionResult - error transforming response');
+        logger.error({ err: error }, "_transformFunctionResult - error transforming response");
         throw error;
       }
 
@@ -1101,22 +1103,22 @@ var Device = function (_EventEmitter) {
               });
 
             case 2:
-              return _context10.abrupt('return', new _promise2.default(function (resolve, reject) {
+              return _context10.abrupt("return", new _promise2.default(function (resolve, reject) {
                 var systemInformation = void 0;
                 var functionState = void 0;
 
                 var timeout = setTimeout(function () {
                   cleanUpListeners();
-                  reject(new Error('Request timed out - Describe'));
+                  reject(new Error("Request timed out - Describe"));
                 }, KEEP_ALIVE_TIMEOUT);
 
                 var handler = function handler(packet) {
                   var payload = packet.payload;
                   if (!payload.length) {
-                    throw new Error('Payload empty for Describe message');
+                    throw new Error("Payload empty for Describe message");
                   }
 
-                  var data = JSON.parse(payload.toString('utf8'));
+                  var data = JSON.parse(payload.toString("utf8"));
 
                   if (!systemInformation && data.m) {
                     systemInformation = data;
@@ -1143,21 +1145,21 @@ var Device = function (_EventEmitter) {
                 };
 
                 var cleanUpListeners = function cleanUpListeners() {
-                  _this.removeListener('DescribeReturn', handler);
-                  _this.removeListener('disconnect', disconnectHandler);
+                  _this.removeListener("DescribeReturn", handler);
+                  _this.removeListener("disconnect", disconnectHandler);
                 };
 
-                _this.on('DescribeReturn', handler);
-                _this.on('disconnect', disconnectHandler);
+                _this.on("DescribeReturn", handler);
+                _this.on("disconnect", disconnectHandler);
 
                 // Because some firmware versions do not send the app + system state
                 // in a single message, we cannot use `listenFor` and instead have to
                 // write some hacky code that duplicates a lot of the functionality
-                _this.sendMessage('Describe');
+                _this.sendMessage("Describe");
               }));
 
             case 3:
-            case 'end':
+            case "end":
               return _context10.stop();
           }
         }
@@ -1180,8 +1182,8 @@ var Device = function (_EventEmitter) {
         event_name: name
       }, [{
         name: _CoapMessage2.default.Option.MAX_AGE,
-        value: _CoapMessages2.default.toBinary(ttl, 'uint32')
-      }], data && new Buffer(data) || null);
+        value: _CoapMessages2.default.toBinary(ttl, "uint32")
+      }], data && Buffer.from(data) || null);
     };
 
     _this._hasParticleVariable = function (name) {
@@ -1195,7 +1197,7 @@ var Device = function (_EventEmitter) {
     };
 
     _this._toHexString = function (value) {
-      return Buffer.from([value]).toString('hex');
+      return Buffer.from([value]).toString("hex");
     };
 
     _this.getDeviceID = function () {
@@ -1207,11 +1209,11 @@ var Device = function (_EventEmitter) {
     };
 
     _this.getRemoteIPAddress = function () {
-      return _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : 'unknown';
+      return _this._socket.remoteAddress ? _this._socket.remoteAddress.toString() : "unknown";
     };
 
     _this.disconnect = function () {
-      var message = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
+      var message = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : "";
 
       _this._disconnectCounter += 1;
 
@@ -1234,9 +1236,9 @@ var Device = function (_EventEmitter) {
 
         logger.info((0, _extends3.default)({}, logInfo, {
           disconnectCounter: _this._disconnectCounter
-        }), 'Device disconnected');
+        }), "Device disconnected");
       } catch (error) {
-        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Disconnect log error');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, "Disconnect log error");
       }
 
       if (_this._decipherStream) {
@@ -1244,7 +1246,7 @@ var Device = function (_EventEmitter) {
           _this._decipherStream.end();
           _this._decipherStream = null;
         } catch (error) {
-          logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Error cleaning up decipherStream');
+          logger.error({ deviceID: _this.getDeviceID(), err: error }, "Error cleaning up decipherStream");
         }
       }
 
@@ -1253,7 +1255,7 @@ var Device = function (_EventEmitter) {
           _this._cipherStream.end();
           _this._cipherStream = null;
         } catch (error) {
-          logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Error cleaning up cipherStream');
+          logger.error({ deviceID: _this.getDeviceID(), err: error }, "Error cleaning up cipherStream");
         }
       }
 
@@ -1261,7 +1263,7 @@ var Device = function (_EventEmitter) {
         _this._socket.end();
         _this._socket.destroy();
       } catch (error) {
-        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Disconnect TCPSocket error');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, "Disconnect TCPSocket error");
       }
 
       _this.emit(DEVICE_EVENT_NAMES.DISCONNECT, message);
@@ -1270,7 +1272,7 @@ var Device = function (_EventEmitter) {
       try {
         _this.removeAllListeners();
       } catch (error) {
-        logger.error({ deviceID: _this.getDeviceID(), err: error }, 'Problem removing listeners');
+        logger.error({ deviceID: _this.getDeviceID(), err: error }, "Problem removing listeners");
       }
     };
 
@@ -1279,6 +1281,22 @@ var Device = function (_EventEmitter) {
     _this._handshake = handshake;
     return _this;
   }
+
+  // emit(type, ...args: Array<mixed>) {
+  //   const packet = args[0];
+  //   const eventData =
+  //     packet != null
+  //       ? {
+  //           connectionID: this.getConnectionKey(),
+  //           deviceID: this._attributes.deviceID,
+  //           name: CoapMessages.getUriPath(packet).substr(3),
+  //           ttl: CoapMessages.getMaxAge(packet),
+  //         }
+  //       : new Error();
+
+  //   logger.info(eventData, `Device Event: ${  type}`);
+  //   super.emit(type, ...args);
+  // }
 
   /**
    * configure our socket and start the handshake

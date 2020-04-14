@@ -61,7 +61,7 @@ var messageLengthBytes = function messageLengthBytes(message) {
   // assuming a maximum encrypted message length of 65K, lets write an
   // unsigned short int before every message, so we know how much to read out.
   var length = message.length;
-  var lengthBuffer = new Buffer(MSG_LENGTH_BYTES);
+  var lengthBuffer = Buffer.alloc(MSG_LENGTH_BYTES);
 
   lengthBuffer[0] = length >>> 8;
   lengthBuffer[1] = length & 255;

@@ -10,9 +10,10 @@ class CoapMessage {
     POST: 0.02,
     PUT: 0.03,
     DELETE: 0.04,
+    OK: 2.0,
     CREATED: 2.01,
     DELETED: 2.02,
-    VALID: 2.03,
+    NOT_MODIFIED: 2.03,
     CHANGED: 2.04,
     CONTENT: 2.05,
     BAD_REQUEST: 4,
@@ -22,7 +23,7 @@ class CoapMessage {
     NOT_FOUND: 4.04,
     METHOD_NOT_ALLOWED: 4.05,
     NOT_ACCEPTABLE: 4.06,
-    REQUEST_ENTITY_INCOMPLETE: 4.08,
+    REQUEST_ENTITY_INCOMPLETE: 136,
     PRECONDITION_FAILED: 4.12,
     REQUEST_ENTITY_TOO_LARGE: 4.13,
     UNSUPPORTED_CONTENT_FORMAT: 4.15,
@@ -60,6 +61,7 @@ class CoapMessage {
     NON: 1,
     ACK: 2,
     RST: 3,
+    ERROR: 4,
   };
   /* eslint-enable sorting/sort-object-props*/
 }

@@ -40,6 +40,7 @@ import nullthrows from 'nullthrows';
 import moment from 'moment';
 import Moniker from 'moniker';
 import Device from '../clients/Device';
+import CoapPacket from 'coap-packet';
 
 import FirmwareManager from '../lib/FirmwareManager';
 import CoapMessages from '../lib/CoapMessages';
@@ -68,6 +69,8 @@ const SPECIAL_EVENTS = [
   SYSTEM_EVENT_NAMES.FLASH_STATUS,
   SYSTEM_EVENT_NAMES.SAFE_MODE,
   SYSTEM_EVENT_NAMES.SPARK_STATUS,
+  SYSTEM_EVENT_NAMES.UPDATES_ENABLED,
+  SYSTEM_EVENT_NAMES.UPDATES_FORCED,
 ];
 
 let connectionIdCounter = 0;
@@ -387,7 +390,7 @@ class DeviceServer {
             );
           }
 
-          device.emit(DEVICE_EVENT_NAMES.READY);
+          // device.emit(DEVICE_EVENT_NAMES.READY);
         } catch (error) {
           logger.error({ deviceID, err: error }, 'Connection Error');
           device.disconnect(
@@ -467,7 +470,6 @@ class DeviceServer {
         name: CoapMessages.getUriPath(packet).substr(3),
         ttl: CoapMessages.getMaxAge(packet),
       };
-
       const publishOptions: PublishOptions = {
         isInternal: false,
         isPublic,
@@ -586,6 +588,19 @@ class DeviceServer {
         // compare with version on disc
         // if device version is old, do OTA update with patch
       }
+
+      if (
+        eventName.startsWith(SYSTEM_EVENT_NAMES.UPDATES_ENABLED) ||
+        eventName.startsWith(SYSTEM_EVENT_NAMES.UPDATES_FORCED)
+      ) {
+        // const binaryValue = CoapMessages.toBinary(1, 'uint8');
+        // device.sendReply(
+        //   'UpdatesReply',
+        //   packet.messageId,
+        //   binaryValue,
+        //   packet.token.length ? packet.token.readUInt8(0) : 0,
+        // );
+      }
     } catch (error) {
       logger.error({ deviceID, err: error }, 'Device Server Error');
     }
@@ -655,6 +670,7 @@ class DeviceServer {
           deviceID,
           isFromMyDevices,
           messageName,
+          query,
         },
         'Subscribe Request',
       );

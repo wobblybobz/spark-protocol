@@ -114,6 +114,8 @@ export const SYSTEM_EVENT_NAMES = {
   SAFE_MODE_UPDATING: 'spark/safe-mode-updater/updating',
   SPARK_STATUS: 'spark/status',
   SPARK_SUBSYSTEM: 'spark/cc3000-patch-version',
+  UPDATES_ENABLED: 'particle/device/updates/enabled',
+  UPDATES_FORCED: 'particle/device/updates/forced',
 };
 
 // These constants should be consistent with message names in
@@ -192,6 +194,22 @@ class Device extends EventEmitter {
     this._socket = socket;
     this._handshake = handshake;
   }
+
+  // emit(type, ...args: Array<mixed>) {
+  //   const packet = args[0];
+  //   const eventData =
+  //     packet != null
+  //       ? {
+  //           connectionID: this.getConnectionKey(),
+  //           deviceID: this._attributes.deviceID,
+  //           name: CoapMessages.getUriPath(packet).substr(3),
+  //           ttl: CoapMessages.getMaxAge(packet),
+  //         }
+  //       : new Error();
+
+  //   logger.info(eventData, `Device Event: ${  type}`);
+  //   super.emit(type, ...args);
+  // }
 
   getAttributes = (): DeviceAttributes => ({
     ...this._attributes,
@@ -657,7 +675,7 @@ class Device extends EventEmitter {
             }
             return;
           }
-
+          logger.error({ packet }, 'FOOOOOO');
           cleanUpListeners();
           resolve(packet);
         };
@@ -797,7 +815,7 @@ class Device extends EventEmitter {
      * does the special URL writing needed directly to the COAP message object,
      * since the URI requires non-text values
      */
-    const buffer = new Buffer(1);
+    const buffer = Buffer.alloc(1);
     buffer.writeUInt8(shouldShowSignal ? 1 : 0, 0);
 
     const token = this.sendMessage('SignalStart', null, [
@@ -1036,7 +1054,7 @@ class Device extends EventEmitter {
           value: CoapMessages.toBinary(ttl, 'uint32'),
         },
       ],
-      (data && new Buffer(data)) || null,
+      (data && Buffer.from(data)) || null,
     );
   };
 

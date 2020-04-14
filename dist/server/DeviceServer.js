@@ -68,6 +68,10 @@ var _Device = require('../clients/Device');
 
 var _Device2 = _interopRequireDefault(_Device);
 
+var _coapPacket = require('coap-packet');
+
+var _coapPacket2 = _interopRequireDefault(_coapPacket);
+
 var _FirmwareManager = require('../lib/FirmwareManager');
 
 var _FirmwareManager2 = _interopRequireDefault(_FirmwareManager);
@@ -88,31 +92,29 @@ var _logger2 = _interopRequireDefault(_logger);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/*
- *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
- *
- *   This program is free software; you can redistribute it and/or
- *   modify it under the terms of the GNU Lesser General Public
- *   License as published by the Free Software Foundation, either
- *   version 3 of the License, or (at your option) any later version.
- *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *   Lesser General Public License for more details.
- *
- *   You should have received a copy of the GNU Lesser General Public
- *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
- *
- * 
- *
- */
-
-var logger = _logger2.default.createModuleLogger(module);
+var logger = _logger2.default.createModuleLogger(module); /*
+                                                           *   Copyright (c) 2015 Particle Industries, Inc.  All rights reserved.
+                                                           *
+                                                           *   This program is free software; you can redistribute it and/or
+                                                           *   modify it under the terms of the GNU Lesser General Public
+                                                           *   License as published by the Free Software Foundation, either
+                                                           *   version 3 of the License, or (at your option) any later version.
+                                                           *
+                                                           *   This program is distributed in the hope that it will be useful,
+                                                           *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+                                                           *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+                                                           *   Lesser General Public License for more details.
+                                                           *
+                                                           *   You should have received a copy of the GNU Lesser General Public
+                                                           *   License along with this program; if not, see <http://www.gnu.org/licenses/>.
+                                                           *
+                                                           * 
+                                                           *
+                                                           */
 
 var NAME_GENERATOR = _moniker2.default.generator([_moniker2.default.adjective, _moniker2.default.noun]);
 
-var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_NAMES.FLASH_AVAILABLE, _Device.SYSTEM_EVENT_NAMES.FLASH_PROGRESS, _Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, _Device.SYSTEM_EVENT_NAMES.SAFE_MODE, _Device.SYSTEM_EVENT_NAMES.SPARK_STATUS];
+var SPECIAL_EVENTS = [_Device.SYSTEM_EVENT_NAMES.APP_HASH, _Device.SYSTEM_EVENT_NAMES.FLASH_AVAILABLE, _Device.SYSTEM_EVENT_NAMES.FLASH_PROGRESS, _Device.SYSTEM_EVENT_NAMES.FLASH_STATUS, _Device.SYSTEM_EVENT_NAMES.SAFE_MODE, _Device.SYSTEM_EVENT_NAMES.SPARK_STATUS, _Device.SYSTEM_EVENT_NAMES.UPDATES_ENABLED, _Device.SYSTEM_EVENT_NAMES.UPDATES_FORCED];
 
 var connectionIdCounter = 0;
 
@@ -405,23 +407,23 @@ var DeviceServer = function () {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, appHash, deviceID, ownerID, false);
                           }
 
-                          device.emit(_Device.DEVICE_EVENT_NAMES.READY);
-                          _context7.next = 36;
+                          // device.emit(DEVICE_EVENT_NAMES.READY);
+                          _context7.next = 35;
                           break;
 
-                        case 32:
-                          _context7.prev = 32;
+                        case 31:
+                          _context7.prev = 31;
                           _context7.t0 = _context7['catch'](0);
 
                           logger.error({ deviceID: deviceID, err: _context7.t0 }, 'Connection Error');
                           device.disconnect('Error during connection: ' + _context7.t0 + ': ' + _context7.t0.stack);
 
-                        case 36:
+                        case 35:
                         case 'end':
                           return _context7.stop();
                       }
                     }
-                  }, _callee7, _this, [[0, 32]]);
+                  }, _callee7, _this, [[0, 31]]);
                 })));
                 _context8.next = 18;
                 break;
@@ -628,21 +630,31 @@ var DeviceServer = function () {
                   // compare with version on disc
                   // if device version is old, do OTA update with patch
                 }
-                _context10.next = 37;
+
+                if (eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.UPDATES_ENABLED) || eventName.startsWith(_Device.SYSTEM_EVENT_NAMES.UPDATES_FORCED)) {
+                  // const binaryValue = CoapMessages.toBinary(1, 'uint8');
+                  // device.sendReply(
+                  //   'UpdatesReply',
+                  //   packet.messageId,
+                  //   binaryValue,
+                  //   packet.token.length ? packet.token.readUInt8(0) : 0,
+                  // );
+                }
+                _context10.next = 38;
                 break;
 
-              case 34:
-                _context10.prev = 34;
+              case 35:
+                _context10.prev = 35;
                 _context10.t0 = _context10['catch'](3);
 
                 logger.error({ deviceID: deviceID, err: _context10.t0 }, 'Device Server Error');
 
-              case 37:
+              case 38:
               case 'end':
                 return _context10.stop();
             }
           }
-        }, _callee10, _this, [[3, 34]]);
+        }, _callee10, _this, [[3, 35]]);
       }));
 
       return function (_x5, _x6, _x7) {
@@ -743,7 +755,8 @@ var DeviceServer = function () {
                   logger.info({
                     deviceID: deviceID,
                     isFromMyDevices: isFromMyDevices,
-                    messageName: messageName
+                    messageName: messageName,
+                    query: query
                   }, 'Subscribe Request');
 
                   device.sendReply('SubscribeAck', packet.messageId);

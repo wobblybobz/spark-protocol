@@ -144,7 +144,7 @@ function (_ref) {
 
   return [routeKey, name];
 })), _class.getUriPath = function (packet) {
-  var options = packet.options.filter(function (item) {
+  var options = (packet.options || []).filter(function (item) {
     return item.name === _CoapMessage2.default.Option.URI_PATH;
   });
 
@@ -162,7 +162,7 @@ function (_ref) {
     return item.value.toString('utf8');
   }).join('&');
 }, _class.getMaxAge = function (packet) {
-  var option = packet.options.find(function (item) {
+  var option = (packet.options || []).find(function (item) {
     return item.name === _CoapMessage2.default.Option.MAX_AGE;
   });
 
@@ -205,7 +205,7 @@ function (_ref) {
       queryParams = (params.args || []).map(function (value) {
         return {
           name: _CoapMessage2.default.Option.URI_QUERY,
-          value: Buffer.isBuffer(value) ? value : new Buffer(value)
+          value: Buffer.isBuffer(value) ? value : Buffer.from(value)
         };
       });
     }
@@ -221,7 +221,7 @@ function (_ref) {
       }).map(function (segment) {
         return {
           name: _CoapMessage2.default.Option.URI_PATH,
-          value: new Buffer(segment)
+          value: Buffer.from(segment)
         };
       });
     }
@@ -230,7 +230,7 @@ function (_ref) {
       code: specification.code.toString(),
       messageId: messageId,
       options: (0, _compactArray2.default)([].concat((0, _toConsumableArray3.default)(uriOptions), (0, _toConsumableArray3.default)(options || []), (0, _toConsumableArray3.default)(queryParams))),
-      payload: data || new Buffer(0),
+      payload: data || Buffer.alloc(0),
       token: (token || token === 0) && Buffer.from([token])
     }));
   } catch (error) {
@@ -373,7 +373,7 @@ function (_ref) {
   typeName = typeName || (typeof value === 'undefined' ? 'undefined' : (0, _typeof3.default)(value));
 
   if (value === null) {
-    return new Buffer(0);
+    return Buffer.alloc(0);
   }
 
   switch (typeName) {
@@ -420,7 +420,7 @@ function (_ref) {
     case 'string':
     default:
       {
-        return new Buffer(value || '');
+        return Buffer.from(value || '');
       }
   }
 }, _temp);

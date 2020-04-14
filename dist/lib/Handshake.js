@@ -310,9 +310,9 @@ var Handshake = function Handshake(cryptoManager) {
               throw new Error('handshake data was too small: ' + decryptedHandshakeData.length);
 
             case 5:
-              nonceBuffer = new Buffer(NONCE_BYTES);
-              deviceIDBuffer = new Buffer(ID_BYTES);
-              deviceKeyBuffer = new Buffer(decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES));
+              nonceBuffer = Buffer.alloc(NONCE_BYTES);
+              deviceIDBuffer = Buffer.alloc(ID_BYTES);
+              deviceKeyBuffer = Buffer.alloc(decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES));
 
 
               decryptedHandshakeData.copy(nonceBuffer, 0, 0, NONCE_BYTES);

@@ -464,39 +464,39 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
           case 18:
             if (!canUseFastOTA) {
-              _context4.next = 23;
+              _context4.next = 21;
               break;
             }
 
             _context4.next = 21;
-            return _this._onAllChunksDone();
-
-          case 21:
-            _context4.next = 23;
             return _this._waitForMissedChunks();
 
-          case 23:
+          case 21:
 
             // Handle missed chunks. Wait a maximum of 12 seconds
             counter = 0;
 
-          case 24:
+          case 22:
             if (!(_this._missedChunks.size > 0 && counter < 3)) {
-              _context4.next = 32;
+              _context4.next = 30;
               break;
             }
 
-            _context4.next = 27;
+            _context4.next = 25;
             return _this._resendChunks();
 
-          case 27:
-            _context4.next = 29;
+          case 25:
+            _context4.next = 27;
             return _this._waitForMissedChunks();
 
-          case 29:
+          case 27:
             counter += 1;
-            _context4.next = 24;
+            _context4.next = 22;
             break;
+
+          case 30:
+            _context4.next = 32;
+            return _this._onAllChunksDone();
 
           case 32:
           case 'end':
@@ -587,7 +587,7 @@ function Flasher(client, maxBinarySize, otaChunkSize) {
 
     // workaround for https://github.com/spark/core-firmware/issues/238
     if (chunk && chunk.length !== _this._chunkSize) {
-      var buffer = new Buffer(_this._chunkSize);
+      var buffer = Buffer.alloc(_this._chunkSize);
       chunk.copy(buffer, 0, 0, chunk.length);
       buffer.fill(0, chunk.length, _this._chunkSize);
       _this._chunk = chunk = buffer;

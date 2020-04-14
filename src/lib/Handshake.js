@@ -239,9 +239,9 @@ class Handshake {
       );
     }
 
-    const nonceBuffer = new Buffer(NONCE_BYTES);
-    const deviceIDBuffer = new Buffer(ID_BYTES);
-    const deviceKeyBuffer = new Buffer(
+    const nonceBuffer = Buffer.alloc(NONCE_BYTES);
+    const deviceIDBuffer = Buffer.alloc(ID_BYTES);
+    const deviceKeyBuffer = Buffer.alloc(
       decryptedHandshakeData.length - (NONCE_BYTES + ID_BYTES),
     );
 

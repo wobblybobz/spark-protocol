@@ -52,8 +52,8 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
     // the next 16 bytes (MSB first) will be the initialization vector (IV),
     // and the final 8 bytes (MSB first) will be the salt.
 
-    var key = new Buffer(16); // just the key... +8); //key plus salt
-    var iv = new Buffer(16); // initialization vector
+    var key = Buffer.alloc(16); // just the key... +8); //key plus salt
+    var iv = Buffer.alloc(16); // initialization vector
 
     sessionKey.copy(key, 0, 0, 16); // copy the key
     sessionKey.copy(iv, 0, 16, 32); // copy the iv

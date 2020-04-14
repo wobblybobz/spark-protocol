@@ -104,7 +104,7 @@ class CoapMessages {
   );
 
   static getUriPath = (packet: CoapPacket): string => {
-    const options = packet.options.filter(
+    const options = (packet.options || []).filter(
       (item: CoapOption): boolean => item.name === CoapMessage.Option.URI_PATH,
     );
 
@@ -127,7 +127,7 @@ class CoapMessages {
       .join('&');
 
   static getMaxAge = (packet: CoapPacket): number => {
-    const option = packet.options.find(
+    const option = (packet.options || []).find(
       (item: CoapOption): boolean => item.name === CoapMessage.Option.MAX_AGE,
     );
 
@@ -188,7 +188,7 @@ class CoapMessages {
         }
         queryParams = (params.args || []).map((value: any): CoapOption => ({
           name: CoapMessage.Option.URI_QUERY,
-          value: Buffer.isBuffer(value) ? value : new Buffer(value),
+          value: Buffer.isBuffer(value) ? value : Buffer.from(value),
         }));
       }
 
@@ -204,7 +204,7 @@ class CoapMessages {
           .filter((segment: string): boolean => !!segment)
           .map((segment: string): CoapOption => ({
             name: CoapMessage.Option.URI_PATH,
-            value: new Buffer(segment),
+            value: Buffer.from(segment),
           }));
       }
 
@@ -217,7 +217,7 @@ class CoapMessages {
           ...(options || []),
           ...queryParams,
         ]),
-        payload: data || new Buffer(0),
+        payload: data || Buffer.alloc(0),
         token: (token || token === 0) && Buffer.from([token]),
       });
     } catch (error) {
@@ -376,7 +376,7 @@ class CoapMessages {
     typeName = typeName || typeof value;
 
     if (value === null) {
-      return new Buffer(0);
+      return Buffer.alloc(0);
     }
 
     switch (typeName) {
@@ -416,7 +416,7 @@ class CoapMessages {
 
       case 'string':
       default: {
-        return new Buffer((value: any) || '');
+        return Buffer.from((value: any) || '');
       }
     }
   };

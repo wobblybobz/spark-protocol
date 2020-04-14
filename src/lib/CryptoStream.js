@@ -22,6 +22,7 @@ import { Transform } from 'stream';
 import crypto from 'crypto';
 import settings from '../settings';
 import Logger from '../lib/logger';
+
 const logger = Logger.createModuleLogger(module);
 
 export type CryptoStreamType = 'decrypt' | 'encrypt';
