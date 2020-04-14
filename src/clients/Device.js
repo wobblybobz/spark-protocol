@@ -416,6 +416,12 @@ class Device extends EventEmitter {
 
       logger.info(this._attributesFromDevice, 'Connection attributes');
 
+      if (this._attributesFromDevice.platformId !== 0) {
+        // This is the maximum for Photon/P1.
+        // It should be updated for Boron and other types.
+        this.setMaxBinarySize(384000);
+      }
+
       return this._attributesFromDevice;
     } catch (error) {
       logger.error(

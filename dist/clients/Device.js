@@ -515,6 +515,12 @@ var Device = function (_EventEmitter) {
 
         logger.info(_this._attributesFromDevice, "Connection attributes");
 
+        if (_this._attributesFromDevice.platformId !== 0) {
+          // This is the maximum for Photon/P1.
+          // It should be updated for Boron and other types.
+          _this.setMaxBinarySize(384000);
+        }
+
         return _this._attributesFromDevice;
       } catch (error) {
         logger.error({ deviceID: _this.getDeviceID(), err: error }, "Error while parsing hello payload ");
