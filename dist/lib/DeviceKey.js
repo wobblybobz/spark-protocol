@@ -1,91 +1,70 @@
-'use strict';
+"use strict";
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _classCallCheck2 = require('babel-runtime/helpers/classCallCheck');
+var _classCallCheck2 = require("babel-runtime/helpers/classCallCheck");
 
 var _classCallCheck3 = _interopRequireDefault(_classCallCheck2);
 
-var _createClass2 = require('babel-runtime/helpers/createClass');
+var _createClass2 = require("babel-runtime/helpers/createClass");
 
 var _createClass3 = _interopRequireDefault(_createClass2);
 
-var _ecKey = require('ec-key');
+var _ecKey = require("ec-key");
 
 var _ecKey2 = _interopRequireDefault(_ecKey);
 
-var _nodeRsa = require('node-rsa');
+var _nodeRsa = require("node-rsa");
 
 var _nodeRsa2 = _interopRequireDefault(_nodeRsa);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var DeviceKey = function () {
-  function DeviceKey(algorithm, pemString) {
+  function DeviceKey(pemString) {
     (0, _classCallCheck3.default)(this, DeviceKey);
 
-    switch (algorithm) {
-      case 'ecc':
-        {
-          this._ecKey = new _ecKey2.default(pemString, 'pem');
-          break;
-        }
-
-      case 'rsa':
-        {
-          this._nodeRsa = new _nodeRsa2.default(pemString, 'pkcs8-public-pem', {
-            encryptionScheme: 'pkcs1',
-            signingScheme: 'pkcs1'
-          });
-          break;
-        }
-
-      default:
-        {
-          throw new Error('Key not implemented ' + algorithm);
-        }
+    try {
+      this._nodeRsa = new _nodeRsa2.default(pemString, "pkcs8-public-pem", {
+        encryptionScheme: "pkcs1",
+        signingScheme: "pkcs1"
+      });
+    } catch (_) {
+      this._ecKey = new _ecKey2.default(pemString, "pem");
     }
   }
 
   (0, _createClass3.default)(DeviceKey, [{
-    key: 'encrypt',
+    key: "encrypt",
     value: function encrypt(data) {
       if (this._nodeRsa) {
         return this._nodeRsa.encrypt(data);
       } else if (this._ecKey) {
-        return this._ecKey.createSign('SHA256').update(data).sign();
+        return this._ecKey.createSign("SHA256").update(data).sign();
       }
 
-      throw new Error('Key not implemented ' + data.toString());
+      throw new Error("Key not implemented " + data.toString());
     }
   }, {
-    key: 'equals',
+    key: "equals",
     value: function equals(publicKeyPem) {
       if (!publicKeyPem) {
         return false;
       }
 
-      var otherKey = void 0;
-
-      if (this._nodeRsa) {
-        otherKey = new DeviceKey('rsa', publicKeyPem);
-      } else if (this._ecKey) {
-        otherKey = new DeviceKey('ecc', publicKeyPem);
-      } else {
-        return false;
-      }
+      var otherKey = new DeviceKey(publicKeyPem);
 
       return this.toPem() === otherKey.toPem();
     }
   }, {
-    key: 'toPem',
+    key: "toPem",
     value: function toPem() {
       if (this._nodeRsa) {
-        return this._nodeRsa.exportKey('pkcs8-public-pem');
+        return this._nodeRsa.exportKey("pkcs8-public-pem");
       } else if (this._ecKey) {
-        return this._ecKey.toString('pem');
+        return this._ecKey.toString("pem");
       }
 
       return null;

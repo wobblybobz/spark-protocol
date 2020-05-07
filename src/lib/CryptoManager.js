@@ -90,16 +90,8 @@ class CryptoManager {
     deviceID: string,
     publicKeyPem: string,
   ): Promise<DeviceKey> => {
-    let output = null;
-    let algorithm = 'ecc';
-    try {
-      algorithm = 'rsa';
-      output = new DeviceKey(algorithm, publicKeyPem);
-    } catch (ignore) {
-      output = new DeviceKey(algorithm, publicKeyPem);
-    }
+    const output = new DeviceKey(publicKeyPem);
     await this._deviceKeyRepository.updateByID(deviceID, {
-      algorithm,
       deviceID,
       key: publicKeyPem,
     });
@@ -121,11 +113,7 @@ class CryptoManager {
       return null;
     }
 
-    return new DeviceKey(
-      // Default to rsa for devices that never set the algorithm
-      publicKeyObject.algorithm || 'rsa',
-      publicKeyObject.key,
-    );
+    return new DeviceKey(publicKeyObject.key);
   };
 
   getRandomBytes = (size: number): Promise<Buffer> =>

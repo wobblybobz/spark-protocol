@@ -138,31 +138,22 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
 
   this.createDevicePublicKey = function () {
     var _ref3 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee3(deviceID, publicKeyPem) {
-      var output, algorithm;
+      var output;
       return _regenerator2.default.wrap(function _callee3$(_context3) {
         while (1) {
           switch (_context3.prev = _context3.next) {
             case 0:
-              output = null;
-              algorithm = 'ecc';
-
-              try {
-                algorithm = 'rsa';
-                output = new _DeviceKey2.default(algorithm, publicKeyPem);
-              } catch (ignore) {
-                output = new _DeviceKey2.default(algorithm, publicKeyPem);
-              }
-              _context3.next = 5;
+              output = new _DeviceKey2.default(publicKeyPem);
+              _context3.next = 3;
               return _this._deviceKeyRepository.updateByID(deviceID, {
-                algorithm: algorithm,
                 deviceID: deviceID,
                 key: publicKeyPem
               });
 
-            case 5:
+            case 3:
               return _context3.abrupt('return', output);
 
-            case 6:
+            case 4:
             case 'end':
               return _context3.stop();
           }
@@ -204,9 +195,7 @@ var CryptoManager = (_temp = _class = function CryptoManager(deviceKeyRepository
               return _context4.abrupt('return', null);
 
             case 5:
-              return _context4.abrupt('return', new _DeviceKey2.default(
-              // Default to rsa for devices that never set the algorithm
-              publicKeyObject.algorithm || 'rsa', publicKeyObject.key));
+              return _context4.abrupt('return', new _DeviceKey2.default(publicKeyObject.key));
 
             case 6:
             case 'end':

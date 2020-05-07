@@ -7,24 +7,14 @@ class DeviceKey {
   _ecKey: ?ECKey;
   _nodeRsa: ?NodeRSA;
 
-  constructor(algorithm: 'ecc' | 'rsa', pemString: string) {
-    switch (algorithm) {
-      case 'ecc': {
-        this._ecKey = new ECKey(pemString, 'pem');
-        break;
-      }
-
-      case 'rsa': {
-        this._nodeRsa = new NodeRSA(pemString, 'pkcs8-public-pem', {
-          encryptionScheme: 'pkcs1',
-          signingScheme: 'pkcs1',
-        });
-        break;
-      }
-
-      default: {
-        throw new Error(`Key not implemented ${algorithm}`);
-      }
+  constructor(pemString: string) {
+    try {
+      this._nodeRsa = new NodeRSA(pemString, 'pkcs8-public-pem', {
+        encryptionScheme: 'pkcs1',
+        signingScheme: 'pkcs1',
+      });
+    } catch (_) {
+      this._ecKey = new ECKey(pemString, 'pem');
     }
   }
 
@@ -46,15 +36,7 @@ class DeviceKey {
       return false;
     }
 
-    let otherKey;
-
-    if (this._nodeRsa) {
-      otherKey = new DeviceKey('rsa', publicKeyPem);
-    } else if (this._ecKey) {
-      otherKey = new DeviceKey('ecc', publicKeyPem);
-    } else {
-      return false;
-    }
+    const otherKey = new DeviceKey(publicKeyPem);
 
     return this.toPem() === otherKey.toPem();
   }
