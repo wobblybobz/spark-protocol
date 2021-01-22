@@ -39,7 +39,9 @@ var _path2 = _interopRequireDefault(_path);
 
 var _rest = require('@octokit/rest');
 
-var _rest2 = _interopRequireDefault(_rest);
+var _pluginRetry = require('@octokit/plugin-retry');
+
+var _pluginThrottling = require('@octokit/plugin-throttling');
 
 var _mkdirp = require('mkdirp');
 
@@ -134,31 +136,50 @@ var FIRMWARE_PLATFORMS = (0, _values2.default)(DEFAULT_SETTINGS.knownPlatforms).
 });
 /* eslint-enable */
 
-var githubAPI = new _rest2.default();
-
-var _process$env = process.env,
-    GITHUB_AUTH_PASSWORD = _process$env.GITHUB_AUTH_PASSWORD,
-    GITHUB_AUTH_TYPE = _process$env.GITHUB_AUTH_TYPE,
-    GITHUB_AUTH_TOKEN = _process$env.GITHUB_AUTH_TOKEN,
-    GITHUB_AUTH_USERNAME = _process$env.GITHUB_AUTH_USERNAME;
+var GITHUB_AUTH_TOKEN = process.env.GITHUB_AUTH_TOKEN;
 
 
-if (!GITHUB_AUTH_TYPE) {
-  throw new Error('You need to set up a .env file with auth credentials');
+if (!GITHUB_AUTH_TOKEN) {
+  throw new Error('OAuth Token Required. You need to set up a .env file with auth credentials');
 }
 
-if (GITHUB_AUTH_TYPE === 'oauth') {
-  githubAPI.authenticate({
-    token: GITHUB_AUTH_TOKEN,
-    type: GITHUB_AUTH_TYPE
-  });
-} else {
-  githubAPI.authenticate({
-    password: GITHUB_AUTH_PASSWORD,
-    type: GITHUB_AUTH_TYPE,
-    username: GITHUB_AUTH_USERNAME
-  });
-}
+var MyOctokit = _rest.Octokit.plugin(_pluginRetry.retry, _pluginThrottling.throttling);
+var githubAPI = new MyOctokit({
+  auth: GITHUB_AUTH_TOKEN,
+  throttle: {
+    onAbuseLimit: function onAbuseLimit(retryAfter, options) {
+      // does not retry, only logs a warning
+      MyOctokit.log.warn('Abuse detected for request ' + options.method + ' ' + options.url);
+    },
+    onRateLimit: function onRateLimit(retryAfter, options) {
+      githubAPI.log.warn('Request quota exhausted for request ' + options.method + ' ' + options.url);
+      // Retry three times after hitting a rate limit error, then give up
+      if (options.request.retryCount <= 3) {
+        console.log('Retrying after ' + retryAfter + ' seconds!');
+        return true;
+      }
+      return false;
+    }
+  }
+});
+
+var githubAPINoAuth = new MyOctokit({
+  throttle: {
+    onAbuseLimit: function onAbuseLimit(retryAfter, options) {
+      // does not retry, only logs a warning
+      MyOctokit.log.warn('Abuse detected for request ' + options.method + ' ' + options.url);
+    },
+    onRateLimit: function onRateLimit(retryAfter, options) {
+      githubAPI.log.warn('Request quota exhausted for request ' + options.method + ' ' + options.url);
+      // Retry three times after hitting a rate limit error, then give up
+      if (options.request.retryCount <= 3) {
+        console.log('Retrying after ' + retryAfter + ' seconds!');
+        return true;
+      }
+      return false;
+    }
+  }
+});
 
 var downloadAssetFile = function () {
   var _ref = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee(asset) {
@@ -182,15 +203,16 @@ var downloadAssetFile = function () {
 
             console.log('Downloading ' + filename + '...');
 
-            return _context.abrupt('return', githubAPI.repos.getReleaseAsset({
+            return _context.abrupt('return', githubAPINoAuth.repos.getReleaseAsset({
+              access_token: GITHUB_AUTH_TOKEN,
+              asset_id: asset.id,
               headers: {
                 accept: 'application/octet-stream'
               },
-              id: asset.id,
               owner: GITHUB_USER,
               repo: GITHUB_FIRMWARE_REPOSITORY
             }).then(function (response) {
-              _fs2.default.writeFileSync(fileWithPath, response.data);
+              _fs2.default.writeFileSync(fileWithPath, Buffer.from(response.data));
               return filename;
             }).catch(function (error) {
               return console.error(asset, error);
@@ -231,7 +253,7 @@ var downloadBlob = function () {
 
             console.log('Downloading ' + filename + '...');
 
-            return _context2.abrupt('return', githubAPI.gitdata.getBlob({
+            return _context2.abrupt('return', githubAPI.git.getBlob({
               file_sha: asset.sha,
               headers: {
                 accept: 'application/vnd.github.v3.raw'
@@ -239,7 +261,7 @@ var downloadBlob = function () {
               owner: GITHUB_USER,
               repo: GITHUB_CLI_REPOSITORY
             }).then(function (response) {
-              _fs2.default.writeFileSync(fileWithPath, response.data);
+              _fs2.default.writeFileSync(fileWithPath, Buffer.from(response.data));
               return filename;
             }).catch(function (error) {
               return console.error(error);
@@ -367,7 +389,7 @@ var downloadAppBinaries = function () {
         switch (_context5.prev = _context5.next) {
           case 0:
             _context5.next = 2;
-            return githubAPI.repos.getContents({
+            return githubAPI.repos.getContent({
               owner: GITHUB_USER,
               path: 'assets/binaries',
               repo: GITHUB_CLI_REPOSITORY
@@ -396,14 +418,12 @@ var downloadAppBinaries = function () {
   };
 }();
 
-(0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6() {
-  var _ref7, releases, _releases, data, assets, downloadedBinaries;
-
-  return _regenerator2.default.wrap(function _callee6$(_context6) {
+(0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee7() {
+  return _regenerator2.default.wrap(function _callee7$(_context7) {
     while (1) {
-      switch (_context6.prev = _context6.next) {
+      switch (_context7.prev = _context7.next) {
         case 0:
-          _context6.prev = 0;
+          _context7.prev = 0;
 
           if (!_fs2.default.existsSync(_settings2.default.BINARIES_DIRECTORY)) {
             _mkdirp2.default.sync(_settings2.default.BINARIES_DIRECTORY);
@@ -412,88 +432,86 @@ var downloadAppBinaries = function () {
             _mkdirp2.default.sync(FILE_GEN_DIRECTORY);
           }
 
-          _context6.prev = 3;
-          _context6.next = 6;
+          _context7.prev = 3;
+          _context7.next = 6;
           return downloadAppBinaries();
 
         case 6:
-          _context6.next = 11;
+          _context7.next = 11;
           break;
 
         case 8:
-          _context6.prev = 8;
-          _context6.t0 = _context6['catch'](3);
+          _context7.prev = 8;
+          _context7.t0 = _context7['catch'](3);
 
-          console.error(_context6.t0);
+          console.error(_context7.t0);
 
         case 11:
-          _context6.next = 13;
-          return githubAPI.repos.listReleases({
+
+          // Download firmware binaries
+          githubAPI.paginate(githubAPI.repos.listReleases, {
             owner: GITHUB_USER,
-            page: 0,
-            perPage: 100,
+            per_page: 100,
             repo: GITHUB_FIRMWARE_REPOSITORY
-          });
+          }).then(function () {
+            var _ref7 = (0, _asyncToGenerator3.default)( /*#__PURE__*/_regenerator2.default.mark(function _callee6(releases) {
+              var _ref8;
 
-        case 13:
-          releases = _context6.sent;
-          _releases = releases, data = _releases.data;
+              var assets, downloadedBinaries;
+              return _regenerator2.default.wrap(function _callee6$(_context6) {
+                while (1) {
+                  switch (_context6.prev = _context6.next) {
+                    case 0:
+                      releases.sort(function (a, b) {
+                        if (a.tag_name < b.tag_name) {
+                          return 1;
+                        }
+                        if (a.tag_name > b.tag_name) {
+                          return -1;
+                        }
+                        return 0;
+                      });
 
-        case 15:
-          if (!githubAPI.hasNextPage(releases)) {
-            _context6.next = 22;
-            break;
-          }
+                      assets = (_ref8 = []).concat.apply(_ref8, (0, _toConsumableArray3.default)(releases.map(function (release) {
+                        return release.assets;
+                      })));
+                      _context6.next = 4;
+                      return downloadFirmwareBinaries(assets);
 
-          _context6.next = 18;
-          return githubAPI.getNextPage(releases);
+                    case 4:
+                      downloadedBinaries = _context6.sent;
+                      _context6.next = 7;
+                      return updateSettings(downloadedBinaries);
 
-        case 18:
-          releases = _context6.sent;
+                    case 7:
 
-          data = data.concat(releases.data);
-          _context6.next = 15;
+                      console.log('\r\nCompleted Sync');
+
+                    case 8:
+                    case 'end':
+                      return _context6.stop();
+                  }
+                }
+              }, _callee6, undefined);
+            }));
+
+            return function (_x5) {
+              return _ref7.apply(this, arguments);
+            };
+          }());
+          _context7.next = 17;
           break;
 
-        case 22:
+        case 14:
+          _context7.prev = 14;
+          _context7.t1 = _context7['catch'](0);
 
-          data.sort(function (a, b) {
-            if (a.tag_name < b.tag_name) {
-              return 1;
-            }
-            if (a.tag_name > b.tag_name) {
-              return -1;
-            }
-            return 0;
-          });
+          console.log(_context7.t1);
 
-          assets = (_ref7 = []).concat.apply(_ref7, (0, _toConsumableArray3.default)(data.map(function (release) {
-            return release.assets;
-          })));
-          _context6.next = 26;
-          return downloadFirmwareBinaries(assets);
-
-        case 26:
-          downloadedBinaries = _context6.sent;
-          _context6.next = 29;
-          return updateSettings(downloadedBinaries);
-
-        case 29:
-
-          console.log('\r\nCompleted Sync');
-          _context6.next = 35;
-          break;
-
-        case 32:
-          _context6.prev = 32;
-          _context6.t1 = _context6['catch'](0);
-
-          console.log(_context6.t1);
-
-        case 35:
+        case 17:
         case 'end':
-          return _context6.stop();
+          return _context7.stop();
       }
     }
-  }, _callee6, undefined, [[0, 32], [3, 8]]);
+  }, _callee7, undefined, [[0, 14], [3, 8]]);
 }))();

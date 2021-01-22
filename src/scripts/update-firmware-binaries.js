@@ -3,7 +3,9 @@
 
 import fs from 'fs';
 import path from 'path';
-import Github from '@octokit/rest';
+import { Octokit } from '@octokit/rest';
+import { retry } from '@octokit/plugin-retry';
+import { throttling } from '@octokit/plugin-throttling';
 import mkdirp from 'mkdirp';
 import settings from '../settings';
 import { HalModuleParser } from 'binary-version-reader';
@@ -91,31 +93,59 @@ const FIRMWARE_PLATFORMS = Object.values(DEFAULT_SETTINGS.knownPlatforms).map(
 );
 /* eslint-enable */
 
-const githubAPI = new Github();
+const { GITHUB_AUTH_TOKEN } = process.env;
 
-const {
-  GITHUB_AUTH_PASSWORD,
-  GITHUB_AUTH_TYPE,
-  GITHUB_AUTH_TOKEN,
-  GITHUB_AUTH_USERNAME,
-} = process.env;
-
-if (!GITHUB_AUTH_TYPE) {
-  throw new Error('You need to set up a .env file with auth credentials');
+if (!GITHUB_AUTH_TOKEN) {
+  throw new Error(
+    'OAuth Token Required. You need to set up a .env file with auth credentials',
+  );
 }
 
-if (GITHUB_AUTH_TYPE === 'oauth') {
-  githubAPI.authenticate({
-    token: GITHUB_AUTH_TOKEN,
-    type: GITHUB_AUTH_TYPE,
-  });
-} else {
-  githubAPI.authenticate({
-    password: GITHUB_AUTH_PASSWORD,
-    type: GITHUB_AUTH_TYPE,
-    username: GITHUB_AUTH_USERNAME,
-  });
-}
+const MyOctokit = Octokit.plugin(retry, throttling);
+const githubAPI = new MyOctokit({
+  auth: GITHUB_AUTH_TOKEN,
+  throttle: {
+    onAbuseLimit: (retryAfter: Number, options: Object) => {
+      // does not retry, only logs a warning
+      MyOctokit.log.warn(
+        `Abuse detected for request ${options.method} ${options.url}`,
+      );
+    },
+    onRateLimit: (retryAfter: Number, options: Object): Boolean => {
+      githubAPI.log.warn(
+        `Request quota exhausted for request ${options.method} ${options.url}`,
+      );
+      // Retry three times after hitting a rate limit error, then give up
+      if (options.request.retryCount <= 3) {
+        console.log(`Retrying after ${retryAfter} seconds!`);
+        return true;
+      }
+      return false;
+    },
+  },
+});
+
+const githubAPINoAuth = new MyOctokit({
+  throttle: {
+    onAbuseLimit: (retryAfter: Number, options: Object) => {
+      // does not retry, only logs a warning
+      MyOctokit.log.warn(
+        `Abuse detected for request ${options.method} ${options.url}`,
+      );
+    },
+    onRateLimit: (retryAfter: Number, options: Object): Boolean => {
+      githubAPI.log.warn(
+        `Request quota exhausted for request ${options.method} ${options.url}`,
+      );
+      // Retry three times after hitting a rate limit error, then give up
+      if (options.request.retryCount <= 3) {
+        console.log(`Retrying after ${retryAfter} seconds!`);
+        return true;
+      }
+      return false;
+    },
+  },
+});
 
 const downloadAssetFile = async (asset: Asset): Promise<*> => {
   const filename = asset.name;
@@ -127,17 +157,18 @@ const downloadAssetFile = async (asset: Asset): Promise<*> => {
 
   console.log(`Downloading ${filename}...`);
 
-  return githubAPI.repos
+  return githubAPINoAuth.repos
     .getReleaseAsset({
+      access_token: GITHUB_AUTH_TOKEN,
+      asset_id: asset.id,
       headers: {
         accept: 'application/octet-stream',
       },
-      id: asset.id,
       owner: GITHUB_USER,
       repo: GITHUB_FIRMWARE_REPOSITORY,
     })
     .then((response: any): string => {
-      fs.writeFileSync(fileWithPath, response.data);
+      fs.writeFileSync(fileWithPath, Buffer.from(response.data));
       return filename;
     })
     .catch((error: Error): void => console.error(asset, error));
@@ -153,7 +184,7 @@ const downloadBlob = async (asset: any): Promise<*> => {
 
   console.log(`Downloading ${filename}...`);
 
-  return githubAPI.gitdata
+  return githubAPI.git
     .getBlob({
       file_sha: asset.sha,
       headers: {
@@ -163,7 +194,7 @@ const downloadBlob = async (asset: any): Promise<*> => {
       repo: GITHUB_CLI_REPOSITORY,
     })
     .then((response: any): string => {
-      fs.writeFileSync(fileWithPath, response.data);
+      fs.writeFileSync(fileWithPath, Buffer.from(response.data));
       return filename;
     })
     .catch((error: Error): void => console.error(error));
@@ -245,7 +276,7 @@ const updateSettings = async (
 };
 
 const downloadAppBinaries = async (): Promise<*> => {
-  const assets = await githubAPI.repos.getContents({
+  const assets = await githubAPI.repos.getContent({
     owner: GITHUB_USER,
     path: 'assets/binaries',
     repo: GITHUB_CLI_REPOSITORY,
@@ -270,37 +301,33 @@ const downloadAppBinaries = async (): Promise<*> => {
     } catch (error) {
       console.error(error);
     }
+
     // Download firmware binaries
-    let releases = await githubAPI.repos.listReleases({
-      owner: GITHUB_USER,
-      page: 0,
-      perPage: 100,
-      repo: GITHUB_FIRMWARE_REPOSITORY,
-    });
-    let { data } = releases;
-    while (githubAPI.hasNextPage(releases)) {
-      releases = await githubAPI.getNextPage(releases);
-      data = data.concat(releases.data);
-    }
+    githubAPI
+      .paginate(githubAPI.repos.listReleases, {
+        owner: GITHUB_USER,
+        per_page: 100,
+        repo: GITHUB_FIRMWARE_REPOSITORY,
+      })
+      .then(async (releases: any): any => {
+        releases.sort((a: Object, b: Object): number => {
+          if (a.tag_name < b.tag_name) {
+            return 1;
+          }
+          if (a.tag_name > b.tag_name) {
+            return -1;
+          }
+          return 0;
+        });
 
-    data.sort((a: Object, b: Object): number => {
-      if (a.tag_name < b.tag_name) {
-        return 1;
-      }
-      if (a.tag_name > b.tag_name) {
-        return -1;
-      }
-      return 0;
-    });
+        const assets = [].concat(
+          ...releases.map((release: any): Array<any> => release.assets),
+        );
+        const downloadedBinaries = await downloadFirmwareBinaries(assets);
+        await updateSettings(downloadedBinaries);
 
-    const assets = [].concat(
-      ...data.map((release: any): Array<any> => release.assets),
-    );
-
-    const downloadedBinaries = await downloadFirmwareBinaries(assets);
-    await updateSettings(downloadedBinaries);
-
-    console.log('\r\nCompleted Sync');
+        console.log('\r\nCompleted Sync');
+      });
   } catch (err) {
     console.log(err);
   }
