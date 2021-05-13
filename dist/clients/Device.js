@@ -1014,7 +1014,7 @@ var Device = function (_EventEmitter) {
                 _this._isFlashing = false;
 
                 _this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
-                throw new Error('Update failed: ' + _context9.t0.message);
+                return _context9.abrupt('return', { status: 'Update Failed' });
 
               case 22:
               case 'end':

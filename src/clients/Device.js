@@ -341,8 +341,8 @@ class Device extends EventEmitter {
 
       // Wait for this thing to be readable before sending any messages
       /* await new Promise((resolve: () => void) => {
-        decipherStream.once('readable', resolve);
-      });*/
+      decipherStream.once('readable', resolve);
+    });*/
 
       this._sendHello();
       this._connectionStartTime = new Date();
@@ -882,7 +882,7 @@ class Device extends EventEmitter {
       this._isFlashing = false;
 
       this.emit(DEVICE_EVENT_NAMES.FLASH_FAILED);
-      throw new Error(`Update failed: ${error.message}`);
+      return { status: 'Update Failed' };
     }
   };
 

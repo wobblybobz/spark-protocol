@@ -390,7 +390,7 @@ class DeviceServer {
             );
           }
 
-          // device.emit(DEVICE_EVENT_NAMES.READY);
+          device.emit(DEVICE_EVENT_NAMES.READY);
         } catch (error) {
           logger.error({ deviceID, err: error }, 'Connection Error');
           device.disconnect(

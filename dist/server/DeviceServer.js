@@ -407,23 +407,23 @@ var DeviceServer = function () {
                             _this.publishSpecialEvent(_Device.SYSTEM_EVENT_NAMES.APP_HASH, appHash, deviceID, ownerID, false);
                           }
 
-                          // device.emit(DEVICE_EVENT_NAMES.READY);
-                          _context7.next = 35;
+                          device.emit(_Device.DEVICE_EVENT_NAMES.READY);
+                          _context7.next = 36;
                           break;
 
-                        case 31:
-                          _context7.prev = 31;
+                        case 32:
+                          _context7.prev = 32;
                           _context7.t0 = _context7['catch'](0);
 
                           logger.error({ deviceID: deviceID, err: _context7.t0 }, 'Connection Error');
                           device.disconnect('Error during connection: ' + _context7.t0 + ': ' + _context7.t0.stack);
 
-                        case 35:
+                        case 36:
                         case 'end':
                           return _context7.stop();
                       }
                     }
-                  }, _callee7, _this, [[0, 31]]);
+                  }, _callee7, _this, [[0, 32]]);
                 })));
                 _context8.next = 18;
                 break;
